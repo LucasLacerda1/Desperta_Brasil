@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "desperta"
+version = "0.1.0"
+description = "Portal de noticias sobre a Camara dos Deputados com dados abertos e IA (Flask API + Vue 3)."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "Flask>=3.0",
+    "Flask-SQLAlchemy>=3.1",
+    "Flask-Migrate>=4.0",
+    "Flask-CORS>=4.0",
+    "python-dotenv",
+    "requests",
+]
+
+[project.optional-dependencies]
+dev = ["ipython", "flask-shell-ipython", "Flask-DebugToolbar", "invoke", "black", "flake8"]
+test = ["pytest >= 8.3", "pytest-cov >= 5.0", "pytest-flask"]
+ia = ["torch", "transformers", "sqlite-vec"]
+voz = ["faster-whisper", "piper-tts"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+include = ["desperta*"]
+
+# models.py fica de fora: o Black desfaria o estilo de relationship do TaskFlow
+[tool.black]
+line-length = 120
+extend-exclude = "models\\.py"

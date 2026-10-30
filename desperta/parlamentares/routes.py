@@ -1,0 +1,4 @@
+from flask import Blueprint
+
+# Rotas de parlamentares: serao criadas na Fase 4
+bp = Blueprint("parlamentares", __name__)
