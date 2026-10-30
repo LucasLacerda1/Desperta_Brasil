@@ -287,7 +287,7 @@ Novos arquivos `tests/test_banco_sistema.py` e `tests/test_migracoes.py`, além 
 - Total de colunas = 222 + 67 = **289** (44 de `SincronizacaoMixin` nas 11 tabelas principais, 10 de `VinculoSincronizadoMixin`, 6 de `filhos_sincronizados_em`, 6 em `coleta`, 1 em `administrador`).
 - As 11 tabelas principais têm `criado_em`, `atualizado_em`, `sincronizado_em` e `hash_origem`, todas `NOT NULL`; as 10 filhas têm `sincronizado_em`.
 - As 6 tabelas da seção 4 têm `filhos_sincronizados_em` opcional e indexado.
-- Todo índice e toda restrição têm nome que segue a convenção (`ix_`, `uq_`, `ck_`, `fk_`, `pk_`); nenhum nome gerado automaticamente (`sqlite_autoindex_...` só nas PKs é aceitável).
+- Todo índice e toda restrição têm nome que segue a convenção (`ix_`, `uq_`, `ck_`, `fk_`, `pk_`); nenhum nome gerado automaticamente (`sqlite_autoindex_...` só em PKs e restrições `UNIQUE` é aceitável).
 - Cada índice da seção 7 existe, com as colunas na ordem indicada.
 
 **SQLite**

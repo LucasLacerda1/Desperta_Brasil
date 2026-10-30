@@ -1,14 +1,14 @@
 # Desperta Brasil — guia do projeto para o Claude Code
 
 > Coloque este arquivo na **raiz do repositório** com o nome `CLAUDE.md`. O Claude Code lê esse arquivo sozinho no início de cada sessão.
-> Última atualização: 30/10/2026 (Fase 1 concluída; decisões da seção 10; ajuste físico do banco em `docs/AJUSTE_BANCO_SISTEMA.md`).
+> Última atualização: 30/10/2026 (Fases 1 e 1.5 concluídas; decisões nas seções 10 e 11; ajuste físico do banco em `docs/AJUSTE_BANCO_SISTEMA.md`).
 
 ## 0. Como trabalhar neste projeto (leia primeiro)
 
 - **Idioma:** responda, comente o código e escreva mensagens de commit em **português do Brasil**.
 - **Padrão obrigatório:** o código segue a estrutura do projeto **TaskFlow**, usado como exemplo pelo professor da disciplina (Programação Web Avançada, UVV). A seção 3 descreve esse padrão. Não invente outra organização, não troque o Flask-SQLAlchemy por outro ORM e não use outro estilo de modelo.
-- **Ordem do trabalho:** o projeto é construído por fases (seção 7). **A Fase 1 (banco de dados) está concluída. A fase atual é a Fase 1.5: ajuste físico do banco, descrito em `docs/AJUSTE_BANCO_SISTEMA.md`. Depois dela vem a Fase 2: coletor.** Não comece o coletor, a IA, as rotas da API ou o front-end antes da fase anterior estar pronta e testada, a não ser que o grupo peça. Antes de mudar código, leia a seção 10 (decisões tomadas depois da Fase 1).
-- **Git:** faça commits pequenos ao fim de cada passo, com mensagem em português. Nunca versione `.venv/`, `instance/`, `.env` nem arquivos `*.db`.
+- **Ordem do trabalho:** o projeto é construído por fases (seção 7). **As Fases 1 (banco) e 1.5 (ajuste físico do banco, `docs/AJUSTE_BANCO_SISTEMA.md`) estão concluídas. A fase atual é a Fase 2: coletor.** Não comece o coletor, a IA, as rotas da API ou o front-end antes da fase anterior estar pronta e testada, a não ser que o grupo peça. Antes de mudar código, leia as seções 10 e 11 (decisões tomadas depois das Fases 1 e 1.5).
+- **Git:** a `main` no GitHub é a versão estável. Cada fase é feita numa branch própria (`fase-2-coletor`, `fase-3-ia`…), com commits pequenos ao fim de cada passo e mensagem em português; ao terminar a fase, abrir um pull request para a `main`, para o grupo revisar. Não fazer push direto na `main`. Nunca versione `.venv/`, `instance/`, `.env` nem arquivos `*.db`, `*.db-wal`, `*.db-shm`.
 - **O modelo do banco já foi decidido pelo grupo** (32 tabelas, seção 5). Não acrescente, remova nem renomeie tabelas ou colunas por conta própria. A única exceção são as colunas técnicas, índices e configurações listados em `docs/AJUSTE_BANCO_SISTEMA.md` (camada física: controle de sincronização, índices, FTS5, migrações), que não mudam o modelo lógico. Se achar um problema no modelo, aponte e pergunte antes de mudar.
 - **Ao terminar cada passo:** rode os testes (`invoke test`) e mostre o resultado.
 
@@ -68,7 +68,7 @@ Complementares:
 |---|---|
 | RNF01 | Página principal em menos de 2 s, servida do banco (nunca chama a API da Câmara nem a IA durante a visita). |
 | RNF02 | Coleta resiliente: paginação, novas tentativas e backoff exponencial. |
-| RNF03 | Picos de acesso servidos do banco e de cache; se preciso, migrar do SQLite para PostgreSQL só trocando `DATABASE_URL`. |
+| RNF03 | Picos de acesso servidos do banco e de cache. Se for preciso mais concorrência, migrar do SQLite para PostgreSQL: os modelos e os services continuam iguais, mas a busca de texto (FTS5) e o índice vetorial (sqlite-vec) precisam ser refeitos (ver 11.1). |
 | RNF04 | Disponibilidade alvo de 99%. |
 | RNF05 | Se a API da Câmara cair, o portal mostra os dados guardados com aviso de "dados desatualizados" e a data da última coleta concluída. |
 | RNF06 | Ingestão idempotente: reprocessar o mesmo período não duplica registros. |
@@ -1136,10 +1136,10 @@ Critérios de pronto (os testes devem cobrir):
 - `__repr__` de cada modelo funciona.
 - `invoke lint` sem erros.
 
-### Fase 1.5 — Ajuste físico do banco (ATUAL)
+### Fase 1.5 — Ajuste físico do banco (CONCLUÍDA em 30/10/2026: 239 testes, `flask db check` sem diferenças)
 Seguir `docs/AJUSTE_BANCO_SISTEMA.md`: convenção de nomes, Flask-Migrate com a migração inicial, SQLite em WAL, colunas de sincronização, campos novos em `coleta`, chave natural em `lideranca`, índices, busca FTS5 e os testes da seção 13 daquele arquivo. Continua com 32 tabelas e 42 FKs.
 
-### Fase 2 — Coletor
+### Fase 2 — Coletor (ATUAL, na branch `fase-2-coletor`)
 Pacote `desperta/coletor/` (cliente HTTP com backoff, um módulo por endpoint, upsert pelo id), comandos `flask coletar ...` e tarefas invoke. Registra `coleta` e `log_sistema`. Testes com respostas da API gravadas em arquivos JSON (sem chamar a API real nos testes).
 
 Além da seção 6, a Fase 2 precisa:
@@ -1147,6 +1147,7 @@ Além da seção 6, a Fase 2 precisa:
 - **Um registro ruim não derruba a coleta (decisão 10.2):** gravar cada registro com `db.session.begin_nested()`; se der `IntegrityError` (ex.: campo `NOT NULL` vazio), desfazer só ele, registrar em `log_sistema` (nível `erro`, `entidade` e `entidade_id` preenchidos, nome da coluna na descrição) e marcar a `coleta` como `parcial`.
 - **Primeira carga de validação:** rodar uma carga real maior (pelo menos um ano de proposições de vários tipos, inclusive antigas, votações e eventos) e entregar ao grupo a lista de colunas que falharam e quantas vezes. **Não afrouxar `nullable` por conta própria.**
 - **Orientações:** seguir a decisão 10.1.
+- **Pedidos do relatório da Fase 1.5:** seguir a decisão 11.4 (contadores HTTP, endpoints com 504, `nullable` testado numa cópia do banco).
 
 ### Fase 2b — Ajustes de `nullable` (logo depois da carga de validação)
 O Flask-Migrate já foi iniciado na Fase 1.5. Quando o grupo decidir os ajustes de `nullable` da carga de validação, aplicá-los como uma nova migração (`flask db migrate` + revisão + `flask db upgrade`). Toda mudança no esquema é migração, não `create_all()`.
@@ -1155,7 +1156,9 @@ O Flask-Migrate já foi iniciado na Fase 1.5. Quando o grupo decidir os ajustes 
 Trechos, embeddings, índice sqlite-vec, busca, geração de rascunhos com o gerador ainda a definir, registro em `geracao_ia`, `geracao_trecho` e `noticia_fonte`.
 
 ### Fase 4 — API REST e área administrativa
-Blueprints em `/api/...`: notícias publicadas (lista, por tema, busca, filtro por dia/mês/ano, detalhe pelo slug), proposição (tramitações), votação (votos e orientações), temas; visitante (cookie, consentimento, contagem por tema); área administrativa com login (sessão Flask + `SECRET_KEY`), papéis `editor`/`admin`, fluxo de status, histórico, coletas e log. Rotas finas, regras nos services. Antes do login, aplicar as decisões 10.4 (exclusão de registros) e 10.5 (CORS).
+Blueprints em `/api/...`: notícias publicadas (lista, por tema, busca, filtro por dia/mês/ano, detalhe pelo slug), proposição (tramitações), votação (votos e orientações), temas; visitante (cookie, consentimento, contagem por tema); área administrativa com login (sessão Flask + `SECRET_KEY`), papéis `editor`/`admin`, fluxo de status, histórico, coletas e log. Rotas finas, regras nos services. Antes do login, aplicar as decisões 10.4 (exclusão de registros), 10.5 (CORS) e 11.3 (`administrador.atualizado_em`). Também:
+- **Datas na busca:** o filtro por dia, mês e ano vem em horário de Brasília; converter o início e o fim do período para UTC antes de chamar `buscar_noticias`, porque `publicado_em` está em UTC (senão notícias publicadas à noite caem no dia seguinte).
+- **Teste de carga (RNF01):** com o banco da carga de validação, medir a página principal, a página do tema e a busca; meta abaixo de 2 s. Se algum índice faltar, criar por migração.
 
 ### Fase 5 — Front-end Vue 3 e voz
 `frontend/` como no TaskFlow (Vite, Axios, proxy `/api`), Material Design, Material Symbols, página principal por tema, página do tema, busca (texto e voz), página da notícia (fonte, tramitação, votação, botão "Ouvir"), aviso de cookies, área administrativa.
@@ -1171,6 +1174,7 @@ Personalização por tema, relatórios da IA, aviso de "dados desatualizados" (R
 - Tabelas futuras: `visitante_noticia`, `evento_orgao`, `evento_presenca`, `proposicao_relacionada`, histórico de blocos, datas dos órgãos, despesas (cota parlamentar), discursos, `efeitosRegistrados`, grupos interparlamentares.
 - Fine-tuning da RoBERTaLexPT para classificar temas.
 - **Redis.**
+- **PostgreSQL** (evolução futura; ver 11.1).
 
 ## 9. Em aberto (perguntar ao grupo antes de decidir)
 
@@ -1209,3 +1213,25 @@ Já eram decisão do grupo (28/10) e agora estão escritas na seção 5.1. Nada 
 ### 10.5 CORS
 - Em desenvolvimento, o front-end usa o proxy do Vite (`/api` → `http://localhost:5000`), então o CORS nem é usado.
 - Na Fase 4, antes do login: `CORS_ORIGINS` em `Config`, lido de variável de ambiente (padrão `http://localhost:5173`), CORS só para essas origens em `/api/*`, com `supports_credentials=True`. Cookie de sessão com `SESSION_COOKIE_HTTPONLY = True`, `SESSION_COOKIE_SAMESITE = "Lax"` e `SESSION_COOKIE_SECURE = True` em produção.
+
+---
+
+## 11. Decisões tomadas depois da Fase 1.5 (30/10/2026)
+
+### 11.1 RNF03 e PostgreSQL
+O texto antigo ("só trocar `DATABASE_URL`") deixou de ser verdade: a busca usa FTS5, `bm25` e gatilhos do SQLite, e o RAG vai usar o sqlite-vec. Decisão: o MVP fica no SQLite; o **PostgreSQL é evolução futura**, fora do MVP, e não deve ser preparado agora. Se um dia migrar, os modelos, as migrações e os services sem SQL próprio continuam iguais, e só é preciso refazer `desperta/ext/db/busca.py` (PostgreSQL: `tsvector` com `unaccent`) e o índice vetorial (pgvector). Por isso todo SQL específico do SQLite fica isolado em `desperta/ext/db/` (busca) e no módulo de vetores da Fase 3, nunca espalhado pelos services.
+
+### 11.2 Nome `sqlite_autoindex`
+O SQLite também gera esse nome para restrições `UNIQUE`, não só para PKs. O texto de `docs/AJUSTE_BANCO_SISTEMA.md` foi corrigido para aceitar PK e `UNIQUE`, como o teste já faz. Nada muda no código.
+
+### 11.3 `administrador.atualizado_em`
+Significa **só edição de cadastro** (nome, e-mail, papel, ativo, senha). Para seguir o mesmo padrão de `noticia.alterado_em` e do `SincronizacaoMixin`, tirar o `onupdate` dessa coluna e preenchê-la no service que edita o cadastro. O login grava só `ultimo_acesso`. Não precisa de migração (o `onupdate` é só do Python). Ajustar o teste da Fase 1.5 que espera a mudança automática: ele passa a testar o service. Fazer no começo da Fase 4.
+
+### 11.4 Fase 2: pedidos do relatório da Fase 1.5
+- O cliente HTTP conta `requisicoes` e `erros_http` em `coleta` desde a primeira versão, para a carga de validação já medir a instabilidade da API.
+- A carga de validação inclui logo `/legislaturas/57/lideres` e `/deputados?siglaSexo=M`, que deram 504 na Fase 1 e ainda não foram avaliados.
+- Toda mudança de `nullable` (Fase 2b) é migração, testada antes numa cópia do banco com os dados da carga (`cp instance/desperta.db /tmp/teste.db` e `DATABASE_URL=sqlite:////tmp/teste.db flask db upgrade`).
+
+### 11.5 Manutenção
+O aviso de depreciação de `get_engine` no `migrations/env.py` não afeta nada hoje. Ao atualizar o Flask-SQLAlchemy, simplificar esse trecho.
+
