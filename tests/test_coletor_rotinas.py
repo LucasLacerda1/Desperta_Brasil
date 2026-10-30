@@ -56,7 +56,11 @@ def _apoio(api):
 def _semanal(api):
     _apoio(api)
     _proposicao(api)
-    api.responder("orgaos/111/membros", envelope([]))
+    # Orgaos da lista e os trazidos sob demanda pelas tramitacoes
+    orgaos = {item["id"] for item in carregar("orgaos")["dados"]}
+    orgaos |= {int(item["uriOrgao"].rsplit("/", 1)[1]) for item in carregar("proposicao_tramitacoes")["dados"]}
+    for id_orgao in orgaos:
+        api.responder(f"orgaos/{id_orgao}/membros", envelope([]))
     api.responder("orgaos/4/membros", envelope([]))
     api.responder("legislaturas/57/mesa", carregar("mesa"))
     api.responder("legislaturas/57/lideres", carregar("lideres"))
