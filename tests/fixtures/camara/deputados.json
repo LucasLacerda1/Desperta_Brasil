@@ -1,0 +1,21 @@
+{
+ "dados": [
+  {
+   "id": 160592,
+   "uri": "https://dadosabertos.camara.leg.br/api/v2/deputados/160592",
+   "nome": "Zeca Dirceu",
+   "siglaPartido": "PT",
+   "uriPartido": "https://dadosabertos.camara.leg.br/api/v2/partidos/36844",
+   "siglaUf": "PR",
+   "idLegislatura": 57,
+   "urlFoto": "https://www.camara.leg.br/internet/deputado/bandep/160592.jpg",
+   "email": "dep.zecadirceu@camara.leg.br"
+  }
+ ],
+ "links": [
+  {
+   "rel": "self",
+   "href": "https://dadosabertos.camara.leg.br/api/v2/deputados"
+  }
+ ]
+}

@@ -1,0 +1,20 @@
+{
+ "dados": [
+  {
+   "codTema": 34,
+   "tema": "Administração Pública",
+   "relevancia": 0
+  },
+  {
+   "codTema": 57,
+   "tema": "Defesa e Segurança",
+   "relevancia": 0
+  }
+ ],
+ "links": [
+  {
+   "rel": "self",
+   "href": "https://dadosabertos.camara.leg.br/api/v2/proposicao_temas"
+  }
+ ]
+}

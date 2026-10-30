@@ -1,6 +1,7 @@
 from flask import Flask
 
 from .auth import init_app as init_auth
+from .coletor import init_app as init_coletor
 from .config import Config
 from .ext.cli import init_app as init_cli
 from .ext.cors import init_app as init_cors
@@ -30,6 +31,7 @@ def create_app(config_class=Config):
     init_db(app)
     init_cors(app)
     init_cli(app)
+    init_coletor(app)
 
     # ----------------------------------------------------------
     # Registro dos modelos no metadata do SQLAlchemy

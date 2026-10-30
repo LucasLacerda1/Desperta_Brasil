@@ -1,0 +1,17 @@
+{
+ "dados": [
+  {
+   "id": "584",
+   "uri": "https://dadosabertos.camara.leg.br/api/v2/blocos/584",
+   "nome": "Federação Brasil da Esperança - Fe Brasil",
+   "idLegislatura": "57",
+   "federacao": true
+  }
+ ],
+ "links": [
+  {
+   "rel": "self",
+   "href": "https://dadosabertos.camara.leg.br/api/v2/blocos"
+  }
+ ]
+}

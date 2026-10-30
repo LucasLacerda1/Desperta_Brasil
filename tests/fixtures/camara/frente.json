@@ -1,0 +1,32 @@
+{
+ "dados": {
+  "id": 55703,
+  "uri": "https://dadosabertos.camara.leg.br/api/v2/frentes/55703",
+  "titulo": "Frente Parlamentar Mista do Serviço Exterior Brasileiro",
+  "idLegislatura": 57,
+  "telefone": "3215-5344",
+  "email": "dep.duartejr@camara.leg.br",
+  "keywords": null,
+  "idSituacao": null,
+  "situacao": "27/10/2025 - Recebidos REQ 4415/2025, ata, estatuto e adesões.\r\n27/10/2025 - Confirmadas 197 assinaturas de deputados e 3 senadores.\r\n15/06/2026 - Despacho de registro assinado. Vai à publicação em DCD.",
+  "urlWebsite": null,
+  "urlDocumento": "https://www.camara.leg.br/internet/deputado/Frente_Parlamentar/55703-integra.pdf",
+  "coordenador": {
+   "id": 220686,
+   "uri": "https://dadosabertos.camara.leg.br/api/v2/deputados/220686",
+   "nome": "Duarte Jr.",
+   "siglaPartido": "AVANTE",
+   "uriPartido": "https://dadosabertos.camara.leg.br/api/v2/partidos/36898",
+   "siglaUf": "MA",
+   "idLegislatura": 57,
+   "urlFoto": "https://www.camara.leg.br/internet/deputado/bandep/220686.jpg",
+   "email": "dep.duartejr@camara.leg.br"
+  }
+ },
+ "links": [
+  {
+   "rel": "self",
+   "href": "https://dadosabertos.camara.leg.br/api/v2/frente"
+  }
+ ]
+}

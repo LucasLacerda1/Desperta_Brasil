@@ -1,0 +1,35 @@
+{
+ "dados": {
+  "id": 37906,
+  "sigla": "PL",
+  "nome": "Partido Liberal",
+  "uri": "https://dadosabertos.camara.leg.br/api/v2/partidos/37906",
+  "status": {
+   "data": "2026-03-31T12:27",
+   "idLegislatura": "57",
+   "situacao": "Ativo",
+   "totalPosse": "98",
+   "totalMembros": "98",
+   "uriMembros": "https://dadosabertos.camara.leg.br/api/v2/deputados?idLegislatura=57&siglaPartido=PL",
+   "lider": {
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/deputados/204374",
+    "nome": "Bia Kicis",
+    "siglaPartido": "PL",
+    "uriPartido": "https://dadosabertos.camara.leg.br/api/v2/partidos/37906",
+    "uf": "DF",
+    "idLegislatura": 57,
+    "urlFoto": "https://www.camara.leg.br/internet/deputado/bandep/204374.jpg"
+   }
+  },
+  "numeroEleitoral": null,
+  "urlLogo": "https://www.camara.leg.br/internet/Deputado/img/partidos/PL.gif",
+  "urlWebSite": null,
+  "urlFacebook": null
+ },
+ "links": [
+  {
+   "rel": "self",
+   "href": "https://dadosabertos.camara.leg.br/api/v2/partido"
+  }
+ ]
+}

@@ -1,0 +1,16 @@
+{
+ "dados": [
+  {
+   "id": 36898,
+   "sigla": "AVANTE",
+   "nome": "Avante",
+   "uri": "https://dadosabertos.camara.leg.br/api/v2/partidos/36898"
+  }
+ ],
+ "links": [
+  {
+   "rel": "self",
+   "href": "https://dadosabertos.camara.leg.br/api/v2/partidos"
+  }
+ ]
+}

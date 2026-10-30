@@ -1,0 +1,58 @@
+{
+ "dados": [
+  {
+   "dataHora": "2008-11-04T18:36",
+   "sequencia": 1,
+   "siglaOrgao": "PLEN",
+   "uriOrgao": "https://dadosabertos.camara.leg.br/api/v2/orgaos/180",
+   "uriUltimoRelator": null,
+   "regime": "Especial (Art. 202 c/c 191, I, RICD)",
+   "descricaoTramitacao": "Apresentação de Proposição",
+   "codTipoTramitacao": "100",
+   "descricaoSituacao": "Tramitando em Conjunto",
+   "codSituacao": 925,
+   "despacho": "Apresentação da Proposta de Emenda à Constituição  pelo Deputado Arnaldo Faria de Sá (PTB-SP).",
+   "url": "https://www.camara.leg.br/proposicoesWeb/prop_mostrarintegra?codteor=610200",
+   "ambito": "Regimental",
+   "apreciacao": "Proposição Sujeita à Apreciação do Plenário"
+  },
+  {
+   "dataHora": "2008-11-06T00:00",
+   "sequencia": 7,
+   "siglaOrgao": "MESA",
+   "uriOrgao": "https://dadosabertos.camara.leg.br/api/v2/orgaos/4",
+   "uriUltimoRelator": null,
+   "regime": "Especial (Art. 202 c/c 191, I, RICD)",
+   "descricaoTramitacao": "Relatório de Conferência de Assinaturas",
+   "codTipoTramitacao": "1042",
+   "descricaoSituacao": "Tramitando em Conjunto",
+   "codSituacao": 925,
+   "despacho": "Relatório de Conferência de Assinaturas da PEC 300/08.",
+   "url": "https://www.camara.leg.br/proposicoesWeb/prop_mostrarintegra?codteor=611269",
+   "ambito": "Regimental",
+   "apreciacao": "Proposição Sujeita à Apreciação do Plenário"
+  },
+  {
+   "dataHora": "2008-11-13T12:20",
+   "sequencia": 11,
+   "siglaOrgao": "MESA",
+   "uriOrgao": "https://dadosabertos.camara.leg.br/api/v2/orgaos/4",
+   "uriUltimoRelator": null,
+   "regime": "Especial (Art. 202 c/c 191, I, RICD)",
+   "descricaoTramitacao": "Distribuição",
+   "codTipoTramitacao": "110",
+   "descricaoSituacao": "Tramitando em Conjunto",
+   "codSituacao": 925,
+   "despacho": "À Comissão de Constituição e Justiça e de CidadaniaProposição Sujeita à Apreciação do PlenárioRegime de Tramitação: Especial",
+   "url": "https://www.camara.leg.br/proposicoesWeb/prop_mostrarintegra?codteor=613304",
+   "ambito": "Regimental",
+   "apreciacao": "Proposição Sujeita à Apreciação do Plenário"
+  }
+ ],
+ "links": [
+  {
+   "rel": "self",
+   "href": "https://dadosabertos.camara.leg.br/api/v2/proposicao_tramitacoes"
+  }
+ ]
+}

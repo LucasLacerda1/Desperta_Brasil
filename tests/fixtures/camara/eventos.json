@@ -1,0 +1,16 @@
+{
+ "dados": [
+  {
+   "id": 73144,
+   "uri": "https://dadosabertos.camara.leg.br/api/v2/eventos/73144",
+   "dataHoraInicio": "2024-05-28T14:00",
+   "situacao": "Encerrada"
+  }
+ ],
+ "links": [
+  {
+   "rel": "self",
+   "href": "https://dadosabertos.camara.leg.br/api/v2/eventos"
+  }
+ ]
+}

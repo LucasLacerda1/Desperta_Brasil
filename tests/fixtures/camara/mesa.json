@@ -1,0 +1,40 @@
+{
+ "dados": [
+  {
+   "id": 178947,
+   "uri": "https://dadosabertos.camara.leg.br/api/v2/deputados/178947",
+   "nome": "Sóstenes Cavalcante",
+   "siglaPartido": "PL",
+   "uriPartido": "https://dadosabertos.camara.leg.br/api/v2/partidos/37906",
+   "siglaUf": "RJ",
+   "idLegislatura": 57,
+   "urlFoto": "https://www.camara.leg.br/internet/deputado/bandep/178947.jpg",
+   "email": null,
+   "dataInicio": "2023-02-01",
+   "dataFim": "2025-02-01",
+   "titulo": "2º Vice-Presidente",
+   "codTitulo": "3"
+  },
+  {
+   "id": 178854,
+   "uri": "https://dadosabertos.camara.leg.br/api/v2/deputados/178854",
+   "nome": "Elmar Nascimento",
+   "siglaPartido": "UNIÃO",
+   "uriPartido": "https://dadosabertos.camara.leg.br/api/v2/partidos/38009",
+   "siglaUf": "BA",
+   "idLegislatura": 57,
+   "urlFoto": "https://www.camara.leg.br/internet/deputado/bandep/178854.jpg",
+   "email": null,
+   "dataInicio": "2025-02-01",
+   "dataFim": null,
+   "titulo": "2º Vice-Presidente",
+   "codTitulo": "3"
+  }
+ ],
+ "links": [
+  {
+   "rel": "self",
+   "href": "https://dadosabertos.camara.leg.br/api/v2/mesa"
+  }
+ ]
+}

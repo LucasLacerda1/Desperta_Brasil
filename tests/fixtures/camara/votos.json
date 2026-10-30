@@ -1,0 +1,55 @@
+{
+ "dados": [
+  {
+   "tipoVoto": "Não",
+   "dataRegistroVoto": "2024-05-28T22:19:18",
+   "deputado_": {
+    "id": 160592,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/deputados/160592",
+    "nome": "Zeca Dirceu",
+    "siglaPartido": "PT",
+    "uriPartido": "https://dadosabertos.camara.leg.br/api/v2/partidos/36844",
+    "siglaUf": "PR",
+    "idLegislatura": 57,
+    "urlFoto": "https://www.camara.leg.br/internet/deputado/bandep/160592.jpg",
+    "email": "dep.zecadirceu@camara.leg.br"
+   }
+  },
+  {
+   "tipoVoto": "Não",
+   "dataRegistroVoto": "2024-05-28T22:19:18",
+   "deputado_": {
+    "id": 204501,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/deputados/204501",
+    "nome": "Alencar Santana",
+    "siglaPartido": "PT",
+    "uriPartido": "https://dadosabertos.camara.leg.br/api/v2/partidos/36844",
+    "siglaUf": "SP",
+    "idLegislatura": 57,
+    "urlFoto": "https://www.camara.leg.br/internet/deputado/bandep/204501.jpg",
+    "email": "dep.alencarsantana@camara.leg.br"
+   }
+  },
+  {
+   "tipoVoto": "Não",
+   "dataRegistroVoto": "2024-05-28T22:19:06",
+   "deputado_": {
+    "id": 191923,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/deputados/191923",
+    "nome": "Flávio Nogueira",
+    "siglaPartido": "PT",
+    "uriPartido": "https://dadosabertos.camara.leg.br/api/v2/partidos/36844",
+    "siglaUf": "PI",
+    "idLegislatura": 57,
+    "urlFoto": "https://www.camara.leg.br/internet/deputado/bandep/191923.jpg",
+    "email": "dep.flavionogueira@camara.leg.br"
+   }
+  }
+ ],
+ "links": [
+  {
+   "rel": "self",
+   "href": "https://dadosabertos.camara.leg.br/api/v2/votos"
+  }
+ ]
+}

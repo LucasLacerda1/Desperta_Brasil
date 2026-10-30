@@ -1,0 +1,28 @@
+{
+ "dados": [
+  {
+   "cod": "34",
+   "sigla": "",
+   "nome": "Administração Pública",
+   "descricao": ""
+  },
+  {
+   "cod": "35",
+   "sigla": "",
+   "nome": "Arte, Cultura e Religião",
+   "descricao": ""
+  },
+  {
+   "cod": "37",
+   "sigla": "",
+   "nome": "Comunicações",
+   "descricao": ""
+  }
+ ],
+ "links": [
+  {
+   "rel": "self",
+   "href": "https://dadosabertos.camara.leg.br/api/v2/temas"
+  }
+ ]
+}

@@ -1,0 +1,113 @@
+{
+ "dados": [
+  {
+   "ordem": 5,
+   "topico": "Requerimentos de Urgência Art. 155",
+   "regime": "Matéria Sobre a Mesa",
+   "codRegime": 99,
+   "titulo": "REQ 1716/2024",
+   "proposicao_": {
+    "id": 2435373,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2435373",
+    "siglaTipo": "REQ",
+    "codTipo": 392,
+    "numero": 1716,
+    "ano": 2024,
+    "ementa": "Requer regime de urgência para apreciação do Projeto de Decreto Legislativo nº 206/2024, que “Susta parcialmente o Decreto nº 11.615, de 21 de julho de 2023, que regulamenta a Lei nº 10.826, de 22 de dezembro de 2003, que “dispõe sobre registro, posse e comercialização de armas de fogo e munição, sobre o Sistema Nacional de Armas – Sinarm, que define crimes e dá outras providências”, uma vez que exorbita o poder regulamentar, inviabilizando a prática do colecionamento e do tiro desportivo ”.",
+    "dataApresentacao": "2024-05-22T08:13"
+   },
+   "relator": {
+    "id": 74856,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/deputados/74856",
+    "nome": "Laura Carneiro",
+    "siglaPartido": "PSD",
+    "uriPartido": "https://dadosabertos.camara.leg.br/api/v2/partidos/36834",
+    "siglaUf": "RJ",
+    "idLegislatura": 57,
+    "urlFoto": "https://www.camara.leg.br/internet/deputado/bandep/74856.jpg",
+    "email": "dep.lauracarneiro@camara.leg.br"
+   },
+   "textoParecer": null,
+   "proposicaoRelacionada_": {
+    "id": 2430026,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2430026",
+    "siglaTipo": "PDL",
+    "codTipo": "557",
+    "numero": "206",
+    "ano": "2024",
+    "ementa": "Susta parcialmente o Decreto nº 11.615, de 21 de julho de 2023, que regulamenta a Lei nº 10.826, de 22 de dezembro de 2003, que “dispõe sobre registro, posse e comercialização de armas de fogo e munição, sobre o Sistema Nacional de Armas - Sinarm, define crimes e dá outras providências”, uma vez que exorbita o poder regulamentar, inviabilizando a prática do colecionamento e do tiro desportivo.\r\n\r\nNOVA EMENTA: Susta parcialmente o Decreto nº 11.615, de 21 de julho de 2023, que regulamenta a Lei nº 10.826, de 22 de dezembro de 2003, a qual dispõe sobre registro, posse e comercialização de armas de fogo e munição.",
+    "dataApresentacao": null
+   },
+   "uriVotacao": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2435373-8/",
+   "situacaoItem": "Matéria sobre a Mesa. Encaminhou a Votação o Dep. Ismael Alexandrino (PSD-GO). Aprovado o Requerimento de Urgência (Art. 155 do RICD)."
+  },
+  {
+   "ordem": 1,
+   "topico": "Requerimentos de Urgência Art. 155",
+   "regime": "Matéria Sobre a Mesa",
+   "codRegime": 99,
+   "titulo": "REQ 3368/2023",
+   "proposicao_": {
+    "id": 2392940,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2392940",
+    "siglaTipo": "REQ",
+    "codTipo": 392,
+    "numero": 3368,
+    "ano": 2023,
+    "ementa": "Requer regime de urgência para apreciação do Projeto de Lei nº 4769/2023.",
+    "dataApresentacao": "2023-10-03T19:05"
+   },
+   "relator": null,
+   "textoParecer": null,
+   "proposicaoRelacionada_": {
+    "id": 2392189,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2392189",
+    "siglaTipo": "PL",
+    "codTipo": "139",
+    "numero": "4769",
+    "ano": "2023",
+    "ementa": "Dispõe sobre o ressarcimento aos Estados, Distrito Federal e Municípios em situação de calamidade pública ocasionada por desastres naturais.",
+    "dataApresentacao": null
+   },
+   "uriVotacao": null,
+   "situacaoItem": "Matéria não apreciada em face do encerramento da Ordem do Dia."
+  },
+  {
+   "ordem": 2,
+   "topico": "Requerimentos de Urgência Art. 155",
+   "regime": "Matéria Sobre a Mesa",
+   "codRegime": 99,
+   "titulo": "REQ 201/2024",
+   "proposicao_": {
+    "id": 2417533,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2417533",
+    "siglaTipo": "REQ",
+    "codTipo": 392,
+    "numero": 201,
+    "ano": 2024,
+    "ementa": "Requer regime de urgência na apreciação do Projeto de Lei nº 3.010, de 2019.",
+    "dataApresentacao": "2024-02-07T12:41"
+   },
+   "relator": null,
+   "textoParecer": null,
+   "proposicaoRelacionada_": {
+    "id": 2204088,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2204088",
+    "siglaTipo": "PL",
+    "codTipo": "139",
+    "numero": "3010",
+    "ano": "2019",
+    "ementa": "Institui a Política Nacional de Proteção dos Direitos da Pessoa com Fibromialgia.\n\r\n\r\nNOVA EMENTA: Altera a Lei nº 14.705, de 25 de outubro de 2023, para prever programa nacional de proteção dos direitos da pessoa acometida por Síndrome de Fibromialgia ou Fadiga Crônica ou por Síndrome Complexa de Dor Regional ou outras doenças correlatas.",
+    "dataApresentacao": null
+   },
+   "uriVotacao": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2417533-8/",
+   "situacaoItem": "Matéria sobre a Mesa. Encaminhou a Votação o Dep. Josenildo (PDT-AP). Aprovado, por unanimidade, o Requerimento de Urgência (Art. 155 do RICD)."
+  }
+ ],
+ "links": [
+  {
+   "rel": "self",
+   "href": "https://dadosabertos.camara.leg.br/api/v2/pauta"
+  }
+ ]
+}

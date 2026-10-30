@@ -1,0 +1,25 @@
+{
+ "dados": {
+  "id": 204554,
+  "uri": "https://dadosabertos.camara.leg.br/api/v2/deputados/204554",
+  "nomeCivil": "JOSE ABILIO SILVA DE SANTANA",
+  "ultimoStatus": {
+   "id": 204554,
+   "uri": "https://dadosabertos.camara.leg.br/api/v2/deputados/204554",
+   "nome": "Abílio Santana",
+   "siglaPartido": "PSC",
+   "uriPartido": null,
+   "siglaUf": "BA",
+   "idLegislatura": 57,
+   "urlFoto": "https://www.camara.leg.br/internet/deputado/bandep/204554.jpg",
+   "email": null
+  },
+  "sexo": "M"
+ },
+ "links": [
+  {
+   "rel": "self",
+   "href": "https://dadosabertos.camara.leg.br/api/v2/deputado"
+  }
+ ]
+}

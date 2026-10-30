@@ -1,0 +1,40 @@
+{
+ "dados": [
+  {
+   "id": 178860,
+   "uri": "https://dadosabertos.camara.leg.br/api/v2/deputados/178860",
+   "nome": "Paulo Azi",
+   "siglaPartido": "UNIÃO",
+   "uriPartido": "https://dadosabertos.camara.leg.br/api/v2/partidos/76868",
+   "siglaUf": "BA",
+   "idLegislatura": 57,
+   "urlFoto": "https://www.camara.leg.br/internet/deputado/bandep/178860.jpg",
+   "email": "dep.pauloazi@camara.leg.br",
+   "titulo": "Titular",
+   "codTitulo": 101,
+   "dataInicio": "2026-02-09",
+   "dataFim": null
+  },
+  {
+   "id": 204572,
+   "uri": "https://dadosabertos.camara.leg.br/api/v2/deputados/204572",
+   "nome": "Capitão Alberto Neto",
+   "siglaPartido": "PL",
+   "uriPartido": "https://dadosabertos.camara.leg.br/api/v2/partidos/110",
+   "siglaUf": "AM",
+   "idLegislatura": 57,
+   "urlFoto": "https://www.camara.leg.br/internet/deputado/bandep/204572.jpg",
+   "email": "dep.capitaoalbertoneto@camara.leg.br",
+   "titulo": "Titular",
+   "codTitulo": 101,
+   "dataInicio": "2026-02-09",
+   "dataFim": null
+  }
+ ],
+ "links": [
+  {
+   "rel": "self",
+   "href": "https://dadosabertos.camara.leg.br/api/v2/membros"
+  }
+ ]
+}

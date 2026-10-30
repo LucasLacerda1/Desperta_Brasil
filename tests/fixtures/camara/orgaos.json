@@ -1,0 +1,32 @@
+{
+ "dados": [
+  {
+   "id": 4,
+   "uri": "https://dadosabertos.camara.leg.br/api/v2/orgaos/4",
+   "sigla": "MESA",
+   "nome": "Mesa Diretora da Câmara dos Deputados",
+   "apelido": "Mesa Diretora",
+   "codTipoOrgao": 1,
+   "tipoOrgao": "Comissão Diretora",
+   "nomePublicacao": "Mesa Diretora",
+   "nomeResumido": null
+  },
+  {
+   "id": 111,
+   "uri": "https://dadosabertos.camara.leg.br/api/v2/orgaos/111",
+   "sigla": "CN",
+   "nome": "CONGRESSO NACIONAL",
+   "apelido": "CONGRESSO NACIONAL",
+   "codTipoOrgao": 81001,
+   "tipoOrgao": "Órgão do Congresso Nacional",
+   "nomePublicacao": "CN",
+   "nomeResumido": "Congresso Nacional"
+  }
+ ],
+ "links": [
+  {
+   "rel": "self",
+   "href": "https://dadosabertos.camara.leg.br/api/v2/orgaos"
+  }
+ ]
+}

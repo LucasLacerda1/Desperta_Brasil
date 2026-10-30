@@ -20,6 +20,12 @@ def migrate(c):
 
 
 @task
+def coletar(c, rotina="horaria"):
+    """Roda uma rotina de coleta: base, horaria, diaria, semanal ou mensal."""
+    c.run(f"flask --app app.py coletar {rotina}", echo=True)
+
+
+@task
 def run(c):
     """Executa a aplicacao Flask."""
     c.run("flask --app app.py run --debug", pty=True)
