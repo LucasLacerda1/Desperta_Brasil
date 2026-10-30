@@ -44,7 +44,7 @@ Complementares:
 | Código | Requisito |
 |---|---|
 | RF01 | Consumir a API v2 da Câmara: proposições (autores, temas, tramitações), votações (votos, orientações, proposições afetadas), deputados, partidos, legislaturas, órgãos (membros e Mesa), eventos (pauta), lideranças, blocos, frentes e a lista de temas. |
-| RF02 | Coleta agendada: proposições, votações e eventos a cada hora, varredura completa diária à noite; cargos em órgãos e blocos semanalmente; frentes mensalmente. |
+| RF02 | Coleta agendada (revisto em 30/10/2026, ver 12.1): votações e eventos a cada hora; proposições dos tipos acompanhados a cada hora (janela curta) e numa revisão diária dos últimos dias; varredura de 30 dias uma vez por semana; cargos em órgãos e blocos semanalmente; frentes mensalmente. |
 | RF03 | Guardar os dados num modelo relacional que espelha a API, com os mesmos ids, atualizando (upsert) em vez de duplicar. |
 | RF04 | Registrar cada coleta (endpoint, parâmetros, início, fim, total, novos, atualizados, status, erro) e guardar o link do inteiro teor. |
 | RF05 | Classificar proposições e notícias pelos temas oficiais da Câmara (proposições recebem os temas da API; cada notícia tem um tema principal). |
@@ -467,7 +467,7 @@ Fontes do modelo (no repositório do grupo, se forem copiadas): `desperta-modelo
 - **Chaves compostas:** tabelas associativas e entidades fracas usam PK composta (várias colunas com `primary_key=True`).
 - **Sem relacionamento 1:1.** São 42 relacionamentos 1:N e 10 N:N.
 - **Sem atalhos em triângulo (regra T1):** se x → y → z, x não liga direto em z. Por isso `lideranca` não tem FK para legislatura nem partido, e `proposicao` não guarda o órgão atual (é o da última tramitação). **Exceções aceitas pelo grupo (28/10):** `votacao` → `orgao` e `votacao` → `evento` → `orgao`; `pauta_item` → `evento` e `pauta_item` → `votacao` → `evento`; e `votacao.proposicao_id` (D2). Elas ficam porque `evento_id` e `votacao_id` podem ser nulos; a consistência é regra do coletor (seção 6).
-- **`partido.sigla` não é única.** Ligações sempre pelo id.
+- **`partido.sigla` não é única.** Ligações sempre pelo id. Única exceção: `/blocos/{id}/partidos`, que devolve o id errado (ver 12.3).
 - **`noticia_fonte` e `trecho_rag` não têm FK para as tabelas da API:** guardam `tipo` + `ref_id`, e o back-end confere se o registro existe.
 - **Valores fixos** (status, tipo, papel etc.): declare as listas como constantes no `models.py` (ex.: `NOTICIA_STATUS = ("rascunho", "em_revisao", "publicada", "rejeitada", "arquivada")`) e use `CheckConstraint` com nome `ck_<tabela>_<campo>`. O service também valida.
 - **Índice vetorial** (sqlite-vec) **não é uma das 32 tabelas** e não é modelo SQLAlchemy: é uma tabela virtual criada na Fase 3, reconstruível a partir de `trecho_rag`.
@@ -1148,6 +1148,7 @@ Além da seção 6, a Fase 2 precisa:
 - **Primeira carga de validação:** rodar uma carga real maior (pelo menos um ano de proposições de vários tipos, inclusive antigas, votações e eventos) e entregar ao grupo a lista de colunas que falharam e quantas vezes. **Não afrouxar `nullable` por conta própria.**
 - **Orientações:** seguir a decisão 10.1.
 - **Pedidos do relatório da Fase 1.5:** seguir a decisão 11.4 (contadores HTTP, endpoints com 504, `nullable` testado numa cópia do banco).
+- **Decisões depois do relatório da Fase 2:** seguir a seção 12. O que falta para fechar a fase está em 12.7.
 
 ### Fase 2b — Ajustes de `nullable` (logo depois da carga de validação)
 O Flask-Migrate já foi iniciado na Fase 1.5. Quando o grupo decidir os ajustes de `nullable` da carga de validação, aplicá-los como uma nova migração (`flask db migrate` + revisão + `flask db upgrade`). Toda mudança no esquema é migração, não `create_all()`.
@@ -1175,6 +1176,7 @@ Personalização por tema, relatórios da IA, aviso de "dados desatualizados" (R
 - Fine-tuning da RoBERTaLexPT para classificar temas.
 - **Redis.**
 - **PostgreSQL** (evolução futura; ver 11.1).
+- Histórico de membros de órgãos (`deputado_orgao`) e de blocos; tipos de proposição além de PL, PLP, PEC, MPV e PDL.
 
 ## 9. Em aberto (perguntar ao grupo antes de decidir)
 
@@ -1234,4 +1236,52 @@ Significa **só edição de cadastro** (nome, e-mail, papel, ativo, senha). Para
 
 ### 11.5 Manutenção
 O aviso de depreciação de `get_engine` no `migrations/env.py` não afeta nada hoje. Ao atualizar o Flask-SQLAlchemy, simplificar esse trecho.
+
+---
+
+## 12. Decisões tomadas depois do relatório da Fase 2 (30/10/2026)
+
+### 12.1 Volume da API e RF02
+A API tem muito mais proposições do que o previsto (cerca de 13 mil só em março de 2025), e cada uma pede pelo menos 4 chamadas. Do jeito que estava, a rotina diária não terminaria em um dia. Decisões:
+- **Não buscar de novo o que não mudou:** só chamar `/autores`, `/temas` e `/tramitacoes` quando a proposição é nova ou quando `statusProposicao.dataHora` (`data_status`) mudou. Se não mudou, atualizar só `sincronizado_em`.
+- **Tipos acompanhados no MVP:** `PL`, `PLP`, `PEC`, `MPV` e `PDL`, numa constante `TIPOS_ACOMPANHADOS` em `Config` (lida de variável de ambiente). Outros tipos (`REQ`, `INC`, etc.) só entram quando são citados por uma votação ou um item de pauta, pelo `referencias.py`.
+- **Novo calendário (substitui o RF02 antigo):**
+  - `horaria`: votações e eventos do dia anterior e de hoje; proposições dos tipos acompanhados com janela de 1 dia.
+  - `diaria` (madrugada): proposições dos tipos acompanhados dos últimos 3 dias; eventos pendentes (pauta); votações pendentes (votos e orientações).
+  - `semanal` (domingo de madrugada): varredura de 30 dias das proposições; membros de órgãos, Mesa, lideranças e blocos.
+  - `mensal`: frentes.
+- **Meta de tempo:** `horaria` em menos de 20 minutos e `diaria` em menos de 3 horas. O Claude Code mede com dados reais e, se passar, avisa o grupo antes de mudar mais coisas.
+- **Uma coleta por vez:** criar uma trava em arquivo (`instance/coletor.lock`, com o PID e a hora de início). Se uma rotina encontrar a trava, ela não roda, e grava um aviso em `log_sistema`. Trava com mais de 6 horas é considerada abandonada e pode ser removida.
+- O grupo deve atualizar o RF02 no documento do MVP com este calendário.
+
+### 12.2 Carga de validação
+Não rodar um ano inteiro agora. Rodar uma **amostra** que cubra os casos diferentes:
+- proposições dos 5 tipos acompanhados, em janelas curtas de 2005, 2015 e 2025 (antigas e novas);
+- votações e eventos de 2 ou 3 dias com sessão no Plenário;
+- membros de órgãos, Mesa, lideranças (`/legislaturas/57/lideres`), blocos, frentes e `/deputados?siglaSexo=M` e `F` (decisão 11.4).
+
+Rodar com `nohup` (ou `tmux`) para não morrer se a sessão fechar, e terminar com `flask coletar relatorio`. O resultado é a lista de colunas que falharam e quantas vezes, que abre a Fase 2b. A carga maior (os últimos 3 meses, para o portal ter conteúdo) roda depois, já com as economias de 12.1. Um ano inteiro fica para quando o portal estiver no ar.
+
+### 12.3 `/blocos/{id}/partidos` com id errado
+A API devolve o id do bloco no lugar do id do partido. **Exceção aceita:** quando isso acontece, o coletor procura o partido pela sigla **entre os partidos da mesma legislatura do bloco**; se achar exatamente um, liga; se achar zero ou mais de um, não liga e grava um aviso em `log_sistema`. O `relatorio` mostra quantos blocos tiveram esse problema.
+
+### 12.4 `pauta_item` com linhas repetidas
+**Aceito no MVP:** uma linha por item de pauta, com a primeira votação válida em `votacao_id`, e aviso no log. A PK não muda. Para mostrar todas as votações de um item, a página usa as votações do mesmo evento (`votacao.evento_id`) que afetam a proposição do item (`votacao_proposicao`), sem precisar de `pauta_item.votacao_id`.
+
+### 12.5 Histórico de membros de órgãos
+**MVP guarda só a composição atual** em `deputado_orgao`, como em `bloco_partido`. Quem saiu é removido pela regra de vínculos que sumiram. `data_fim` fica como a API mandar. Guardar o histórico fica como evolução (entra na lista da seção 8).
+
+### 12.6 Problemas técnicos registrados
+- `/deputados` e `/frentes/{id}/membros` com 504: não bloqueiam o fechamento da fase. Os deputados vêm por `/deputados/{id}`. Os JSON escritos à mão nos testes devem ser trocados por respostas reais assim que a API responder; até lá ficam marcados no nome do arquivo (`*_manual.json`).
+- `pytest --cov=desperta.coletor` falha dentro do SQLAlchemy, mas o comando oficial (`--cov=desperta`) funciona. Não investigar agora; anotar como problema conhecido no README.
+
+### 12.7 O que falta para fechar a Fase 2
+1. Implementar 12.1 (não buscar de novo, tipos acompanhados, novo calendário, trava) com testes.
+2. Testes das rotinas `base`, `diaria`, `semanal` e `mensal` e de pelo menos um comando `flask coletar` de verdade (com respostas gravadas).
+3. Rodar a amostra de 12.2 com `nohup` e entregar o `relatorio`.
+4. Medir o tempo da `horaria` e da `diaria` com dados reais.
+5. Commit, push e pull request para a `main` (12.8).
+
+### 12.8 GitHub
+A `main` do GitHub é criada a partir do commit `e7f6d2c` (fim da Fase 1.5). A branch `fase-2-coletor` sobe junto, e o pull request é aberto como **rascunho** já agora, para o grupo acompanhar. Ele vira pronto para revisão quando os itens de 12.7 terminarem. Se o `gh` não estiver instalado, o pull request é aberto pelo site do GitHub.
 
