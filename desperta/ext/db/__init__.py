@@ -2,11 +2,22 @@ import sqlite3
 
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import event
+from sqlalchemy import MetaData, event
 from sqlalchemy.engine import Engine
 
-db = SQLAlchemy()
-migrate = Migrate()
+# ----------------------------------------------------------
+# Nomes fixos para indices e restricoes (necessario para o Alembic)
+# ----------------------------------------------------------
+CONVENCAO_NOMES = {
+    "ix": "ix_%(column_0_label)s",
+    "uq": "uq_%(table_name)s_%(column_0_N_name)s",
+    "ck": "ck_%(table_name)s_%(constraint_name)s",
+    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+    "pk": "pk_%(table_name)s",
+}
+
+db = SQLAlchemy(metadata=MetaData(naming_convention=CONVENCAO_NOMES))
+migrate = Migrate(render_as_batch=True)
 
 
 def init_app(app):
@@ -15,13 +26,17 @@ def init_app(app):
 
 
 # ----------------------------------------------------------
-# SQLite so confere chave estrangeira com este PRAGMA
+# SQLite so confere chave estrangeira com foreign_keys=ON; WAL e busy_timeout
+# deixam o coletor gravar enquanto a API le, sem "database is locked"
 # ----------------------------------------------------------
 @event.listens_for(Engine, "connect")
-def _ativar_foreign_keys(dbapi_connection, connection_record):
+def _configurar_sqlite(dbapi_connection, connection_record):
     if isinstance(dbapi_connection, sqlite3.Connection):
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA busy_timeout=5000")
+        cursor.execute("PRAGMA synchronous=NORMAL")
         cursor.close()
 
 

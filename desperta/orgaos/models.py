@@ -4,6 +4,7 @@ from typing import List, Optional, TYPE_CHECKING
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from desperta.ext.db import db
+from desperta.ext.db.mixins import SincronizacaoMixin, VinculoSincronizadoMixin
 
 if TYPE_CHECKING:
     from desperta.parlamentares.models import Deputado
@@ -12,7 +13,7 @@ if TYPE_CHECKING:
 
 
 # === Orgao (Plenario, comissoes, Mesa Diretora) ===
-class Orgao(db.Model):
+class Orgao(SincronizacaoMixin, db.Model):
     __tablename__ = "orgao"
 
     id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=False)
@@ -21,6 +22,11 @@ class Orgao(db.Model):
     apelido: Mapped[str] = mapped_column(db.Text, nullable=False)
     cod_tipo_orgao: Mapped[int] = mapped_column(db.Integer, nullable=False)
     tipo_orgao: Mapped[str] = mapped_column(db.Text, nullable=False)
+
+    # ======================================================
+    # CONTROLE DOS SUB-RECURSOS (/orgaos/{id}/membros; nulo = ainda nao buscados)
+    # ======================================================
+    filhos_sincronizados_em: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True, index=True)
 
     # ------------------------------------------------------
     # TRAMITACOES
@@ -65,11 +71,11 @@ class Orgao(db.Model):
 
 
 # === DeputadoOrgao (cargos de deputados em orgaos) ===
-class DeputadoOrgao(db.Model):
+class DeputadoOrgao(VinculoSincronizadoMixin, db.Model):
     __tablename__ = "deputado_orgao"
 
     deputado_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("deputado.id"), primary_key=True)
-    orgao_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("orgao.id"), primary_key=True)
+    orgao_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("orgao.id"), primary_key=True, index=True)
     data_inicio: Mapped[date] = mapped_column(db.Date, primary_key=True)
     # Numero ou texto na API: gravar como texto
     cod_titulo: Mapped[str] = mapped_column(db.Text, nullable=False)
@@ -104,20 +110,28 @@ class DeputadoOrgao(db.Model):
 
 
 # === Evento (sessao ou reuniao) ===
-class Evento(db.Model):
+class Evento(SincronizacaoMixin, db.Model):
     __tablename__ = "evento"
+    __table_args__ = (
+        db.Index("ix_evento_orgao_id_data_hora_inicio", "orgao_id", "data_hora_inicio"),
+    )
 
     id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=False)
     data_hora_inicio: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, index=True)
     data_hora_fim: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
-    situacao: Mapped[str] = mapped_column(db.Text, nullable=False)
+    situacao: Mapped[str] = mapped_column(db.Text, nullable=False, index=True)
     descricao_tipo: Mapped[str] = mapped_column(db.Text, nullable=False)
     descricao: Mapped[str] = mapped_column(db.Text, nullable=False)
     # Primeiro orgao da lista da API (D1)
-    orgao_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("orgao.id"), nullable=False, index=True)
+    orgao_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("orgao.id"), nullable=False)
     local: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
     url_registro: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
     url_documento_pauta: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
+
+    # ======================================================
+    # CONTROLE DOS SUB-RECURSOS (/eventos/{id}, /pauta; nulo = ainda nao buscados)
+    # ======================================================
+    filhos_sincronizados_em: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True, index=True)
 
     # ------------------------------------------------------
     # ORGAO
@@ -156,7 +170,7 @@ class Evento(db.Model):
 
 
 # === PautaItem (item da pauta de um evento) ===
-class PautaItem(db.Model):
+class PautaItem(VinculoSincronizadoMixin, db.Model):
     __tablename__ = "pauta_item"
 
     evento_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("evento.id"), primary_key=True)

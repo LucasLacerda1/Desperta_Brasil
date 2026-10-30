@@ -21,9 +21,11 @@ NOTICIA_REVISAO_ACOES = ("editou", "aprovou", "rejeitou", "publicou", "arquivou"
 class Noticia(db.Model):
     __tablename__ = "noticia"
     __table_args__ = (
-        db.CheckConstraint(f"tipo IN {NOTICIA_TIPOS}", name="ck_noticia_tipo"),
-        db.CheckConstraint(f"origem IN {NOTICIA_ORIGENS}", name="ck_noticia_origem"),
-        db.CheckConstraint(f"status IN {NOTICIA_STATUS}", name="ck_noticia_status"),
+        db.CheckConstraint(f"tipo IN {NOTICIA_TIPOS}", name="tipo"),
+        db.CheckConstraint(f"origem IN {NOTICIA_ORIGENS}", name="origem"),
+        db.CheckConstraint(f"status IN {NOTICIA_STATUS}", name="status"),
+        db.Index("ix_noticia_status_publicado_em", "status", "publicado_em"),
+        db.Index("ix_noticia_cod_tema_status_publicado_em", "cod_tema", "status", "publicado_em"),
     )
 
     # ======================================================
@@ -41,8 +43,8 @@ class Noticia(db.Model):
     # ======================================================
     tipo: Mapped[str] = mapped_column(db.String(20), nullable=False, default="noticia")
     origem: Mapped[str] = mapped_column(db.String(20), nullable=False)
-    cod_tema: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("tema.cod_tema"), nullable=False, index=True)
-    status: Mapped[str] = mapped_column(db.String(20), nullable=False, default="rascunho", index=True)
+    cod_tema: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("tema.cod_tema"), nullable=False)
+    status: Mapped[str] = mapped_column(db.String(20), nullable=False, default="rascunho")
 
     # ======================================================
     # DATAS E CONTADOR
@@ -103,7 +105,8 @@ class Noticia(db.Model):
 class NoticiaFonte(db.Model):
     __tablename__ = "noticia_fonte"
     __table_args__ = (
-        db.CheckConstraint(f"tipo IN {NOTICIA_FONTE_TIPOS}", name="ck_noticia_fonte_tipo"),
+        db.CheckConstraint(f"tipo IN {NOTICIA_FONTE_TIPOS}", name="tipo"),
+        db.Index("ix_noticia_fonte_tipo_ref_id", "tipo", "ref_id"),
     )
 
     noticia_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("noticia.id"), primary_key=True)
@@ -135,11 +138,12 @@ class NoticiaFonte(db.Model):
 class NoticiaRevisao(db.Model):
     __tablename__ = "noticia_revisao"
     __table_args__ = (
-        db.CheckConstraint(f"acao IN {NOTICIA_REVISAO_ACOES}", name="ck_noticia_revisao_acao"),
+        db.CheckConstraint(f"acao IN {NOTICIA_REVISAO_ACOES}", name="acao"),
+        db.Index("ix_noticia_revisao_noticia_id_data_hora", "noticia_id", "data_hora"),
     )
 
     id: Mapped[int] = mapped_column(db.Integer, primary_key=True)
-    noticia_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("noticia.id"), nullable=False, index=True)
+    noticia_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("noticia.id"), nullable=False)
     admin_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("administrador.id"), nullable=False, index=True)
     acao: Mapped[str] = mapped_column(db.String(20), nullable=False)
     # Retorno para melhorar a IA

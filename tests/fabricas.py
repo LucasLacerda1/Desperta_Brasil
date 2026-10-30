@@ -24,20 +24,24 @@ from desperta.votacoes.models import Orientacao, Votacao, VotacaoProposicao, Vot
 
 MOMENTO = datetime(2024, 5, 14, 15, 30)
 UUID_VISITANTE = "5f0d3a52-7a8e-4d7b-9a55-0b1c2d3e4f60"
+HASH = "a" * 64
 
 
 def legislatura(**campos):
-    return Legislatura(**{"id": 57, "data_inicio": date(2023, 2, 1), "data_fim": date(2027, 1, 31), **campos})
+    return Legislatura(
+        **{"id": 57, "hash_origem": HASH, "data_inicio": date(2023, 2, 1), "data_fim": date(2027, 1, 31), **campos}
+    )
 
 
 def partido(**campos):
-    return Partido(**{"id": 37906, "sigla": "PL", "nome": "Partido Liberal", **campos})
+    return Partido(**{"id": 37906, "hash_origem": HASH, "sigla": "PL", "nome": "Partido Liberal", **campos})
 
 
 def deputado(**campos):
     return Deputado(
         **{
             "id": 204554,
+            "hash_origem": HASH,
             "nome": "Fulana de Tal",
             "sigla_uf": "ES",
             "sexo": "F",
@@ -53,6 +57,7 @@ def orgao(**campos):
     return Orgao(
         **{
             "id": 180,
+            "hash_origem": HASH,
             "sigla": "PLEN",
             "nome": "Plenario",
             "apelido": "Plenario",
@@ -64,13 +69,14 @@ def orgao(**campos):
 
 
 def tema(**campos):
-    return Tema(**{"cod_tema": 46, "nome": "Educacao", "icone": "school", **campos})
+    return Tema(**{"cod_tema": 46, "hash_origem": HASH, "nome": "Educacao", "icone": "school", **campos})
 
 
 def proposicao(**campos):
     return Proposicao(
         **{
             "id": 2310837,
+            "hash_origem": HASH,
             "sigla_tipo": "PL",
             "cod_tipo": 139,
             "descricao_tipo": "Projeto de Lei",
@@ -110,6 +116,7 @@ def evento(**campos):
     return Evento(
         **{
             "id": 70001,
+            "hash_origem": HASH,
             "data_hora_inicio": MOMENTO,
             "situacao": "Encerrada",
             "descricao_tipo": "Sessao Deliberativa",
@@ -124,6 +131,7 @@ def votacao(**campos):
     return Votacao(
         **{
             "id": "2310837-8",
+            "hash_origem": HASH,
             "data": date(2024, 5, 14),
             "data_hora_registro": MOMENTO,
             "orgao_id": 180,
@@ -184,7 +192,9 @@ def trecho(**campos):
 
 
 def coleta(**campos):
-    return Coleta(**{"endpoint": "/proposicoes", "status": "ok", **campos})
+    return Coleta(
+        **{"recurso": "proposicoes", "tipo": "incremental", "endpoint": "/proposicoes", "status": "ok", **campos}
+    )
 
 
 def visitante(**campos):
@@ -247,9 +257,10 @@ def popular(db):
                 bancada_tipo="partido",
                 titulo="Lider",
                 data_inicio=date(2024, 1, 1),
+                hash_origem=HASH,
             ),
-            Bloco(id=590, nome="Bloco A", federacao=False, id_legislatura=57),
-            Frente(id=54000, titulo="Frente da Educacao", id_legislatura=57),
+            Bloco(id=590, nome="Bloco A", federacao=False, id_legislatura=57, hash_origem=HASH),
+            Frente(id=54000, titulo="Frente da Educacao", id_legislatura=57, hash_origem=HASH),
             DeputadoOrgao(
                 deputado_id=204554,
                 orgao_id=180,

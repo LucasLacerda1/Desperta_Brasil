@@ -4,6 +4,7 @@ from typing import List, Optional, TYPE_CHECKING
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from desperta.ext.db import db
+from desperta.ext.db.mixins import SincronizacaoMixin, VinculoSincronizadoMixin
 
 if TYPE_CHECKING:
     from desperta.noticias.models import Noticia
@@ -12,10 +13,16 @@ if TYPE_CHECKING:
     from desperta.visitantes.models import VisitanteTema
     from desperta.votacoes.models import Votacao, VotacaoProposicao
 
+# Mapa cod_tema -> icone Material Symbols; quem nao esta aqui usa o padrao "article"
+ICONES_TEMA = {}
+
 
 # === Proposicao (projeto de lei, PEC ou outra proposta) ===
-class Proposicao(db.Model):
+class Proposicao(SincronizacaoMixin, db.Model):
     __tablename__ = "proposicao"
+    __table_args__ = (
+        db.Index("ix_proposicao_sigla_tipo_numero_ano", "sigla_tipo", "numero", "ano"),
+    )
 
     # ======================================================
     # IDENTIFICACAO (mesmo id da API da Camara)
@@ -44,6 +51,11 @@ class Proposicao(db.Model):
     data_status: Mapped[datetime] = mapped_column(db.DateTime, nullable=False)
     regime: Mapped[str] = mapped_column(db.Text, nullable=False)
     apreciacao: Mapped[str] = mapped_column(db.Text, nullable=False)
+
+    # ======================================================
+    # CONTROLE DOS SUB-RECURSOS (/autores, /temas, /tramitacoes; nulo = ainda nao buscados)
+    # ======================================================
+    filhos_sincronizados_em: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True, index=True)
 
     # ------------------------------------------------------
     # AUTORES
@@ -107,7 +119,7 @@ class Proposicao(db.Model):
 
 
 # === ProposicaoAutor (quem assina a proposicao) ===
-class ProposicaoAutor(db.Model):
+class ProposicaoAutor(VinculoSincronizadoMixin, db.Model):
     __tablename__ = "proposicao_autor"
 
     proposicao_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("proposicao.id"), primary_key=True)
@@ -148,11 +160,11 @@ class ProposicaoAutor(db.Model):
 
 
 # === ProposicaoTema (temas de cada proposicao) ===
-class ProposicaoTema(db.Model):
+class ProposicaoTema(VinculoSincronizadoMixin, db.Model):
     __tablename__ = "proposicao_tema"
 
     proposicao_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("proposicao.id"), primary_key=True)
-    cod_tema: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("tema.cod_tema"), primary_key=True)
+    cod_tema: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("tema.cod_tema"), primary_key=True, index=True)
     relevancia: Mapped[int] = mapped_column(db.Integer, nullable=False)
 
     # ------------------------------------------------------
@@ -182,13 +194,13 @@ class ProposicaoTema(db.Model):
 
 
 # === Tema (tema oficial, usado como categoria do portal) ===
-class Tema(db.Model):
+class Tema(SincronizacaoMixin, db.Model):
     __tablename__ = "tema"
 
     cod_tema: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=False)
     nome: Mapped[str] = mapped_column(db.Text, nullable=False)
     # Nome do icone Material Symbols, definido pelo portal
-    icone: Mapped[str] = mapped_column(db.Text, nullable=False)
+    icone: Mapped[str] = mapped_column(db.Text, nullable=False, server_default="article")
 
     # ------------------------------------------------------
     # PROPOSICOES
@@ -225,12 +237,15 @@ class Tema(db.Model):
 
 
 # === Tramitacao (passo do andamento da proposicao) ===
-class Tramitacao(db.Model):
+class Tramitacao(VinculoSincronizadoMixin, db.Model):
     __tablename__ = "tramitacao"
+    __table_args__ = (
+        db.Index("ix_tramitacao_proposicao_id_data_hora", "proposicao_id", "data_hora"),
+    )
 
     proposicao_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("proposicao.id"), primary_key=True)
     sequencia: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=False)
-    data_hora: Mapped[datetime] = mapped_column(db.DateTime, nullable=False)
+    data_hora: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, index=True)
     orgao_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("orgao.id"), nullable=False, index=True)
     sigla_orgao: Mapped[str] = mapped_column(db.Text, nullable=False)
     cod_tipo_tramitacao: Mapped[str] = mapped_column(db.Text, nullable=False)

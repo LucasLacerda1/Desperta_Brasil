@@ -17,7 +17,7 @@ ADMINISTRADOR_PAPEIS = ("admin", "editor")
 class Administrador(db.Model):
     __tablename__ = "administrador"
     __table_args__ = (
-        db.CheckConstraint(f"papel IN {ADMINISTRADOR_PAPEIS}", name="ck_administrador_papel"),
+        db.CheckConstraint(f"papel IN {ADMINISTRADOR_PAPEIS}", name="papel"),
     )
 
     # ======================================================
@@ -34,6 +34,9 @@ class Administrador(db.Model):
     papel: Mapped[str] = mapped_column(db.String(20), nullable=False, default="editor")
     ativo: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=True)
     criado_em: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=db.func.now())
+    atualizado_em: Mapped[datetime] = mapped_column(
+        db.DateTime, nullable=False, server_default=db.func.now(), onupdate=db.func.now()
+    )
     ultimo_acesso: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
 
     # ------------------------------------------------------

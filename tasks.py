@@ -14,6 +14,12 @@ def initdb(c):
 
 
 @task
+def migrate(c):
+    """Aplica as migracoes no banco (flask db upgrade)."""
+    c.run("flask --app app.py db upgrade", echo=True)
+
+
+@task
 def run(c):
     """Executa a aplicacao Flask."""
     c.run("flask --app app.py run --debug", pty=True)

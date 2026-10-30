@@ -21,7 +21,9 @@ class Visitante(db.Model):
     consentimento: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False)
     criado_em: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=db.func.now())
     # Apagado apos 12 meses sem acesso
-    ultimo_acesso: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=db.func.now())
+    ultimo_acesso: Mapped[datetime] = mapped_column(
+        db.DateTime, nullable=False, server_default=db.func.now(), index=True
+    )
 
     # ------------------------------------------------------
     # TEMAS
@@ -47,7 +49,7 @@ class VisitanteTema(db.Model):
     __tablename__ = "visitante_tema"
 
     visitante_id: Mapped[str] = mapped_column(db.String(36), db.ForeignKey("visitante.id"), primary_key=True)
-    cod_tema: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("tema.cod_tema"), primary_key=True)
+    cod_tema: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("tema.cod_tema"), primary_key=True, index=True)
     acessos: Mapped[int] = mapped_column(db.Integer, nullable=False, default=0)
 
     # ------------------------------------------------------

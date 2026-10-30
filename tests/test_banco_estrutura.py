@@ -111,7 +111,8 @@ def test_exatamente_32_tabelas(db):
 
 
 def test_tabelas_criadas_no_banco(db):
-    assert set(inspect(db.engine).get_table_names()) == set(PKS)
+    tabelas = {t for t in inspect(db.engine).get_table_names() if not t.startswith("noticia_fts")}
+    assert tabelas == set(PKS)
 
 
 @pytest.mark.parametrize("tabela, colunas", PKS.items())

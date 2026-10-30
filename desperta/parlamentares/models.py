@@ -1,9 +1,10 @@
-from datetime import date
+from datetime import date, datetime
 from typing import List, Optional, TYPE_CHECKING
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from desperta.ext.db import db
+from desperta.ext.db.mixins import SincronizacaoMixin, VinculoSincronizadoMixin
 
 if TYPE_CHECKING:
     from desperta.orgaos.models import DeputadoOrgao, PautaItem
@@ -14,10 +15,11 @@ DEPUTADO_SEXOS = ("M", "F")
 
 
 # === Deputado (parlamentar da Camara) ===
-class Deputado(db.Model):
+class Deputado(SincronizacaoMixin, db.Model):
     __tablename__ = "deputado"
     __table_args__ = (
-        db.CheckConstraint(f"sexo IN {DEPUTADO_SEXOS}", name="ck_deputado_sexo"),
+        db.CheckConstraint(f"sexo IN {DEPUTADO_SEXOS}", name="sexo"),
+        db.Index("ix_deputado_id_legislatura_sigla_partido", "id_legislatura", "sigla_partido"),
     )
 
     # ======================================================
@@ -25,7 +27,7 @@ class Deputado(db.Model):
     # ======================================================
     id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=False)
     nome: Mapped[str] = mapped_column(db.Text, nullable=False, index=True)
-    sigla_uf: Mapped[str] = mapped_column(db.Text, nullable=False)
+    sigla_uf: Mapped[str] = mapped_column(db.Text, nullable=False, index=True)
     # M ou F (filtro siglaSexo da chamada)
     sexo: Mapped[str] = mapped_column(db.Text, nullable=False)
     email: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
@@ -34,7 +36,7 @@ class Deputado(db.Model):
     # ======================================================
     # MANDATO
     # ======================================================
-    id_legislatura: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("legislatura.id"), nullable=False, index=True)
+    id_legislatura: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("legislatura.id"), nullable=False)
     # D3: partido_id pode ser nulo, sigla_partido sempre preenchida
     partido_id: Mapped[Optional[int]] = mapped_column(
         db.Integer, db.ForeignKey("partido.id"), nullable=True, index=True
@@ -116,7 +118,7 @@ class Deputado(db.Model):
 
 
 # === Partido (sigla sem UNIQUE: ligacoes sempre pelo id) ===
-class Partido(db.Model):
+class Partido(SincronizacaoMixin, db.Model):
     __tablename__ = "partido"
 
     id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=False)
@@ -159,7 +161,7 @@ class Partido(db.Model):
 
 
 # === Legislatura (periodo de mandato) ===
-class Legislatura(db.Model):
+class Legislatura(SincronizacaoMixin, db.Model):
     __tablename__ = "legislatura"
 
     id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=False)
@@ -201,8 +203,16 @@ class Legislatura(db.Model):
 
 
 # === Lideranca (lideres e vice-lideres das bancadas) ===
-class Lideranca(db.Model):
+class Lideranca(SincronizacaoMixin, db.Model):
     __tablename__ = "lideranca"
+    __table_args__ = (
+        # Chave natural: o upsert usa estas colunas, porque o id e gerado pelo banco
+        db.UniqueConstraint(
+            "deputado_id", "bancada_nome", "titulo", "data_inicio",
+            name="uq_lideranca_deputado_bancada_titulo_inicio"
+        ),
+        db.Index("ix_lideranca_bancada_nome_data_inicio", "bancada_nome", "data_inicio"),
+    )
 
     # Unica tabela da API com id gerado pelo banco
     id: Mapped[int] = mapped_column(db.Integer, primary_key=True)
@@ -234,13 +244,18 @@ class Lideranca(db.Model):
 
 
 # === Bloco (bloco partidario ou federacao) ===
-class Bloco(db.Model):
+class Bloco(SincronizacaoMixin, db.Model):
     __tablename__ = "bloco"
 
     id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=False)
     nome: Mapped[str] = mapped_column(db.Text, nullable=False)
     federacao: Mapped[bool] = mapped_column(db.Boolean, nullable=False)
     id_legislatura: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("legislatura.id"), nullable=False, index=True)
+
+    # ======================================================
+    # CONTROLE DOS SUB-RECURSOS (/blocos/{id}/partidos; nulo = ainda nao buscados)
+    # ======================================================
+    filhos_sincronizados_em: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True, index=True)
 
     # ------------------------------------------------------
     # LEGISLATURA
@@ -270,11 +285,11 @@ class Bloco(db.Model):
 
 
 # === BlocoPartido (composicao atual do bloco) ===
-class BlocoPartido(db.Model):
+class BlocoPartido(VinculoSincronizadoMixin, db.Model):
     __tablename__ = "bloco_partido"
 
     bloco_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("bloco.id"), primary_key=True)
-    partido_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("partido.id"), primary_key=True)
+    partido_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("partido.id"), primary_key=True, index=True)
 
     # ------------------------------------------------------
     # BLOCO
@@ -303,13 +318,18 @@ class BlocoPartido(db.Model):
 
 
 # === Frente (frente parlamentar) ===
-class Frente(db.Model):
+class Frente(SincronizacaoMixin, db.Model):
     __tablename__ = "frente"
 
     id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=False)
     titulo: Mapped[str] = mapped_column(db.Text, nullable=False)
     id_legislatura: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("legislatura.id"), nullable=False, index=True)
     keywords: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
+
+    # ======================================================
+    # CONTROLE DOS SUB-RECURSOS (/frentes/{id}, /frentes/{id}/membros; nulo = ainda nao buscados)
+    # ======================================================
+    filhos_sincronizados_em: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True, index=True)
 
     # ------------------------------------------------------
     # LEGISLATURA
@@ -339,11 +359,11 @@ class Frente(db.Model):
 
 
 # === FrenteMembro (deputado que participa da frente) ===
-class FrenteMembro(db.Model):
+class FrenteMembro(VinculoSincronizadoMixin, db.Model):
     __tablename__ = "frente_membro"
 
     frente_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("frente.id"), primary_key=True)
-    deputado_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("deputado.id"), primary_key=True)
+    deputado_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("deputado.id"), primary_key=True, index=True)
     cod_titulo: Mapped[str] = mapped_column(db.Text, nullable=False)
     # Signatario, Coordenador, Presidente
     titulo: Mapped[str] = mapped_column(db.Text, nullable=False)

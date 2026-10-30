@@ -34,8 +34,12 @@ def test_comandos_init_db_e_drop_db(app):
     resultado = runner.invoke(args=["init-db"])
     assert resultado.exit_code == 0
     assert "32 tabelas" in resultado.output
+    # Rodar de novo nao da erro, como o create_all
+    assert runner.invoke(args=["init-db"]).exit_code == 0
     with app.app_context():
-        assert len(inspect(db.engine).get_table_names()) == 32
+        tabelas = inspect(db.engine).get_table_names()
+        assert len([t for t in tabelas if not t.startswith("noticia_fts")]) == 32
+        assert "noticia_fts" in tabelas
 
     resultado = runner.invoke(args=["drop-db"])
     assert resultado.exit_code == 0

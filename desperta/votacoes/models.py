@@ -4,6 +4,7 @@ from typing import List, Optional, TYPE_CHECKING
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from desperta.ext.db import db
+from desperta.ext.db.mixins import SincronizacaoMixin, VinculoSincronizadoMixin
 
 if TYPE_CHECKING:
     from desperta.orgaos.models import Evento, Orgao, PautaItem
@@ -14,8 +15,12 @@ ORIENTACAO_TIPOS_LIDERANCA = ("P", "B")
 
 
 # === Votacao (deliberacao em Plenario ou comissao) ===
-class Votacao(db.Model):
+class Votacao(SincronizacaoMixin, db.Model):
     __tablename__ = "votacao"
+    __table_args__ = (
+        db.Index("ix_votacao_proposicao_id_data", "proposicao_id", "data"),
+        db.Index("ix_votacao_orgao_id_data", "orgao_id", "data"),
+    )
 
     # ======================================================
     # IDENTIFICACAO (id da API em texto, ex.: "2310837-8")
@@ -26,15 +31,18 @@ class Votacao(db.Model):
     # DADOS DA VOTACAO
     # ======================================================
     data: Mapped[date] = mapped_column(db.Date, nullable=False, index=True)
-    data_hora_registro: Mapped[datetime] = mapped_column(db.DateTime, nullable=False)
+    data_hora_registro: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, index=True)
     evento_id: Mapped[Optional[int]] = mapped_column(db.Integer, db.ForeignKey("evento.id"), nullable=True, index=True)
-    orgao_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("orgao.id"), nullable=False, index=True)
+    orgao_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("orgao.id"), nullable=False)
     sigla_orgao: Mapped[str] = mapped_column(db.Text, nullable=False)
-    proposicao_id: Mapped[Optional[int]] = mapped_column(
-        db.Integer, db.ForeignKey("proposicao.id"), nullable=True, index=True
-    )
+    proposicao_id: Mapped[Optional[int]] = mapped_column(db.Integer, db.ForeignKey("proposicao.id"), nullable=True)
     descricao: Mapped[str] = mapped_column(db.Text, nullable=False)
     aprovacao: Mapped[Optional[bool]] = mapped_column(db.Boolean, nullable=True)
+
+    # ======================================================
+    # CONTROLE DOS SUB-RECURSOS (/votacoes/{id}, /votos, /orientacoes; nulo = ainda nao buscados)
+    # ======================================================
+    filhos_sincronizados_em: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True, index=True)
 
     # ------------------------------------------------------
     # EVENTO
@@ -103,11 +111,11 @@ class Votacao(db.Model):
 
 
 # === Voto (voto nominal de cada deputado) ===
-class Voto(db.Model):
+class Voto(VinculoSincronizadoMixin, db.Model):
     __tablename__ = "voto"
 
     votacao_id: Mapped[str] = mapped_column(db.Text, db.ForeignKey("votacao.id"), primary_key=True)
-    deputado_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("deputado.id"), primary_key=True)
+    deputado_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("deputado.id"), primary_key=True, index=True)
     # Sim, Nao, Abstencao, Obstrucao...
     tipo_voto: Mapped[str] = mapped_column(db.Text, nullable=False)
     data_registro: Mapped[datetime] = mapped_column(db.DateTime, nullable=False)
@@ -141,10 +149,10 @@ class Voto(db.Model):
 
 
 # === Orientacao (orientacao de partido ou bloco, so no Plenario) ===
-class Orientacao(db.Model):
+class Orientacao(VinculoSincronizadoMixin, db.Model):
     __tablename__ = "orientacao"
     __table_args__ = (
-        db.CheckConstraint(f"tipo_lideranca IN {ORIENTACAO_TIPOS_LIDERANCA}", name="ck_orientacao_tipo_lideranca"),
+        db.CheckConstraint(f"tipo_lideranca IN {ORIENTACAO_TIPOS_LIDERANCA}", name="tipo_lideranca"),
     )
 
     votacao_id: Mapped[str] = mapped_column(db.Text, db.ForeignKey("votacao.id"), primary_key=True)
@@ -184,11 +192,11 @@ class Orientacao(db.Model):
 
 
 # === VotacaoProposicao (proposicoes afetadas pela votacao) ===
-class VotacaoProposicao(db.Model):
+class VotacaoProposicao(VinculoSincronizadoMixin, db.Model):
     __tablename__ = "votacao_proposicao"
 
     votacao_id: Mapped[str] = mapped_column(db.Text, db.ForeignKey("votacao.id"), primary_key=True)
-    proposicao_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("proposicao.id"), primary_key=True)
+    proposicao_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("proposicao.id"), primary_key=True, index=True)
 
     # ------------------------------------------------------
     # VOTACAO

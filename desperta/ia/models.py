@@ -16,7 +16,8 @@ TRECHO_RAG_TIPOS = ("proposicao", "tramitacao", "votacao", "evento", "pauta_item
 class GeracaoIA(db.Model):
     __tablename__ = "geracao_ia"
     __table_args__ = (
-        db.CheckConstraint(f"status IN {GERACAO_IA_STATUS}", name="ck_geracao_ia_status"),
+        db.CheckConstraint(f"status IN {GERACAO_IA_STATUS}", name="status"),
+        db.Index("ix_geracao_ia_status_criado_em", "status", "criado_em"),
     )
 
     # ======================================================
@@ -82,7 +83,7 @@ class TrechoRAG(db.Model):
     __tablename__ = "trecho_rag"
     __table_args__ = (
         db.UniqueConstraint("tipo", "ref_id", "parte", "modelo_embedding", name="uq_trecho_rag_tipo_ref_parte_modelo"),
-        db.CheckConstraint(f"tipo IN {TRECHO_RAG_TIPOS}", name="ck_trecho_rag_tipo"),
+        db.CheckConstraint(f"tipo IN {TRECHO_RAG_TIPOS}", name="tipo"),
         db.Index("ix_trecho_rag_tipo_ref_id", "tipo", "ref_id"),
     )
 
@@ -104,7 +105,7 @@ class TrechoRAG(db.Model):
     embedding: Mapped[bytes] = mapped_column(db.LargeBinary, nullable=False)
     modelo_embedding: Mapped[str] = mapped_column(db.String(100), nullable=False)
     # SHA-256 em hexadecimal
-    hash_texto: Mapped[str] = mapped_column(db.String(64), nullable=False)
+    hash_texto: Mapped[str] = mapped_column(db.String(64), nullable=False, index=True)
     criado_em: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=db.func.now())
 
     # ------------------------------------------------------
@@ -130,7 +131,7 @@ class GeracaoTrecho(db.Model):
     __tablename__ = "geracao_trecho"
 
     geracao_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("geracao_ia.id"), primary_key=True)
-    trecho_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("trecho_rag.id"), primary_key=True)
+    trecho_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("trecho_rag.id"), primary_key=True, index=True)
     # 1 = mais parecido
     posicao: Mapped[int] = mapped_column(db.Integer, nullable=False)
     # Cosseno
