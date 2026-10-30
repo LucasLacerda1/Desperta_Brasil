@@ -1,14 +1,15 @@
 # Desperta Brasil — guia do projeto para o Claude Code
 
 > Coloque este arquivo na **raiz do repositório** com o nome `CLAUDE.md`. O Claude Code lê esse arquivo sozinho no início de cada sessão.
-> Última atualização: 30/10/2026.
+> Última atualização: 30/10/2026 (Fase 1 concluída; decisões da seção 10; ajuste físico do banco em `docs/AJUSTE_BANCO_SISTEMA.md`).
 
 ## 0. Como trabalhar neste projeto (leia primeiro)
 
 - **Idioma:** responda, comente o código e escreva mensagens de commit em **português do Brasil**.
 - **Padrão obrigatório:** o código segue a estrutura do projeto **TaskFlow**, usado como exemplo pelo professor da disciplina (Programação Web Avançada, UVV). A seção 3 descreve esse padrão. Não invente outra organização, não troque o Flask-SQLAlchemy por outro ORM e não use outro estilo de modelo.
-- **Ordem do trabalho:** o projeto é construído por fases (seção 7). **A fase atual é a Fase 1: banco de dados.** Não comece o coletor, a IA, as rotas da API ou o front-end antes de a Fase 1 estar pronta e testada, a não ser que o grupo peça.
-- **O modelo do banco já foi decidido pelo grupo** (32 tabelas, seção 5). Não acrescente, remova nem renomeie tabelas ou colunas por conta própria. Se achar um problema no modelo, aponte e pergunte antes de mudar.
+- **Ordem do trabalho:** o projeto é construído por fases (seção 7). **A Fase 1 (banco de dados) está concluída. A fase atual é a Fase 1.5: ajuste físico do banco, descrito em `docs/AJUSTE_BANCO_SISTEMA.md`. Depois dela vem a Fase 2: coletor.** Não comece o coletor, a IA, as rotas da API ou o front-end antes da fase anterior estar pronta e testada, a não ser que o grupo peça. Antes de mudar código, leia a seção 10 (decisões tomadas depois da Fase 1).
+- **Git:** faça commits pequenos ao fim de cada passo, com mensagem em português. Nunca versione `.venv/`, `instance/`, `.env` nem arquivos `*.db`.
+- **O modelo do banco já foi decidido pelo grupo** (32 tabelas, seção 5). Não acrescente, remova nem renomeie tabelas ou colunas por conta própria. A única exceção são as colunas técnicas, índices e configurações listados em `docs/AJUSTE_BANCO_SISTEMA.md` (camada física: controle de sincronização, índices, FTS5, migrações), que não mudam o modelo lógico. Se achar um problema no modelo, aponte e pergunte antes de mudar.
 - **Ao terminar cada passo:** rode os testes (`invoke test`) e mostre o resultado.
 
 ---
@@ -465,7 +466,7 @@ Fontes do modelo (no repositório do grupo, se forem copiadas): `desperta-modelo
 - **Datas** em ISO 8601, como a API.
 - **Chaves compostas:** tabelas associativas e entidades fracas usam PK composta (várias colunas com `primary_key=True`).
 - **Sem relacionamento 1:1.** São 42 relacionamentos 1:N e 10 N:N.
-- **Sem atalhos em triângulo (regra T1):** se x → y → z, x não liga direto em z. Por isso `lideranca` não tem FK para legislatura nem partido, e `proposicao` não guarda o órgão atual (é o da última tramitação).
+- **Sem atalhos em triângulo (regra T1):** se x → y → z, x não liga direto em z. Por isso `lideranca` não tem FK para legislatura nem partido, e `proposicao` não guarda o órgão atual (é o da última tramitação). **Exceções aceitas pelo grupo (28/10):** `votacao` → `orgao` e `votacao` → `evento` → `orgao`; `pauta_item` → `evento` e `pauta_item` → `votacao` → `evento`; e `votacao.proposicao_id` (D2). Elas ficam porque `evento_id` e `votacao_id` podem ser nulos; a consistência é regra do coletor (seção 6).
 - **`partido.sigla` não é única.** Ligações sempre pelo id.
 - **`noticia_fonte` e `trecho_rag` não têm FK para as tabelas da API:** guardam `tipo` + `ref_id`, e o back-end confere se o registro existe.
 - **Valores fixos** (status, tipo, papel etc.): declare as listas como constantes no `models.py` (ex.: `NOTICIA_STATUS = ("rascunho", "em_revisao", "publicada", "rejeitada", "arquivada")`) e use `CheckConstraint` com nome `ck_<tabela>_<campo>`. O service também valida.
@@ -1082,7 +1083,7 @@ Ficam no código, não no banco. Respeite estas regras quando chegar a hora:
 - `/deputados`: tudo da listagem; `sexo` vem chamando com `siglaSexo=M` e `siglaSexo=F`; upsert pelo id.
 - `/legislaturas?data=<hoje>` para saber a legislatura atual.
 - `pauta_item.votacao_id` só se a votação for do mesmo evento.
-- Orientação de bloco liga-se ao bloco pelo nome dentro da legislatura (sem FK).
+- Orientação: **não ligar ao bloco** (ver decisão 10.1). `partido_bloco` guarda o texto como a API manda; `partido_id` só é preenchido quando `tipo_lideranca = P` e o partido existe.
 - Só `tema` vai para o banco das referências; tipos, situações e UF ficam em cache no back-end.
 - Rede: paginação, novas tentativas e backoff exponencial (RNF02). Cada chamada grava uma `coleta` e linhas em `log_sistema`.
 - Portal: slug gerado do título e fixo após publicar; `noticia_fonte.ref_id` conferido no back-end; `visualizacoes` +1 a cada abertura; sem consentimento não grava `visitante_tema`; tarefa diária apaga visitantes sem acesso há 12 meses.
@@ -1109,7 +1110,9 @@ Ficam no código, não no banco. Respeite estas regras quando chegar a hora:
 
 ## 7. Fases do desenvolvimento
 
-### Fase 1 — Banco de dados (ATUAL)
+### Fase 1 — Banco de dados (CONCLUÍDA em 30/10/2026)
+
+Resultado: 32 tabelas, 42 relacionamentos, 126 testes passando, lint sem erros. Os passos e critérios abaixo ficam como registro.
 
 Passos:
 1. Criar a estrutura da seção 4: `pyproject.toml`, `tasks.py`, `app.py`, `.flaskenv`, `.env.example`, `.gitignore` (venv, instance, `.env`, `__pycache__`, `*.db`), `README.md` curto com como instalar e rodar.
@@ -1133,14 +1136,26 @@ Critérios de pronto (os testes devem cobrir):
 - `__repr__` de cada modelo funciona.
 - `invoke lint` sem erros.
 
+### Fase 1.5 — Ajuste físico do banco (ATUAL)
+Seguir `docs/AJUSTE_BANCO_SISTEMA.md`: convenção de nomes, Flask-Migrate com a migração inicial, SQLite em WAL, colunas de sincronização, campos novos em `coleta`, chave natural em `lideranca`, índices, busca FTS5 e os testes da seção 13 daquele arquivo. Continua com 32 tabelas e 42 FKs.
+
 ### Fase 2 — Coletor
 Pacote `desperta/coletor/` (cliente HTTP com backoff, um módulo por endpoint, upsert pelo id), comandos `flask coletar ...` e tarefas invoke. Registra `coleta` e `log_sistema`. Testes com respostas da API gravadas em arquivos JSON (sem chamar a API real nos testes).
+
+Além da seção 6, a Fase 2 precisa:
+- **Backoff de verdade (RNF02):** a API já devolveu HTTP 504 em `/legislaturas/57/lideres` e em `/deputados?siglaSexo=M`. Repetir em 429 e 5xx com espera exponencial (ex.: 2, 4, 8, 16 s, até 5 tentativas) e timeout por chamada.
+- **Um registro ruim não derruba a coleta (decisão 10.2):** gravar cada registro com `db.session.begin_nested()`; se der `IntegrityError` (ex.: campo `NOT NULL` vazio), desfazer só ele, registrar em `log_sistema` (nível `erro`, `entidade` e `entidade_id` preenchidos, nome da coluna na descrição) e marcar a `coleta` como `parcial`.
+- **Primeira carga de validação:** rodar uma carga real maior (pelo menos um ano de proposições de vários tipos, inclusive antigas, votações e eventos) e entregar ao grupo a lista de colunas que falharam e quantas vezes. **Não afrouxar `nullable` por conta própria.**
+- **Orientações:** seguir a decisão 10.1.
+
+### Fase 2b — Ajustes de `nullable` (logo depois da carga de validação)
+O Flask-Migrate já foi iniciado na Fase 1.5. Quando o grupo decidir os ajustes de `nullable` da carga de validação, aplicá-los como uma nova migração (`flask db migrate` + revisão + `flask db upgrade`). Toda mudança no esquema é migração, não `create_all()`.
 
 ### Fase 3 — IA e RAG
 Trechos, embeddings, índice sqlite-vec, busca, geração de rascunhos com o gerador ainda a definir, registro em `geracao_ia`, `geracao_trecho` e `noticia_fonte`.
 
 ### Fase 4 — API REST e área administrativa
-Blueprints em `/api/...`: notícias publicadas (lista, por tema, busca, filtro por dia/mês/ano, detalhe pelo slug), proposição (tramitações), votação (votos e orientações), temas; visitante (cookie, consentimento, contagem por tema); área administrativa com login (sessão Flask + `SECRET_KEY`), papéis `editor`/`admin`, fluxo de status, histórico, coletas e log. Rotas finas, regras nos services.
+Blueprints em `/api/...`: notícias publicadas (lista, por tema, busca, filtro por dia/mês/ano, detalhe pelo slug), proposição (tramitações), votação (votos e orientações), temas; visitante (cookie, consentimento, contagem por tema); área administrativa com login (sessão Flask + `SECRET_KEY`), papéis `editor`/`admin`, fluxo de status, histórico, coletas e log. Rotas finas, regras nos services. Antes do login, aplicar as decisões 10.4 (exclusão de registros) e 10.5 (CORS).
 
 ### Fase 5 — Front-end Vue 3 e voz
 `frontend/` como no TaskFlow (Vite, Axios, proxy `/api`), Material Design, Material Symbols, página principal por tema, página do tema, busca (texto e voz), página da notícia (fonte, tramitação, votação, botão "Ouvir"), aviso de cookies, área administrativa.
@@ -1162,3 +1177,35 @@ Personalização por tema, relatórios da IA, aviso de "dados desatualizados" (R
 - Qual modelo de linguagem generativo vai escrever as notícias.
 - Voz exata do Piper em pt-BR (o valor em `Config` é só um padrão).
 - Onde o projeto será publicado (servidor, HTTPS).
+- Versão do Python para as fases 3 e 5: o projeto roda em Python 3.14. Se `pip install -e ".[ia]"` ou `".[voz]"` falhar por falta de pacote para essa versão (PyTorch, faster-whisper/CTranslate2, Piper), avisar o grupo e propor um ambiente com Python 3.12, sem trocar de biblioteca.
+
+---
+
+## 10. Decisões tomadas depois da Fase 1 (30/10/2026)
+
+Respostas às pendências da seção 5 do relatório da Fase 1. Nenhuma delas muda tabela ou coluna.
+
+### 10.1 Orientação e bloco: não ligar pelo nome
+A API abrevia e corta o nome do bloco em `siglaPartidoBloco` (ex.: `Bl UniPpFdrPsdbCid...`), e `Governo`, `Maioria`, `Minoria` e `Oposição` também vêm com `codTipoLideranca = B`. Ligar pelo nome daria resultado errado.
+- Decisão: a regra "orientação de bloco liga-se ao bloco pelo nome" **sai**. A orientação de bloco fica só com o texto de `partido_bloco`, exatamente como a API manda.
+- `partido_id` continua preenchido para `tipo_lideranca = P`.
+- Na exibição (Fase 4/5), o back-end separa três grupos: partidos (`P`), lideranças `Governo`, `Maioria`, `Minoria` e `Oposição` (`B` com esses nomes) e blocos (os demais `B`). Os nomes ficam numa constante no service.
+- Ligar a orientação a `bloco` fica como evolução (por exemplo, comparando a composição em `bloco_partido`), fora do MVP.
+
+### 10.2 Campos NOT NULL ainda não conferidos na API
+O modelo continua como está. O coletor não pode cair por causa de um registro (Fase 2): cada registro em `begin_nested()`, erro vai para `log_sistema`, a coleta fica `parcial`. Depois da carga de validação, o grupo decide quais colunas viram opcionais, e isso entra como uma nova migração (Fase 2b).
+
+### 10.3 Exceções à regra T1
+Já eram decisão do grupo (28/10) e agora estão escritas na seção 5.1. Nada muda no código.
+
+### 10.4 Apagar registro em uso (AssertionError do ORM)
+- **Tabelas da API nunca são apagadas** pelo portal nem pelo coletor: o coletor só faz upsert. Não criar rota de exclusão para elas.
+- **administrador** não é apagado: vira `ativo = False`, para manter o histórico de `noticia_revisao` e `log_sistema`.
+- **noticia:** o fluxo normal é `arquivada`. Exclusão de verdade só para `rascunho` ou `rejeitada` e só por `admin`; antes, o service apaga ou desliga as `geracao_ia` ligadas (deixando `noticia_id` nulo).
+- **tema:** não é apagado (vem da API).
+- **visitante:** a tarefa LGPD apaga pelo ORM (`db.session.delete`), um a um ou em lotes, para o cascade levar `visitante_tema`.
+- Regra geral nos services: antes de apagar, conferir se há filhos; se houver, não apagar e responder **HTTP 409** com mensagem clara. Capturar também `IntegrityError` e `AssertionError` no service e transformar em 409, para nunca virar erro 500.
+
+### 10.5 CORS
+- Em desenvolvimento, o front-end usa o proxy do Vite (`/api` → `http://localhost:5000`), então o CORS nem é usado.
+- Na Fase 4, antes do login: `CORS_ORIGINS` em `Config`, lido de variável de ambiente (padrão `http://localhost:5173`), CORS só para essas origens em `/api/*`, com `supports_credentials=True`. Cookie de sessão com `SESSION_COOKIE_HTTPONLY = True`, `SESSION_COOKIE_SAMESITE = "Lax"` e `SESSION_COOKIE_SECURE = True` em produção.
