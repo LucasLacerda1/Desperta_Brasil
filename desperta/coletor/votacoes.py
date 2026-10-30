@@ -4,7 +4,7 @@ from desperta.parlamentares.models import Partido
 from desperta.votacoes.models import Orientacao, Votacao, VotacaoProposicao, Voto
 
 from .execucao import NOVO, Execucao
-from .janelas import dividir_por_ano, janela_incremental
+from .janelas import dividir_janela, janela_incremental
 from .normalizacao import agora_utc, id_da_uri, para_bool, para_data, para_data_hora, para_int
 from .referencias import Referencias
 
@@ -110,7 +110,7 @@ def _coletar_uma(execucao, referencias, item):
 def coletar(cliente, inicio=None, fim=None, tipo="incremental"):
     if inicio is None or fim is None:
         inicio, fim = janela_incremental("votacoes")
-    for inicio_ano, fim_ano in dividir_por_ano(inicio, fim):
+    for inicio_ano, fim_ano in dividir_janela(inicio, fim):
         params = {"dataInicio": inicio_ano.isoformat(), "dataFim": fim_ano.isoformat(), "itens": 100}
         with Execucao(cliente, "votacoes", tipo, "/votacoes", params, inicio_ano, fim_ano) as execucao:
             referencias = Referencias(execucao)

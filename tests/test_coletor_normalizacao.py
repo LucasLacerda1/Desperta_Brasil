@@ -1,8 +1,8 @@
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
-from desperta.coletor.janelas import dividir_por_ano
+from desperta.coletor.janelas import DIAS_POR_JANELA, dividir_janela
 from desperta.coletor import normalizacao as n
 
 URI = "https://dadosabertos.camara.leg.br/api/v2"
@@ -97,10 +97,28 @@ def test_hash_nao_depende_da_ordem_das_chaves():
     assert len(n.calcular_hash({"data": date(2024, 1, 1)})) == 64
 
 
-def test_dividir_por_ano():
-    assert dividir_por_ano(date(2024, 5, 1), date(2024, 5, 2)) == [(date(2024, 5, 1), date(2024, 5, 2))]
-    assert dividir_por_ano(date(2023, 12, 1), date(2025, 1, 31)) == [
+def test_janela_curta_nao_e_dividida():
+    assert dividir_janela(date(2024, 5, 1), date(2024, 5, 2)) == [(date(2024, 5, 1), date(2024, 5, 2))]
+
+
+def test_janela_nao_atravessa_o_ano():
+    assert dividir_janela(date(2023, 12, 1), date(2024, 1, 15)) == [
         (date(2023, 12, 1), date(2023, 12, 31)),
-        (date(2024, 1, 1), date(2024, 12, 31)),
-        (date(2025, 1, 1), date(2025, 1, 31)),
+        (date(2024, 1, 1), date(2024, 1, 15)),
     ]
+
+
+def test_janela_nunca_passa_de_3_meses_e_cobre_todos_os_dias():
+    janelas = dividir_janela(date(2023, 1, 1), date(2025, 12, 31))
+    dia = date(2023, 1, 1)
+    for inicio, fim in janelas:
+        assert inicio == dia
+        assert inicio.year == fim.year
+        # Mesmo no pior caso (fevereiro), o fim fica dentro de 3 meses
+        limite_mes = inicio.month + 3
+        limite = date(inicio.year + (limite_mes - 1) // 12, (limite_mes - 1) % 12 + 1, 1)
+        assert (fim - inicio).days < DIAS_POR_JANELA and fim < limite.replace(day=min(inicio.day, 28)) + timedelta(
+            days=4
+        )
+        dia = fim + timedelta(days=1)
+    assert dia == date(2026, 1, 1)

@@ -666,6 +666,20 @@ def test_janela_de_votacoes_e_dividida_por_ano(base, api, cliente):
     assert janelas == [("2023-12-01", "2023-12-31"), ("2024-01-01", "2024-01-15")]
 
 
+def test_janela_longa_de_proposicoes_e_dividida(base, api, cliente):
+    """A API responde 400 com janela maior que 3 meses."""
+    api.responder("proposicoes", envelope([]))
+    proposicoes.coletar(cliente, date(2025, 1, 1), date(2025, 12, 31), limite_pendentes=0)
+    janelas = [
+        (date.fromisoformat(p["dataInicio"]), date.fromisoformat(p["dataFim"]))
+        for _, p in api.chamadas
+        if p and "dataInicio" in p
+    ]
+    assert len(janelas) == 5
+    assert janelas[0] == (date(2025, 1, 1), date(2025, 3, 30))
+    assert janelas[-1][1] == date(2025, 12, 31)
+
+
 def test_reprocessar_votacao_nao_duplica(base, api, cliente):
     _responder_votacao(api)
     votacoes.coletar(cliente, INICIO, FIM)

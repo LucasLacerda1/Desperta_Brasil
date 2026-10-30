@@ -2,7 +2,7 @@ from desperta.ext.db import db
 from desperta.proposicoes.models import Proposicao, ProposicaoAutor, ProposicaoTema, Tema, Tramitacao
 
 from .execucao import Execucao
-from .janelas import janela_incremental
+from .janelas import dividir_janela, janela_incremental
 from .normalizacao import agora_utc, id_da_uri, opcional, para_bool, para_data_hora
 from .referencias import Referencias
 
@@ -131,21 +131,23 @@ def _ids_pendentes(limite, ja_vistos):
 def coletar(cliente, inicio=None, fim=None, sigla_tipo=None, tipo="incremental", limite_pendentes=LIMITE_PENDENTES):
     if inicio is None or fim is None:
         inicio, fim = janela_incremental("proposicoes")
-    params = {
-        "dataInicio": inicio.isoformat(),
-        "dataFim": fim.isoformat(),
-        "ordem": "ASC",
-        "ordenarPor": "id",
-        "itens": 100,
-    }
-    if sigla_tipo:
-        params["siglaTipo"] = sigla_tipo
-    with Execucao(cliente, "proposicoes", tipo, "/proposicoes", params, inicio, fim) as execucao:
-        referencias = Referencias(execucao)
-        ids = [item["id"] for item in cliente.paginar("proposicoes", params)]
-        for id_proposicao in ids + _ids_pendentes(limite_pendentes, ids):
-            execucao.processar(
-                "proposicao",
-                id_proposicao,
-                lambda id_proposicao=id_proposicao: _coletar_uma(execucao, referencias, id_proposicao),
-            )
+    # A janela concluida fica registrada: se a coleta parar, a proxima retoma daqui
+    for inicio_janela, fim_janela in dividir_janela(inicio, fim):
+        params = {
+            "dataInicio": inicio_janela.isoformat(),
+            "dataFim": fim_janela.isoformat(),
+            "ordem": "ASC",
+            "ordenarPor": "id",
+            "itens": 100,
+        }
+        if sigla_tipo:
+            params["siglaTipo"] = sigla_tipo
+        with Execucao(cliente, "proposicoes", tipo, "/proposicoes", params, inicio_janela, fim_janela) as execucao:
+            referencias = Referencias(execucao)
+            ids = [item["id"] for item in cliente.paginar("proposicoes", params)]
+            for id_proposicao in ids + _ids_pendentes(limite_pendentes, ids):
+                execucao.processar(
+                    "proposicao",
+                    id_proposicao,
+                    lambda id_proposicao=id_proposicao: _coletar_uma(execucao, referencias, id_proposicao),
+                )
