@@ -2,7 +2,7 @@ from datetime import date, datetime
 
 import pytest
 
-from api_falsa import carregar, envelope
+from api_falsa import URL_BASE, carregar, envelope
 from desperta.coletor import (
     blocos,
     deputados,
@@ -167,12 +167,30 @@ def test_legislatura_mais_antiga_nao_troca_a_mais_nova(base, api, cliente):
     assert deputado.sigla_uf == "SP"
 
 
-def test_coleta_de_deputados_com_504_termina_em_erro_e_nao_propaga(base, api, cliente):
-    api.responder("deputados", [504] * 5)
+def test_coleta_de_deputados_com_504_fica_parcial_e_nao_propaga(base, api, cliente):
+    api.responder("deputados", [504] * 10)
     deputados.coletar(cliente, 57)
     coleta = _ultima_coleta(base)
-    assert coleta.status == "erro"
-    assert (coleta.requisicoes, coleta.erros_http) == (5, 5)
+    assert coleta.status == "parcial"
+    assert (coleta.requisicoes, coleta.erros_http) == (10, 10)
+
+
+def test_504_na_pagina_2_guarda_a_pagina_1_e_tenta_o_outro_filtro(base, api, cliente):
+    """Aconteceu na carga real: a pagina 1 de siglaSexo=M veio, e a pagina 2 deu 504."""
+    pagina_1 = carregar("deputados_manual")
+    pagina_1["links"].append({"rel": "next", "href": f"{URL_BASE}/deputados-pagina-2"})
+    feminino = carregar("deputados_manual")
+    feminino["dados"][0]["id"] = 204554
+
+    api.responder("deputados", lambda params: pagina_1 if params["siglaSexo"] == "M" else feminino)
+    api.responder("deputados-pagina-2", [504] * 5)
+    deputados.coletar(cliente, 57)
+
+    assert base.session.get(Deputado, 160592).sexo == "M"
+    assert base.session.get(Deputado, 204554).sexo == "F"
+    coleta = _ultima_coleta(base)
+    assert coleta.status == "parcial"
+    assert base.session.scalar(base.select(LogSistema).where(LogSistema.entidade_id == "siglaSexo=M")).nivel == "erro"
 
 
 def test_orgaos(db, api, cliente):

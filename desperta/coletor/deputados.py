@@ -1,6 +1,7 @@
 from desperta.ext.db import db
 from desperta.parlamentares.models import Deputado, Partido
 
+from .cliente import ErroAPI
 from .execucao import Execucao
 from .normalizacao import id_da_uri, opcional
 
@@ -52,6 +53,11 @@ def coletar(cliente, id_legislatura):
     with Execucao(cliente, "deputados", "completa", "/deputados", params) as execucao:
         # A listagem nao traz o sexo: vem do filtro da chamada
         for sexo in ("M", "F"):
-            for item in list(cliente.paginar("deputados", {**params, "siglaSexo": sexo, "itens": 100})):
-                gravar_listagem(execucao, item, sexo)
-            execucao.concluir_item()
+            try:
+                # Grava pagina a pagina: um 504 no meio nao perde o que ja veio nem impede o outro filtro
+                for item in cliente.paginar("deputados", {**params, "siglaSexo": sexo, "itens": 100}):
+                    gravar_listagem(execucao, item, sexo)
+                    execucao.concluir_item()
+            except ErroAPI as erro:
+                execucao.registrar_falha("deputado", f"siglaSexo={sexo}", erro)
+                execucao.concluir_item()
