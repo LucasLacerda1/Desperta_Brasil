@@ -57,6 +57,13 @@ def _responder_proposicao(api):
     api.responder(f"proposicoes/{ID_PROPOSICAO}/tramitacoes", carregar("proposicao_tramitacoes"))
 
 
+def _status_mudou(api):
+    """A proposicao tramitou: a proxima coleta volta a buscar os filhos (decisao 12.1)."""
+    corpo = carregar("proposicao")
+    corpo["dados"]["statusProposicao"]["dataHora"] = "2026-10-30T10:00"
+    api.responder(f"proposicoes/{ID_PROPOSICAO}", corpo)
+
+
 def _responder_votacao(api):
     api.responder("votacoes", carregar("votacoes"))
     api.responder(f"votacoes/{ID_VOTACAO}", carregar("votacao"))
@@ -110,7 +117,7 @@ def test_partidos_trazem_o_logo_do_detalhe(db, api, cliente):
 
 def _responder_deputados(api):
     def por_sexo(params):
-        return carregar("deputados") if params["siglaSexo"] == "M" else envelope([])
+        return carregar("deputados_manual") if params["siglaSexo"] == "M" else envelope([])
 
     api.responder("deputados", por_sexo)
 
@@ -149,7 +156,7 @@ def test_legislatura_mais_antiga_nao_troca_a_mais_nova(base, api, cliente):
     _responder_deputados(api)
     deputados.coletar(cliente, 57)
 
-    corpo = carregar("deputados")
+    corpo = carregar("deputados_manual")
     corpo["dados"][0].update(idLegislatura=56, siglaPartido="ANTIGO", siglaUf="SP")
     api.responder("deputados", lambda params: corpo if params["siglaSexo"] == "M" else envelope([]))
     deputados.coletar(cliente, 56)
@@ -246,30 +253,34 @@ def test_liderancas_nao_duplicam(base, api, cliente):
     assert (lider.titulo, lider.bancada_nome, lider.bancada_tipo) == ("Presidente", "PDT", "Partido Político")
 
 
-def _partidos_do_bloco(base, *siglas):
-    for numero, sigla in enumerate(siglas, start=1000):
-        base.session.add(Partido(id=numero, sigla=sigla, nome=sigla, hash_origem="a" * 64))
-    base.session.commit()
-
-
-def _responder_blocos(api):
+def _responder_blocos(api, siglas=(("PT", 36844), ("PCdoB", 36779), ("PV", 36886))):
     api.responder("blocos", carregar("blocos"))
     api.responder("blocos/584/partidos", carregar("bloco_partidos"))
+    api.responder("partidos", envelope([{"id": id_partido, "sigla": sigla} for sigla, id_partido in siglas]))
 
 
-def test_blocos_convertem_ids_e_ligam_partido_pela_sigla(base, api, cliente):
-    """A resposta real de /blocos/584/partidos traz id 584 em todos os partidos (defeito da API)."""
-    _partidos_do_bloco(base, "PT", "PCdoB", "PV")
+def test_blocos_convertem_ids_e_ligam_partido_pela_sigla_da_legislatura(base, api, cliente):
+    """A resposta real de /blocos/584/partidos traz id 584 em todos os partidos (decisao 12.3)."""
     _responder_blocos(api)
     blocos.coletar(cliente, 57)
     bloco = base.session.get(Bloco, 584)
     assert bloco.id == 584 and bloco.id_legislatura == 57 and bloco.federacao is True
-    assert {v.partido.sigla for v in bloco.partidos} == {"PT", "PCdoB", "PV"}
+    assert {v.partido_id for v in bloco.partidos} == {36844, 36779, 36886}
+    assert ("partidos", {"idLegislatura": 57, "itens": 100}) in api.chamadas
     assert _ultima_coleta(base).status == "ok"
+    assert relatorio.blocos_com_id_errado() == (1, 0)
+
+
+def test_partido_de_outra_legislatura_com_a_mesma_sigla_nao_atrapalha(base, api, cliente):
+    base.session.add(Partido(id=1, sigla="PT", nome="Antigo", hash_origem="a" * 64))
+    base.session.commit()
+    _responder_blocos(api)
+    blocos.coletar(cliente, 57)
+    assert 1 not in {v.partido_id for v in base.session.get(Bloco, 584).partidos}
+    assert relatorio.blocos_com_id_errado() == (1, 0)
 
 
 def test_bloco_guarda_so_a_composicao_atual(base, api, cliente):
-    _partidos_do_bloco(base, "PT", "PCdoB", "PV")
     _responder_blocos(api)
     blocos.coletar(cliente, 57)
     menor = carregar("bloco_partidos")
@@ -280,12 +291,18 @@ def test_bloco_guarda_so_a_composicao_atual(base, api, cliente):
 
 
 def test_sigla_ambigua_ou_desconhecida_nao_liga_e_avisa(base, api, cliente):
-    _partidos_do_bloco(base, "PT", "PT", "PCdoB")
-    _responder_blocos(api)
+    _responder_blocos(api, siglas=(("PT", 1), ("PT", 2), ("PCdoB", 36779)))
     blocos.coletar(cliente, 57)
-    assert {v.partido.sigla for v in base.session.get(Bloco, 584).partidos} == {"PCdoB"}
+    assert {v.partido_id for v in base.session.get(Bloco, 584).partidos} == {36779}
     avisos = base.session.scalars(base.select(LogSistema).where(LogSistema.acao == "bloco_partido_sem_id")).all()
     assert len(avisos) == 2
+    assert relatorio.blocos_com_id_errado() == (1, 2)
+
+
+def test_partidos_da_legislatura_sao_pedidos_uma_vez_so(base, api, cliente):
+    _responder_blocos(api)
+    blocos.coletar(cliente, 57)
+    assert api.caminhos_chamados().count("partidos") == 1
 
 
 def test_id_de_partido_valido_continua_sendo_usado(base, api, cliente):
@@ -300,7 +317,7 @@ def test_id_de_partido_valido_continua_sendo_usado(base, api, cliente):
 def test_frentes_sem_parametro_itens_nos_membros(base, api, cliente):
     api.responder("frentes", carregar("frentes"))
     api.responder("frentes/55703", carregar("frente"))
-    api.responder("frentes/55703/membros", carregar("frente_membros"))
+    api.responder("frentes/55703/membros", carregar("frente_membros_manual"))
     frentes.coletar(cliente, 57)
     assert base.session.get(Frente, 55703).titulo.startswith("Frente Parlamentar")
     membro = base.session.get(FrenteMembro, (55703, 220686))
@@ -311,7 +328,7 @@ def test_frentes_sem_parametro_itens_nos_membros(base, api, cliente):
 def test_senador_em_frente_fica_de_fora_com_aviso(base, api, cliente):
     api.responder("frentes", carregar("frentes"))
     api.responder("frentes/55703", carregar("frente"))
-    api.responder("frentes/55703/membros", carregar("frente_membros"))
+    api.responder("frentes/55703/membros", carregar("frente_membros_manual"))
     api.responder("deputados/220686", 404)
     frentes.coletar(cliente, 57)
     assert _total(base, FrenteMembro) == 0
@@ -419,7 +436,7 @@ def test_url_inteiro_teor_vazia_vai_para_o_relatorio_sem_afrouxar_nullable(base,
 
     assert _ultima_coleta(base).status == "parcial"
     assert _total(base, Proposicao) == 0
-    assert f"proposicoes/{ID_PROPOSICAO}/autores" not in api.caminhos_chamados()
+    assert _total(base, ProposicaoAutor) == 0
     assert relatorio.falhas_por_coluna() == [("proposicao.url_inteiro_teor", 1)]
     assert _db.metadata.tables["proposicao"].c["url_inteiro_teor"].nullable is False
 
@@ -433,6 +450,7 @@ def test_filho_ruim_nao_apaga_os_outros_e_mantem_a_proposicao(base, api, cliente
     corpo["dados"] = corpo["dados"][:1]
     corpo["dados"][0]["despacho"] = None
     _responder_proposicao(api)
+    _status_mudou(api)
     api.responder(f"proposicoes/{ID_PROPOSICAO}/tramitacoes", corpo)
     proposicoes.coletar(cliente, INICIO, FIM, limite_pendentes=0)
 
@@ -447,6 +465,7 @@ def test_tramitacao_que_sumiu_e_apagada(base, api, cliente):
     corpo = carregar("proposicao_tramitacoes")
     corpo["dados"] = corpo["dados"][:2]
     _responder_proposicao(api)
+    _status_mudou(api)
     api.responder(f"proposicoes/{ID_PROPOSICAO}/tramitacoes", corpo)
     proposicoes.coletar(cliente, INICIO, FIM, limite_pendentes=0)
     assert _total(base, Tramitacao) == 2
@@ -712,17 +731,6 @@ def test_votacao_nova_refaz_a_pauta_do_evento(base, api, cliente):
 # ======================================================
 # ROTINAS, RELATORIO E COMANDOS
 # ======================================================
-def test_rotinas_seguem_a_ordem_de_gravacao(base, api, cliente):
-    _responder_proposicao(api)
-    _responder_evento(api)
-    _responder_votacao(api)
-    rotinas.horaria(cliente)
-    recursos = [c.recurso for c in base.session.scalars(base.select(Coleta).order_by(Coleta.id))]
-    assert recursos[-4:] == ["proposicoes", "eventos", "votacoes", "eventos"]
-    assert _ultima_coleta(base).status == "ok"
-    assert all(c.status == "ok" for c in base.session.scalars(base.select(Coleta)))
-
-
 def test_rotina_segue_mesmo_com_um_recurso_fora_do_ar(base, api, cliente):
     api.responder("proposicoes", [504] * 5)
     _responder_evento(api)

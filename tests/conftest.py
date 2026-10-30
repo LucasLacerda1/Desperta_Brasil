@@ -38,7 +38,7 @@ def api():
 
     # Qualquer deputado, orgao ou proposicao pedido pelo id, como no detalhe da API
     def deputado(id_texto):
-        corpo = carregar("deputado")
+        corpo = carregar("deputado_manual")
         corpo["dados"]["id"] = int(id_texto)
         corpo["dados"]["ultimoStatus"]["id"] = int(id_texto)
         return corpo

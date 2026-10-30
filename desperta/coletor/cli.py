@@ -1,11 +1,17 @@
+import functools
+import os
+import signal
 from datetime import date
 
 import click
 from flask import current_app
 from flask.cli import AppGroup
 
+from desperta.ext.db import db
+from desperta.sistema.models import LogSistema
+
 from . import blocos, deputados, eventos, frentes, legislaturas, liderancas, orgaos, partidos, proposicoes
-from . import relatorio, rotinas, temas, votacoes
+from . import relatorio, rotinas, temas, trava, votacoes
 from .cliente import ClienteCamara
 
 coletar = AppGroup("coletar", help="Coleta dados da API da Camara.")
@@ -13,6 +19,38 @@ coletar = AppGroup("coletar", help="Coleta dados da API da Camara.")
 
 def _cliente():
     return ClienteCamara(current_app.config["CAMARA_API_URL"], timeout=current_app.config["CAMARA_TIMEOUT"])
+
+
+def _caminho_trava():
+    return os.path.join(current_app.instance_path, "coletor.lock")
+
+
+def _uma_coleta_por_vez(funcao):
+    """Decisao 12.1: com outra coleta rodando, este comando nao roda e deixa um aviso no log."""
+
+    @functools.wraps(funcao)
+    def executar(*args, **kwargs):
+        caminho = _caminho_trava()
+        if not trava.adquirir(caminho):
+            db.session.add(
+                LogSistema(
+                    nivel="aviso",
+                    modulo="coletor",
+                    acao="coleta_em_andamento",
+                    descricao=f"{funcao.__name__} nao rodou: existe a trava {caminho}",
+                )
+            )
+            db.session.commit()
+            click.echo("Outra coleta esta rodando; nada foi feito.")
+            return
+        sinal_anterior = trava.sair_limpo_em_sigterm()
+        try:
+            return funcao(*args, **kwargs)
+        finally:
+            signal.signal(signal.SIGTERM, sinal_anterior)
+            trava.liberar(caminho)
+
+    return executar
 
 
 def _data(ctx, param, valor):
@@ -37,30 +75,35 @@ def _tipo(inicio):
 # ------------------------------------------------------
 @coletar.command("base")
 @_legislatura
+@_uma_coleta_por_vez
 def coletar_base(legislatura):
     """Legislaturas, partidos, deputados, orgaos e temas."""
     rotinas.base(_cliente(), legislatura)
 
 
 @coletar.command("horaria")
+@_uma_coleta_por_vez
 def coletar_horaria():
-    """Proposicoes, eventos e votacoes desde a ultima janela concluida."""
+    """Proposicoes (1 dia), eventos e votacoes (ontem e hoje)."""
     rotinas.horaria(_cliente())
 
 
 @coletar.command("diaria")
+@_uma_coleta_por_vez
 def coletar_diaria():
-    """Varredura completa dos ultimos 30 dias."""
+    """Proposicoes dos ultimos 3 dias, pautas e votacoes pendentes."""
     rotinas.diaria(_cliente())
 
 
 @coletar.command("semanal")
+@_uma_coleta_por_vez
 def coletar_semanal():
-    """Cargos em orgaos, Mesa, liderancas e blocos."""
+    """Varredura de 30 dias, tabelas de apoio, cargos em orgaos, Mesa, liderancas e blocos."""
     rotinas.semanal(_cliente())
 
 
 @coletar.command("mensal")
+@_uma_coleta_por_vez
 def coletar_mensal():
     """Frentes."""
     rotinas.mensal(_cliente())
@@ -70,22 +113,26 @@ def coletar_mensal():
 # UM RECURSO POR VEZ
 # ------------------------------------------------------
 @coletar.command("legislaturas")
+@_uma_coleta_por_vez
 def coletar_legislaturas():
     legislaturas.coletar(_cliente())
 
 
 @coletar.command("temas")
+@_uma_coleta_por_vez
 def coletar_temas():
     temas.coletar(_cliente())
 
 
 @coletar.command("orgaos")
+@_uma_coleta_por_vez
 def coletar_orgaos():
     orgaos.coletar(_cliente())
 
 
 @coletar.command("partidos")
 @_legislatura
+@_uma_coleta_por_vez
 def coletar_partidos(legislatura):
     cliente = _cliente()
     partidos.coletar(cliente, legislatura or legislaturas.id_atual(cliente))
@@ -93,6 +140,7 @@ def coletar_partidos(legislatura):
 
 @coletar.command("deputados")
 @_legislatura
+@_uma_coleta_por_vez
 def coletar_deputados(legislatura):
     cliente = _cliente()
     deputados.coletar(cliente, legislatura or legislaturas.id_atual(cliente))
@@ -102,6 +150,7 @@ def coletar_deputados(legislatura):
 @_janela
 @click.option("--sigla-tipo", help="Ex.: PL, PEC.")
 @click.option("--limite-pendentes", type=int, default=proposicoes.LIMITE_PENDENTES, show_default=True)
+@_uma_coleta_por_vez
 def coletar_proposicoes(inicio, fim, sigla_tipo, limite_pendentes):
     proposicoes.coletar(
         _cliente(), inicio, fim, sigla_tipo=sigla_tipo, tipo=_tipo(inicio), limite_pendentes=limite_pendentes
@@ -110,30 +159,35 @@ def coletar_proposicoes(inicio, fim, sigla_tipo, limite_pendentes):
 
 @coletar.command("eventos")
 @_janela
+@_uma_coleta_por_vez
 def coletar_eventos(inicio, fim):
     eventos.coletar(_cliente(), inicio, fim, tipo=_tipo(inicio))
 
 
 @coletar.command("eventos-pendentes")
 @click.option("--limite", type=int, default=eventos.LIMITE_PENDENTES, show_default=True)
+@_uma_coleta_por_vez
 def coletar_eventos_pendentes(limite):
     eventos.coletar_pendentes(_cliente(), limite)
 
 
 @coletar.command("votacoes")
 @_janela
+@_uma_coleta_por_vez
 def coletar_votacoes(inicio, fim):
     votacoes.coletar(_cliente(), inicio, fim, tipo=_tipo(inicio))
 
 
 @coletar.command("membros")
 @click.option("--limite", type=int, help="Maximo de orgaos nesta execucao.")
+@_uma_coleta_por_vez
 def coletar_membros(limite):
     orgaos.coletar_membros(_cliente(), limite)
 
 
 @coletar.command("mesa")
 @_legislatura
+@_uma_coleta_por_vez
 def coletar_mesa(legislatura):
     cliente = _cliente()
     orgaos.coletar_mesa(cliente, legislatura or legislaturas.id_atual(cliente))
@@ -141,6 +195,7 @@ def coletar_mesa(legislatura):
 
 @coletar.command("liderancas")
 @_legislatura
+@_uma_coleta_por_vez
 def coletar_liderancas(legislatura):
     cliente = _cliente()
     liderancas.coletar(cliente, legislatura or legislaturas.id_atual(cliente))
@@ -148,6 +203,7 @@ def coletar_liderancas(legislatura):
 
 @coletar.command("blocos")
 @_legislatura
+@_uma_coleta_por_vez
 def coletar_blocos(legislatura):
     cliente = _cliente()
     blocos.coletar(cliente, legislatura or legislaturas.id_atual(cliente))
@@ -155,6 +211,7 @@ def coletar_blocos(legislatura):
 
 @coletar.command("frentes")
 @_legislatura
+@_uma_coleta_por_vez
 def coletar_frentes(legislatura):
     cliente = _cliente()
     frentes.coletar(cliente, legislatura or legislaturas.id_atual(cliente))
@@ -172,6 +229,11 @@ def coletar_relatorio():
     click.echo("\ncoluna | falhas")
     for coluna, total in relatorio.falhas_por_coluna():
         click.echo(f"{coluna} | {total}")
+    click.echo("\naviso | total")
+    for acao, total in relatorio.avisos_por_tipo():
+        click.echo(f"{acao} | {total}")
+    com_id_errado, sem_ligacao = relatorio.blocos_com_id_errado()
+    click.echo(f"\nblocos com id errado: {com_id_errado}; siglas sem ligacao: {sem_ligacao}")
 
 
 def init_app(app):

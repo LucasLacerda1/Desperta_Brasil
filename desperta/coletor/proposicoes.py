@@ -1,3 +1,5 @@
+from flask import current_app
+
 from desperta.ext.db import db
 from desperta.proposicoes.models import Proposicao, ProposicaoAutor, ProposicaoTema, Tema, Tramitacao
 
@@ -36,8 +38,8 @@ def gravar_proposicao(execucao, item, referencias=None):
     )
 
 
-def _gravar_autores(execucao, referencias, id_proposicao):
-    for item in execucao.cliente.obter(f"proposicoes/{id_proposicao}/autores") or []:
+def _gravar_autores(execucao, referencias, id_proposicao, itens):
+    for item in itens:
         ordem = item.get("ordemAssinatura")
         execucao.vinculo(
             ProposicaoAutor,
@@ -55,8 +57,8 @@ def _gravar_autores(execucao, referencias, id_proposicao):
         )
 
 
-def _gravar_temas(execucao, id_proposicao):
-    for item in execucao.cliente.obter(f"proposicoes/{id_proposicao}/temas") or []:
+def _gravar_temas(execucao, id_proposicao, itens):
+    for item in itens:
         cod_tema = item.get("codTema")
         if db.session.get(Tema, cod_tema) is None:
             execucao.log(
@@ -78,8 +80,8 @@ def _gravar_temas(execucao, id_proposicao):
         )
 
 
-def _gravar_tramitacoes(execucao, referencias, id_proposicao):
-    for item in execucao.cliente.obter(f"proposicoes/{id_proposicao}/tramitacoes") or []:
+def _gravar_tramitacoes(execucao, referencias, id_proposicao, itens):
+    for item in itens:
         sequencia = item.get("sequencia")
         execucao.vinculo(
             Tramitacao,
@@ -103,25 +105,51 @@ def _gravar_tramitacoes(execucao, referencias, id_proposicao):
         )
 
 
+def _precisa_dos_filhos(id_proposicao, item):
+    """Decisao 12.1: filhos so para proposicao nova, pendente ou com data_status diferente."""
+    existente = db.session.get(Proposicao, id_proposicao)
+    if existente is None or existente.filhos_sincronizados_em is None:
+        return True
+    return existente.data_status != para_data_hora((item.get("statusProposicao") or {}).get("dataHora"))
+
+
 def _coletar_uma(execucao, referencias, id_proposicao):
     """Grava a proposicao so depois do detalhe; a listagem serve apenas para descobrir ids."""
-    proposicao = gravar_proposicao(execucao, execucao.cliente.obter(f"proposicoes/{id_proposicao}"))
-    if proposicao is None:
+    cliente = execucao.cliente
+    item = cliente.obter(f"proposicoes/{id_proposicao}")
+    precisa = _precisa_dos_filhos(id_proposicao, item)
+    # Os filhos vem antes de gravar: se a API falhar aqui, a proposicao continua como estava
+    if precisa:
+        autores = cliente.obter(f"proposicoes/{id_proposicao}/autores") or []
+        temas = cliente.obter(f"proposicoes/{id_proposicao}/temas") or []
+        tramitacoes = cliente.obter(f"proposicoes/{id_proposicao}/tramitacoes") or []
+
+    proposicao = gravar_proposicao(execucao, item)
+    if proposicao is None or not precisa:
         return
+
+    # Pendente ate terminar: se parar no meio, a proxima coleta busca os filhos de novo
+    proposicao.filhos_sincronizados_em = None
+    execucao.concluir_item()
     falhas_antes = execucao.falhas
-    _gravar_autores(execucao, referencias, id_proposicao)
-    _gravar_temas(execucao, id_proposicao)
-    _gravar_tramitacoes(execucao, referencias, id_proposicao)
+    _gravar_autores(execucao, referencias, id_proposicao, autores)
+    _gravar_temas(execucao, id_proposicao, temas)
+    _gravar_tramitacoes(execucao, referencias, id_proposicao, tramitacoes)
     if execucao.falhas == falhas_antes:
         for modelo in (ProposicaoAutor, ProposicaoTema, Tramitacao):
             execucao.remover_sumidos(modelo, modelo.proposicao_id == id_proposicao)
-    proposicao.filhos_sincronizados_em = agora_utc()
+        proposicao.filhos_sincronizados_em = agora_utc()
 
 
-def _ids_pendentes(limite, ja_vistos):
+def _ids_pendentes(limite, tipos, ja_vistos):
+    """So dos tipos acompanhados: os demais entram sem filhos, citados por votacao ou pauta."""
     consulta = (
         db.select(Proposicao.id)
-        .where(Proposicao.filhos_sincronizados_em.is_(None), Proposicao.id.not_in(ja_vistos))
+        .where(
+            Proposicao.filhos_sincronizados_em.is_(None),
+            Proposicao.sigla_tipo.in_(tipos),
+            Proposicao.id.not_in(ja_vistos),
+        )
         .order_by(Proposicao.id)
         .limit(limite)
     )
@@ -131,21 +159,21 @@ def _ids_pendentes(limite, ja_vistos):
 def coletar(cliente, inicio=None, fim=None, sigla_tipo=None, tipo="incremental", limite_pendentes=LIMITE_PENDENTES):
     if inicio is None or fim is None:
         inicio, fim = janela_incremental("proposicoes")
+    tipos = sigla_tipo.split(",") if sigla_tipo else current_app.config["TIPOS_ACOMPANHADOS"]
     # A janela concluida fica registrada: se a coleta parar, a proxima retoma daqui
     for inicio_janela, fim_janela in dividir_janela(inicio, fim):
         params = {
             "dataInicio": inicio_janela.isoformat(),
             "dataFim": fim_janela.isoformat(),
+            "siglaTipo": ",".join(tipos),
             "ordem": "ASC",
             "ordenarPor": "id",
             "itens": 100,
         }
-        if sigla_tipo:
-            params["siglaTipo"] = sigla_tipo
         with Execucao(cliente, "proposicoes", tipo, "/proposicoes", params, inicio_janela, fim_janela) as execucao:
             referencias = Referencias(execucao)
             ids = [item["id"] for item in cliente.paginar("proposicoes", params)]
-            for id_proposicao in ids + _ids_pendentes(limite_pendentes, ids):
+            for id_proposicao in ids + _ids_pendentes(limite_pendentes, tipos, ids):
                 execucao.processar(
                     "proposicao",
                     id_proposicao,

@@ -37,13 +37,25 @@ flask coletar relatorio            # colunas que falharam e instabilidade da API
 invoke coletar --rotina=semanal    # o mesmo pelo Invoke
 ```
 
-Agendamento do RF02 (exemplo de `crontab`, com o caminho do projeto ajustado):
+Carga de validação (amostra da decisão 12.2), que não morre se a sessão fechar:
+
+```bash
+nohup invoke carga-validacao > instance/carga.log 2>&1 &
+```
+
+Agendamento do RF02, conforme a decisão 12.1 do `CLAUDE.md` (exemplo de `crontab`, com o caminho do projeto ajustado):
 
 ```cron
 0 * * * *  cd /caminho/Desperta_Brasil && .venv/bin/flask coletar horaria
 0 2 * * *  cd /caminho/Desperta_Brasil && .venv/bin/flask coletar diaria
-0 3 * * 0  cd /caminho/Desperta_Brasil && .venv/bin/flask coletar semanal
+0 4 * * 0  cd /caminho/Desperta_Brasil && .venv/bin/flask coletar semanal
 0 4 1 * *  cd /caminho/Desperta_Brasil && .venv/bin/flask coletar mensal
 ```
 
+Só roda uma coleta por vez: a trava fica em `instance/coletor.lock`. Quem encontra a trava não roda e grava um aviso em `log_sistema`. Trava com mais de 6 horas é considerada abandonada.
+
 Cada coleta grava uma linha em `coleta` e os erros em `log_sistema`. Um registro com problema não derruba a coleta: ela termina como `parcial`.
+
+## Problema conhecido
+
+`pytest --cov=desperta.coletor` falha dentro do SQLAlchemy (`TypeError` em `_cache_key_cy`). Use o comando oficial, `invoke test`, que mede com `--cov=desperta`.

@@ -33,3 +33,25 @@ def resumo_por_recurso():
         .group_by(Coleta.recurso)
         .order_by(Coleta.recurso)
     ).all()
+
+
+def blocos_com_id_errado():
+    """Decisao 12.3: blocos com id errado em /blocos/{id}/partidos e siglas que nao ligaram."""
+    return (
+        db.session.scalar(
+            db.select(db.func.count(LogSistema.entidade_id.distinct())).where(
+                LogSistema.acao == "bloco_partido_id_errado"
+            )
+        ),
+        db.session.scalar(db.select(db.func.count()).where(LogSistema.acao == "bloco_partido_sem_id")),
+    )
+
+
+def avisos_por_tipo():
+    """Avisos do coletor, como referencia ausente e item de pauta repetido."""
+    return db.session.execute(
+        db.select(LogSistema.acao, db.func.count())
+        .where(LogSistema.modulo == "coletor", LogSistema.nivel == "aviso")
+        .group_by(LogSistema.acao)
+        .order_by(db.func.count().desc())
+    ).all()

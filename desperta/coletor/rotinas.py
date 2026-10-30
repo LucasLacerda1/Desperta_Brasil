@@ -14,7 +14,11 @@ from . import (
     votacoes,
 )
 
-JANELA_COMPLETA_DIAS = 30
+# Calendario da decisao 12.1 (RF02)
+DIAS_DIARIA = 3
+DIAS_SEMANAL = 30
+# A horaria tem meta de 20 minutos: pendentes ficam para a diaria
+LIMITE_EVENTOS_HORARIA = 20
 
 
 def base(cliente, id_legislatura=None):
@@ -28,28 +32,28 @@ def base(cliente, id_legislatura=None):
     return id_legislatura
 
 
-def horaria(cliente):
-    """RF02: proposicoes, votacoes e eventos, desde a ultima janela concluida."""
-    proposicoes.coletar(cliente)
-    eventos.coletar(cliente)
-    votacoes.coletar(cliente)
-    eventos.coletar_pendentes(cliente)
+def horaria(cliente, hoje=None):
+    """Proposicoes dos tipos acompanhados com janela de 1 dia; eventos e votacoes de ontem e hoje."""
+    hoje = hoje or date.today()
+    ontem = hoje - timedelta(days=1)
+    proposicoes.coletar(cliente, hoje, hoje, limite_pendentes=0)
+    eventos.coletar(cliente, ontem, hoje, limite_pendentes=LIMITE_EVENTOS_HORARIA)
+    votacoes.coletar(cliente, ontem, hoje)
 
 
 def diaria(cliente, hoje=None):
-    """RF02: varredura completa, a noite."""
+    """Proposicoes dos ultimos 3 dias, pautas pendentes e votacoes pendentes."""
     hoje = hoje or date.today()
-    inicio = hoje - timedelta(days=JANELA_COMPLETA_DIAS)
-    base(cliente)
-    proposicoes.coletar(cliente, inicio, hoje, tipo="completa")
-    eventos.coletar(cliente, inicio, hoje, tipo="completa")
-    votacoes.coletar(cliente, inicio, hoje, tipo="completa")
+    proposicoes.coletar(cliente, hoje - timedelta(days=DIAS_DIARIA), hoje)
     eventos.coletar_pendentes(cliente)
+    votacoes.coletar_pendentes(cliente)
 
 
-def semanal(cliente):
-    """RF02: cargos em orgaos, Mesa, liderancas e blocos."""
-    id_legislatura = legislaturas.id_atual(cliente)
+def semanal(cliente, hoje=None):
+    """Varredura de 30 dias, cargos em orgaos, Mesa, liderancas e blocos."""
+    hoje = hoje or date.today()
+    id_legislatura = base(cliente)
+    proposicoes.coletar(cliente, hoje - timedelta(days=DIAS_SEMANAL), hoje, tipo="completa")
     orgaos.coletar_membros(cliente)
     orgaos.coletar_mesa(cliente, id_legislatura)
     liderancas.coletar(cliente, id_legislatura)
@@ -57,5 +61,5 @@ def semanal(cliente):
 
 
 def mensal(cliente):
-    """RF02: frentes."""
+    """Frentes."""
     frentes.coletar(cliente, legislaturas.id_atual(cliente))

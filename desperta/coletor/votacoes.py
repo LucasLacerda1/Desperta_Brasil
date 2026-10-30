@@ -8,6 +8,8 @@ from .janelas import dividir_janela, janela_incremental
 from .normalizacao import agora_utc, id_da_uri, para_bool, para_data, para_data_hora, para_int
 from .referencias import Referencias
 
+LIMITE_PENDENTES = 200
+
 
 def _gravar_votacao(execucao, referencias, item):
     id_orgao = item.get("idOrgao") or id_da_uri(item.get("uriOrgao"), "orgaos")
@@ -116,3 +118,22 @@ def coletar(cliente, inicio=None, fim=None, tipo="incremental"):
             referencias = Referencias(execucao)
             for item in list(cliente.paginar("votacoes", params)):
                 execucao.processar("votacao", item["id"], lambda item=item: _coletar_uma(execucao, referencias, item))
+
+
+def coletar_pendentes(cliente, limite=LIMITE_PENDENTES):
+    """Votacoes sem votos e orientacoes, por exemplo depois de uma falha da API."""
+    with Execucao(cliente, "votacoes", "detalhe", "/votacoes/{id}") as execucao:
+        referencias = Referencias(execucao)
+        consulta = (
+            db.select(Votacao.id, Votacao.proposicao_id)
+            .where(Votacao.filhos_sincronizados_em.is_(None))
+            .order_by(Votacao.id)
+            .limit(limite)
+        )
+        for id_votacao, id_proposicao in db.session.execute(consulta).all():
+            # O detalhe nao traz a proposicao objeto: sem isto, ela seria apagada da votacao
+            item = {
+                "id": id_votacao,
+                "uriProposicaoObjeto": f"/proposicoes/{id_proposicao}" if id_proposicao else None,
+            }
+            execucao.processar("votacao", id_votacao, lambda item=item: _coletar_uma(execucao, referencias, item))
