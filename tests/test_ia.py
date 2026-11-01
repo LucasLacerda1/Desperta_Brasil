@@ -1,16 +1,18 @@
 import hashlib
 import math
 import struct
+import json
+import os
 import sys
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 import pytest
 
 import fabricas
 from desperta import create_app
 from desperta.config import TestConfig
-from desperta.ia import services, trechos, vetores
-from desperta.ia.embeddings import ModeloEmbedding
+from desperta.ia import centralizacao, palavras, services, trechos, vetores
+from desperta.ia.embeddings import ModeloEmbedding, preparar_ambiente
 from desperta.ia.gerador import Gerador, GeradorFalso
 from desperta.ia.models import GeracaoIA, GeracaoTrecho, TrechoRAG
 from desperta.sistema.models import LogSistema
@@ -55,7 +57,9 @@ def modelo():
 
 
 @pytest.fixture
-def origem(db):
+def origem(app, db):
+    # As datas dos exemplos sao antigas: aqui, todas as tramitacoes contam como recentes
+    app.config["RAG_TRAMITACAO_DIAS"] = 100_000
     db.session.add_all(
         [
             fabricas.orgao(),
@@ -88,7 +92,8 @@ def test_textos_de_origem_tem_os_campos_da_secao_6_1(origem):
     textos = {(tipo, ref): texto for tipo, ref, texto in trechos.textos_de_origem()}
     assert textos[("proposicao", "2310837")] == "PL 1234/2024. Reforma tributaria dos municipios Imposto municipal"
     assert textos[("tramitacao", "2310837/1")] == (
-        "14/05/2024 PLEN. Aguardando parecer Encaminhe-se a comissao de saude"
+        "PL 1234/2024 — Reforma tributaria dos municipios 14/05/2024 PLEN. "
+        "Aguardando parecer Encaminhe-se a comissao de saude"
     )
     assert textos[("votacao", "2310837-8")] == "Aprovado o projeto de merenda PLEN, 14/05/2024. Resultado: aprovada."
     assert textos[("evento", "70001")] == "Sessao Deliberativa. Sessao sobre orcamento"
@@ -96,6 +101,22 @@ def test_textos_de_origem_tem_os_campos_da_secao_6_1(origem):
 
 def test_tramitacao_sem_situacao_e_sem_despacho_nao_vira_trecho(origem):
     assert ("tramitacao", "2310837/2") not in {(tipo, ref) for tipo, ref, _ in trechos.textos_de_origem()}
+
+
+def test_tramitacao_antiga_nao_vira_trecho(app, origem):
+    app.config["RAG_TRAMITACAO_DIAS"] = 90
+    assert list(trechos.textos_de_origem(["tramitacao"])) == []
+    recente = datetime.now() - timedelta(days=10)
+    origem.session.add(fabricas.tramitacao(sequencia=3, data_hora=recente))
+    origem.session.commit()
+    assert [ref for _, ref, _ in trechos.textos_de_origem(["tramitacao"])] == ["2310837/3"]
+
+
+def test_tramitacao_comeca_com_a_ementa_cortada(origem):
+    origem.session.get(fabricas.Proposicao, 2310837).ementa = "x" * 300
+    origem.session.commit()
+    texto = dict((ref, texto) for _, ref, texto in trechos.textos_de_origem(["tramitacao"]))["2310837/1"]
+    assert texto.startswith("PL 1234/2024 — " + "x" * 200 + " 14/05/2024")
 
 
 def test_filtro_por_tipo_e_item_de_pauta(origem):
@@ -214,7 +235,7 @@ def test_indexar_registra_no_log(origem, modelo):
 # ======================================================
 def test_busca_ordena_por_similaridade(origem, modelo):
     services.indexar(modelo)
-    resultados = services.buscar(modelo, "merenda escolar nas escolas", top_k=2)
+    resultados = services.buscar(modelo, "merenda escolar nas escolas", top_k=2, modo="vetorial")
     assert [achado.posicao for achado in resultados] == [1, 2]
     assert _referencias(resultados)[0] == ("proposicao", "2")
     assert resultados[0].similaridade > resultados[1].similaridade
@@ -261,6 +282,237 @@ def test_busca_sem_nada_indexado_devolve_vazio(db, modelo):
     assert services.buscar(modelo, "qualquer coisa") == []
 
 
+def test_modo_de_busca_desconhecido(db, modelo):
+    with pytest.raises(ValueError):
+        services.buscar(modelo, "x", modo="outro")
+
+
+# ======================================================
+# DECISAO 16.1: BUSCA HIBRIDA
+# ======================================================
+class ModeloCego(ModeloFalso):
+    """Todo texto vira o mesmo vetor: so a busca por palavras consegue separar."""
+
+    def _vetor(self, texto):
+        return struct.pack("768f", *([1.0] + [0.0] * 767))
+
+
+def test_busca_por_palavras_ignora_acento_e_maiuscula(origem, modelo):
+    origem.session.get(fabricas.Evento, 70001).descricao = "Audiência sobre PREVIDÊNCIA"
+    origem.session.commit()
+    services.indexar(modelo)
+    resultados = services.buscar(modelo, "previdencia", modo="palavras")
+    assert _referencias(resultados) == [("evento", "70001")]
+
+
+def test_busca_por_palavras_nao_quebra_com_pontuacao(origem, modelo):
+    services.indexar(modelo)
+    assert services.buscar(modelo, 'PL "1234/2024" AND (', modo="palavras")
+    assert services.buscar(modelo, "!!! ---", modo="palavras") == []
+
+
+def test_hibrida_acha_palavra_que_o_vetor_nao_acha(origem):
+    modelo = ModeloCego()
+    services.indexar(modelo)
+    resultados = services.buscar(modelo, "orcamento", top_k=1)
+    assert _referencias(resultados) == [("evento", "70001")]
+
+
+def test_hibrida_acha_pelo_vetor_o_que_nao_tem_a_palavra(origem, modelo):
+    services.indexar(modelo)
+    vetor_igual = "Merenda escolar nas escolas"
+    resultados = services.buscar(modelo, f"{vetor_igual} inexistentepalavra", top_k=1)
+    assert _referencias(resultados) == [("proposicao", "2")]
+
+
+def test_nota_e_a_soma_do_rrf(app, origem, modelo):
+    services.indexar(modelo)
+    constante = app.config["RAG_RRF_K"]
+    primeiro = services.buscar(modelo, "Merenda escolar nas escolas", top_k=1)[0]
+    # Em primeiro lugar nas duas listas
+    assert primeiro.similaridade == pytest.approx(2 / (constante + 1))
+
+
+def test_filtros_valem_para_as_duas_buscas(origem, modelo):
+    services.indexar(modelo)
+    assert _referencias(services.buscar(modelo, "merenda", tipos=["votacao"], modo="palavras")) == [
+        ("votacao", "2310837-8")
+    ]
+    assert _referencias(services.buscar(modelo, "merenda", fim=date(2020, 12, 31), modo="palavras")) == [
+        ("proposicao", "2")
+    ]
+    assert {tipo for tipo, _ in _referencias(services.buscar(modelo, "merenda", tipos=["votacao"]))} == {"votacao"}
+
+
+def test_indice_de_palavras_acompanha_alteracao_e_remocao(origem, modelo):
+    services.indexar(modelo)
+    assert services.buscar(modelo, "orcamento", modo="palavras")
+    origem.session.get(fabricas.Evento, 70001).descricao = "Sessao sobre previdencia"
+    origem.session.commit()
+    services.indexar(modelo)
+    assert services.buscar(modelo, "orcamento", modo="palavras") == []
+    assert _referencias(services.buscar(modelo, "previdencia", modo="palavras")) == [("evento", "70001")]
+    origem.session.delete(origem.session.get(fabricas.Evento, 70001))
+    origem.session.commit()
+    services.indexar(modelo)
+    assert services.buscar(modelo, "previdencia", modo="palavras") == []
+
+
+def test_indice_de_palavras_recebe_os_trechos_que_ja_existiam(origem, modelo):
+    services.indexar(modelo)
+    palavras.remover_indice()
+    origem.session.commit()
+    resultados = services.buscar(modelo, "orcamento", modo="palavras")
+    assert _referencias(resultados) == [("evento", "70001")]
+
+
+def test_indice_de_palavras_criado_na_busca_continua_cheio_depois_dela(origem, modelo):
+    services.indexar(modelo)
+    palavras.remover_indice()
+    origem.session.commit()
+    services.buscar(modelo, "orcamento", modo="palavras")
+    # Como quando o comando termina: o que nao teve commit e desfeito
+    origem.session.rollback()
+    assert _referencias(services.buscar(modelo, "orcamento", modo="palavras")) == [("evento", "70001")]
+
+
+def test_reconstruir_refaz_o_indice_de_palavras(origem, modelo):
+    services.indexar(modelo)
+    origem.session.execute(origem.text("INSERT INTO trecho_fts(trecho_fts) VALUES ('delete-all')"))
+    origem.session.commit()
+    assert services.buscar(modelo, "orcamento", modo="palavras") == []
+    services.reconstruir_indice(MODELO)
+    assert services.buscar(modelo, "orcamento", modo="palavras")
+
+
+# ======================================================
+# DECISAO 16.1: CENTRALIZACAO
+# ======================================================
+def _vetor(embedding):
+    return struct.unpack("768f", embedding)
+
+
+def test_centralizar_grava_o_vetor_medio_e_nao_muda_trecho_rag(app, origem, modelo, tmp_path):
+    app.instance_path = str(tmp_path)
+    services.indexar(modelo)
+    trecho = _trecho(origem, "votacao", "2310837-8")
+    original = trecho.embedding
+    assert centralizacao.calcular(MODELO) == 5
+    assert (tmp_path / centralizacao.ARQUIVO).exists()
+
+    app.config["RAG_CENTRALIZAR"] = True
+    services.reconstruir_indice(MODELO)
+
+    assert _trecho(origem, "votacao", "2310837-8").embedding == original
+    centralizado = centralizacao.transformador()(original)
+    assert centralizado != original
+    assert math.sqrt(sum(valor * valor for valor in _vetor(centralizado))) == pytest.approx(1.0, abs=1e-5)
+    assert vetores.buscar(centralizado, 1)[0][0] == trecho.id
+
+
+def test_consulta_e_trechos_novos_tambem_sao_centralizados(app, origem, modelo, tmp_path):
+    app.instance_path = str(tmp_path)
+    services.indexar(modelo)
+    centralizacao.calcular(MODELO)
+    app.config["RAG_CENTRALIZAR"] = True
+    services.reconstruir_indice(MODELO)
+    origem.session.add(fabricas.evento(id=70002, descricao="Audiencia sobre previdencia"))
+    origem.session.commit()
+    services.indexar(modelo)
+    resultados = services.buscar(modelo, "Sessao Deliberativa. Audiencia sobre previdencia", top_k=1, modo="vetorial")
+    assert _referencias(resultados) == [("evento", "70002")]
+    assert resultados[0].similaridade == pytest.approx(1.0, abs=1e-4)
+
+
+def test_centralizar_sem_trechos_nao_grava_arquivo(app, db, tmp_path):
+    app.instance_path = str(tmp_path)
+    assert centralizacao.calcular(MODELO) == 0
+    assert not (tmp_path / centralizacao.ARQUIVO).exists()
+
+
+# ======================================================
+# DECISAO 16.2: MEDIR A BUSCA
+# ======================================================
+def test_medir_busca_conta_as_esperadas_por_modo(origem, modelo):
+    services.indexar(modelo)
+    consultas = [
+        {"consulta": "merenda escolar", "esperadas": [2]},
+        {"consulta": "palavraquenaoexiste", "esperadas": [999]},
+    ]
+    resultado = services.medir_busca(modelo, consultas, modos=("palavras",))
+    assert resultado["palavras"]["acertos"] == 1
+    assert resultado["palavras"]["total"] == 2
+    assert resultado["palavras"]["consultas"][0] == ("merenda escolar", 1, 1)
+
+
+def test_tramitacao_conta_como_achar_a_proposicao(origem, modelo):
+    services.indexar(modelo)
+    consultas = [{"consulta": "comissao de saude", "esperadas": [2310837]}]
+    assert services.medir_busca(modelo, consultas, modos=("palavras",))["palavras"]["acertos"] == 1
+
+
+def test_comando_medir_busca(comandos, origem, tmp_path):
+    comandos.invoke(args=["ia", "indexar"])
+    arquivo = tmp_path / "consultas.json"
+    arquivo.write_text(json.dumps({"consultas": [{"consulta": "merenda escolar", "esperadas": [2]}]}))
+    saida = comandos.invoke(args=["ia", "medir-busca", str(arquivo)]).output
+    assert "hibrida: 1 de 1" in saida
+    assert "vetorial:" in saida and "palavras:" in saida
+
+
+def test_arquivo_de_consultas_tem_20_consultas_com_esperadas():
+    caminho = os.path.join(os.path.dirname(__file__), "dados", "consultas_busca.json")
+    with open(caminho, encoding="utf-8") as entrada:
+        consultas = json.load(entrada)["consultas"]
+    assert len(consultas) == 20
+    assert all(item["consulta"] and item["esperadas"] for item in consultas)
+
+
+# ======================================================
+# DECISAO 16.7: ONDE O MODELO FICA
+# ======================================================
+@pytest.fixture
+def ambiente_hf(monkeypatch):
+    # O teste muda estas variaveis: o monkeypatch devolve os valores no fim
+    monkeypatch.setenv("HF_HOME", "x")
+    monkeypatch.setenv("HF_HUB_OFFLINE", "x")
+
+
+def test_modelo_fica_dentro_do_projeto(app, ambiente_hf):
+    # O .env da maquina pode ter HF_HUB_OFFLINE=1: o teste nao depende dele
+    app.config.update(HF_HOME="instance/modelos", HF_HUB_OFFLINE="0")
+    pasta = preparar_ambiente(app)
+    assert pasta == os.path.join(os.path.dirname(app.instance_path), "instance/modelos")
+    assert os.environ["HF_HOME"] == pasta
+    assert os.environ["HF_HUB_OFFLINE"] == "0"
+
+
+def test_modelo_offline_pela_configuracao_e_baixar_sempre_online(app, ambiente_hf):
+    app.config["HF_HUB_OFFLINE"] = "1"
+    preparar_ambiente(app)
+    assert os.environ["HF_HUB_OFFLINE"] == "1"
+    preparar_ambiente(app, offline=False)
+    assert os.environ["HF_HUB_OFFLINE"] == "0"
+
+
+def test_comando_baixar_modelo(app, comandos, monkeypatch, ambiente_hf, tmp_path):
+    (tmp_path / "pesos.bin").write_bytes(b"0" * 2_000_000)
+    (tmp_path / "atalho.bin").symlink_to(tmp_path / "pesos.bin")
+    monkeypatch.setitem(app.config, "HF_HOME", str(tmp_path))
+    pedidos = []
+
+    def modelo_falso(offline=None):
+        pedidos.append(offline)
+        preparar_ambiente(app, offline)
+        return ModeloFalso()
+
+    monkeypatch.setattr("desperta.ia.cli._modelo", modelo_falso)
+    resultado = comandos.invoke(args=["ia", "baixar-modelo"])
+    assert resultado.exit_code == 0, resultado.output
+    assert pedidos == [False]
+    assert "(2 MB)" in resultado.output
+
+
 # ======================================================
 # INDICE
 # ======================================================
@@ -283,12 +535,14 @@ def test_indice_nao_entra_nas_32_tabelas(db):
     assert len(db.metadata.tables) == 32
 
 
-def test_drop_db_tira_o_indice(app, db):
+def test_drop_db_tira_os_indices(app, db):
     vetores.criar_indice()
+    palavras.criar_indice()
     db.session.commit()
     resultado = app.test_cli_runner().invoke(args=["drop-db"])
     assert resultado.exit_code == 0, resultado.output
-    assert db.session.execute(db.text("SELECT 1 FROM sqlite_master WHERE name = 'vec_trecho'")).first() is None
+    for nome in ("vec_trecho", "trecho_fts"):
+        assert db.session.execute(db.text(f"SELECT 1 FROM sqlite_master WHERE name = '{nome}'")).first() is None
     db.create_all()
 
 
@@ -297,7 +551,7 @@ def test_drop_db_tira_o_indice(app, db):
 # ======================================================
 @pytest.fixture
 def comandos(app, monkeypatch, modelo):
-    monkeypatch.setattr("desperta.ia.cli._modelo", lambda: modelo)
+    monkeypatch.setattr("desperta.ia.cli._modelo", lambda offline=None: modelo)
     app.config["EMBEDDING_MODEL"] = MODELO
     return app.test_cli_runner()
 

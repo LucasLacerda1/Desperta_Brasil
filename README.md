@@ -66,13 +66,26 @@ pip install -e ".[ia]"
 ```
 
 ```bash
+flask ia baixar-modelo             # baixa a RoBERTaLexPT uma vez para instance/modelos (cerca de 500 MB)
 flask ia indexar                   # trechos e embeddings do que é novo ou mudou; pode parar e rodar de novo
 flask ia indexar --tipo votacao    # só um tipo; --limite 500 para no máximo 500 trechos novos
 flask ia buscar "reforma tributária" --tipo proposicao --inicio 2025-01-01 --fim 2025-12-31
-flask ia reconstruir               # refaz o índice vetorial a partir de trecho_rag
+flask ia medir-busca               # acertos de cada modo nas consultas de tests/dados/consultas_busca.json
+flask ia reconstruir               # refaz os índices a partir de trecho_rag
 ```
 
-Sem essas dependências, os testes de `tests/test_ia.py` são pulados. Depois de cada coleta, rode `flask ia indexar`. O índice (`vec_trecho`) não é modelo SQLAlchemy nem conta entre as 32 tabelas.
+Depois do download, use `HF_HUB_OFFLINE=1` no `.env`: o modelo roda sem internet. Sem as dependências de IA, os testes de `tests/test_ia.py` são pulados. Depois de cada coleta, rode `flask ia indexar`.
+
+A busca é híbrida: junta o índice vetorial (`vec_trecho`) e o de palavras (`trecho_fts`) por Reciprocal Rank Fusion. Os índices não são modelos SQLAlchemy nem contam entre as 32 tabelas. Só as tramitações dos últimos `RAG_TRAMITACAO_DIAS` dias (padrão: 90) viram trecho.
+
+Para medir a centralização dos embeddings:
+
+```bash
+flask ia centralizar
+RAG_CENTRALIZAR=1 flask ia reconstruir
+RAG_CENTRALIZAR=1 flask ia medir-busca
+flask ia reconstruir               # volta ao índice sem centralização
+```
 
 ## Problema conhecido
 

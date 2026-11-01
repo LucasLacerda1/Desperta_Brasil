@@ -52,6 +52,12 @@ def carga_validacao(c):
     c.run("flask --app app.py coletar relatorio", echo=True)
 
 
+@task(name="baixar-modelo")
+def baixar_modelo(c):
+    """Baixa a RoBERTaLexPT uma vez para instance/modelos (cerca de 500 MB)."""
+    c.run("flask --app app.py ia baixar-modelo", echo=True)
+
+
 @task
 def indexar(c):
     """Cria os trechos e os embeddings do RAG (precisa de pip install -e ".[ia]")."""

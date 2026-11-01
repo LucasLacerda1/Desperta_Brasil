@@ -1,5 +1,15 @@
+import os
+
 LIMITE_TOKENS = 512
 TAMANHO_LOTE = 16
+
+
+def preparar_ambiente(app, offline=None):
+    """Decisao 16.7: vale antes de importar o transformers, que le estas variaveis ao carregar."""
+    raiz = os.path.dirname(app.instance_path)
+    os.environ["HF_HOME"] = os.path.join(raiz, app.config["HF_HOME"])
+    os.environ["HF_HUB_OFFLINE"] = app.config["HF_HUB_OFFLINE"] if offline is None else ("1" if offline else "0")
+    return os.environ["HF_HOME"]
 
 
 # === ModeloEmbedding (RoBERTaLexPT: so faz embeddings, nao gera texto) ===

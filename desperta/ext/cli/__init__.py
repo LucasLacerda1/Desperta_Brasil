@@ -2,7 +2,7 @@ import click
 
 from desperta.ext.db import db
 from desperta.ext.db.busca import criar_busca_texto, remover_busca_texto
-from desperta.ia import vetores
+from desperta.ia import palavras, vetores
 
 
 def init_app(app):
@@ -18,6 +18,7 @@ def init_app(app):
     def drop_db():
         """Apaga todas as tabelas do banco de dados."""
         vetores.remover_indice()
+        palavras.remover_indice()
         db.session.commit()
         with db.engine.begin() as conexao:
             remover_busca_texto(conexao)

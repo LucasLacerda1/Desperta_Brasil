@@ -11,10 +11,11 @@ from desperta.proposicoes.models import Proposicao, Tramitacao
 from desperta.sistema.models import LogSistema
 from desperta.votacoes.models import Votacao
 
-from . import trechos, vetores
+from . import centralizacao, palavras, trechos, vetores
 from .models import GeracaoTrecho, TrechoRAG
 
 LOTE_INDEXACAO = 64
+MODOS_BUSCA = ("hibrida", "vetorial", "palavras")
 
 
 @dataclass
@@ -37,7 +38,7 @@ def _existentes(nome_modelo, tipos):
     return {(tipo, ref_id, parte): (id_, hash_) for tipo, ref_id, parte, id_, hash_ in db.session.execute(consulta)}
 
 
-def _gravar_lote(modelo, lote, existentes):
+def _gravar_lote(modelo, lote, existentes, preparar):
     """Gera os embeddings fora da transacao, grava e confirma: parar no meio nao perde o que ja foi feito."""
     embeddings = modelo.embutir([item["texto"] for item in lote])
     for item, embedding in zip(lote, embeddings):
@@ -52,7 +53,7 @@ def _gravar_lote(modelo, lote, existentes):
         trecho.embedding = embedding
         trecho.modelo_embedding = modelo.nome
         db.session.flush()
-        vetores.gravar(trecho.id, embedding)
+        vetores.gravar(trecho.id, preparar(embedding))
     db.session.commit()
     db.session.expunge_all()
 
@@ -79,7 +80,9 @@ def indexar(modelo, tipos=None, limite=None):
     config = current_app.config
     resumo = Counter()
     vetores.criar_indice()
+    palavras.criar_indice()
     db.session.commit()
+    preparar = centralizacao.transformador()
     existentes = _existentes(modelo.nome, tipos)
     vistos = set()
     lote = []
@@ -113,11 +116,11 @@ def indexar(modelo, tipos=None, limite=None):
                 }
             )
         if len(lote) >= LOTE_INDEXACAO:
-            _gravar_lote(modelo, lote, existentes)
+            _gravar_lote(modelo, lote, existentes, preparar)
             resumo["indexados"] += len(lote)
             lote = []
     if lote:
-        _gravar_lote(modelo, lote, existentes)
+        _gravar_lote(modelo, lote, existentes, preparar)
         resumo["indexados"] += len(lote)
 
     # Com limite, parte da origem nao foi lida: nao da para saber o que sumiu
@@ -141,7 +144,10 @@ def indexar(modelo, tipos=None, limite=None):
 
 
 def reconstruir_indice(nome_modelo):
-    total = vetores.reconstruir(nome_modelo)
+    """Refaz os dois indices a partir de trecho_rag, sem gerar embeddings."""
+    total = vetores.reconstruir(nome_modelo, centralizacao.transformador())
+    palavras.criar_indice()
+    palavras.reconstruir()
     db.session.add(
         LogSistema(nivel="info", modulo="IA", acao="reconstruir_indice", descricao=f"{total} trechos no indice")
     )
@@ -182,8 +188,23 @@ def _ids_no_periodo(inicio, fim, tipos):
     return db.union_all(*(por_tipo[tipo] for tipo in tipos or por_tipo))
 
 
-def buscar(modelo, consulta, top_k=None, tipos=None, inicio=None, fim=None):
-    """Os trechos mais parecidos com a consulta; a similaridade e o cosseno."""
+def _juntar_por_rrf(listas):
+    """Reciprocal Rank Fusion: cada lista soma 1 / (constante + posicao) ao trecho."""
+    constante = current_app.config["RAG_RRF_K"]
+    notas = Counter()
+    for lista in listas:
+        for posicao, trecho_id in enumerate(lista, start=1):
+            notas[trecho_id] += 1 / (constante + posicao)
+    return notas
+
+
+def buscar(modelo, consulta, top_k=None, tipos=None, inicio=None, fim=None, modo="hibrida"):
+    """
+    Decisao 16.1: os melhores de cada indice, juntos pelo RRF; os filtros valem para os dois.
+    Em similaridade vai a nota do RRF; no modo vetorial, que so serve para comparar, vai o cosseno.
+    """
+    if modo not in MODOS_BUSCA:
+        raise ValueError(f"Modo de busca desconhecido: {modo}")
     k = top_k or current_app.config["RAG_TOP_K"]
     if inicio or fim:
         candidatos = _ids_no_periodo(inicio, fim, tipos)
@@ -191,9 +212,53 @@ def buscar(modelo, consulta, top_k=None, tipos=None, inicio=None, fim=None):
         candidatos = db.select(TrechoRAG.id).where(TrechoRAG.tipo.in_(tipos))
     else:
         candidatos = None
+    # O SQLite grava a criacao da tabela na hora, mas o conteudo do rebuild so com commit
     vetores.criar_indice()
-    achados = vetores.buscar(modelo.embutir([consulta])[0], k, candidatos)
+    palavras.criar_indice()
+    db.session.commit()
+
+    limite = max(k, current_app.config["RAG_CANDIDATOS"])
+    if modo == "vetorial":
+        embedding = centralizacao.transformador()(modelo.embutir([consulta])[0])
+        notas = {trecho_id: 1 - distancia for trecho_id, distancia in vetores.buscar(embedding, k, candidatos)}
+    else:
+        listas = [palavras.buscar(consulta, limite, candidatos)]
+        if modo == "hibrida":
+            embedding = centralizacao.transformador()(modelo.embutir([consulta])[0])
+            listas.append([trecho_id for trecho_id, _ in vetores.buscar(embedding, limite, candidatos)])
+        notas = _juntar_por_rrf(listas)
+
+    melhores = sorted(notas.items(), key=lambda item: item[1], reverse=True)[:k]
     return [
-        ResultadoBusca(posicao=posicao, similaridade=1 - distancia, trecho=db.session.get(TrechoRAG, trecho_id))
-        for posicao, (trecho_id, distancia) in enumerate(achados, start=1)
+        ResultadoBusca(posicao=posicao, similaridade=nota, trecho=db.session.get(TrechoRAG, trecho_id))
+        for posicao, (trecho_id, nota) in enumerate(melhores, start=1)
     ]
+
+
+def _proposicao_do_trecho(trecho):
+    """Tramitacao tambem conta como achar a proposicao; o ref_id dela e "proposicao/sequencia"."""
+    if trecho.tipo == "proposicao":
+        return int(trecho.ref_id)
+    if trecho.tipo == "tramitacao":
+        return int(trecho.ref_id.split("/")[0])
+    return None
+
+
+def medir_busca(modelo, consultas, modos=MODOS_BUSCA, k=8):
+    """Decisao 16.2: quantas das proposicoes esperadas aparecem nos k primeiros, em cada modo."""
+    resultado = {}
+    for modo in modos:
+        acertos = 0
+        total = 0
+        por_consulta = []
+        for item in consultas:
+            esperadas = set(item["esperadas"])
+            achadas = {
+                _proposicao_do_trecho(achado.trecho) for achado in buscar(modelo, item["consulta"], k, modo=modo)
+            }
+            certas = len(esperadas & achadas)
+            acertos += certas
+            total += len(esperadas)
+            por_consulta.append((item["consulta"], certas, len(esperadas)))
+        resultado[modo] = {"acertos": acertos, "total": total, "consultas": por_consulta}
+    return resultado

@@ -47,19 +47,29 @@ def remover(trecho_id):
     _conexao().execute(text(f"DELETE FROM {TABELA} WHERE trecho_id = :id"), {"id": trecho_id})
 
 
-def reconstruir(nome_modelo):
-    """Refaz o indice a partir de trecho_rag; devolve quantos trechos entraram."""
+def reconstruir(nome_modelo, preparar):
+    """Refaz o indice a partir de trecho_rag; preparar transforma cada embedding. Devolve o total de trechos."""
     conexao = _conexao()
     conexao.execute(text(f"DROP TABLE IF EXISTS {TABELA}"))
     conexao.execute(text(CRIAR_INDICE))
-    conexao.execute(
-        text(
-            f"INSERT INTO {TABELA} (trecho_id, embedding) "
-            "SELECT id, embedding FROM trecho_rag WHERE modelo_embedding = :modelo"
-        ),
-        {"modelo": nome_modelo},
-    )
-    return conexao.execute(text(f"SELECT count(*) FROM {TABELA}")).scalar_one()
+    total = 0
+    ultimo = 0
+    while True:
+        linhas = conexao.execute(
+            text(
+                "SELECT id, embedding FROM trecho_rag WHERE modelo_embedding = :modelo AND id > :ultimo "
+                "ORDER BY id LIMIT 1000"
+            ),
+            {"modelo": nome_modelo, "ultimo": ultimo},
+        ).all()
+        if not linhas:
+            return total
+        conexao.execute(
+            text(f"INSERT INTO {TABELA} (trecho_id, embedding) VALUES (:id, :embedding)"),
+            [{"id": id_trecho, "embedding": preparar(embedding)} for id_trecho, embedding in linhas],
+        )
+        total += len(linhas)
+        ultimo = linhas[-1][0]
 
 
 def remover_indice():
