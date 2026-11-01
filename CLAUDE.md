@@ -8,7 +8,7 @@
 - **Idioma:** responda, comente o código e escreva mensagens de commit em **português do Brasil**.
 - **Padrão obrigatório:** o código segue a estrutura do projeto **TaskFlow**, usado como exemplo pelo professor da disciplina (Programação Web Avançada, UVV). A seção 3 descreve esse padrão. Não invente outra organização, não troque o Flask-SQLAlchemy por outro ORM e não use outro estilo de modelo.
 - **Ordem do trabalho:** o projeto é construído por fases (seção 7). **As Fases 1 (banco), 1.5 (ajuste físico do banco, `docs/AJUSTE_BANCO_SISTEMA.md`) e 2 (coletor) estão concluídas; a Fase 2b fechou sem migração (14.1). Falta só o ajuste da `horaria` (14.2), numa branch pequena. Depois vem a Fase 3: IA e RAG.** Não comece o coletor, a IA, as rotas da API ou o front-end antes da fase anterior estar pronta e testada, a não ser que o grupo peça. Antes de mudar código, leia as seções 10 a 14 (decisões tomadas depois de cada relatório).
-- **Git:** a `main` no GitHub é a versão estável. Cada fase é feita numa branch própria (`fase-2-coletor`, `fase-3-ia`…), com commits pequenos ao fim de cada passo e mensagem em português; ao terminar a fase, abrir um pull request para a `main`, para o grupo revisar. Não fazer push direto na `main`. Nunca versione `.venv/`, `instance/`, `.env` nem arquivos `*.db`, `*.db-wal`, `*.db-shm`.
+- **Git:** a `main` no GitHub é a versão estável. Cada fase é feita numa branch própria (`fase-2-coletor`, `fase-3-ia`…), com commits pequenos ao fim de cada passo e mensagem em português; ao terminar a fase, abrir um pull request para a `main`. Quem faz o merge é o Lucas, depois de revisar (Caio e Rhuan revisam quando puderem). Não fazer push direto na `main`. Nunca versione `.venv/`, `instance/`, `.env` nem arquivos `*.db`, `*.db-wal`, `*.db-shm`.
 - **O modelo do banco já foi decidido pelo grupo** (32 tabelas, seção 5). Não acrescente, remova nem renomeie tabelas ou colunas por conta própria. A única exceção são as colunas técnicas, índices e configurações listados em `docs/AJUSTE_BANCO_SISTEMA.md` (camada física: controle de sincronização, índices, FTS5, migrações), que não mudam o modelo lógico. Se achar um problema no modelo, aponte e pergunte antes de mudar.
 - **Ao terminar cada passo:** rode os testes (`invoke test`) e mostre o resultado.
 
@@ -1336,7 +1336,7 @@ O teste do dia cheio foi um caso extremo (dois dias inteiros de uma vez, 2.674 c
 - **Medir num dia útil com sessão no Plenário** (terça ou quarta à tarde; 02/11 é feriado de Finados). Rodar `time flask coletar horaria` três vezes no mesmo dia (início da tarde, fim da tarde e noite) e registrar tempo e requisições.
 
 ### 14.3 Pull request nº 1
-Marcar como pronto para revisão e incluir o Rhuan como revisor. O merge na `main` acontece depois da revisão de pelo menos um dos dois. O ajuste de 14.2 e a medição vêm num pull request separado, para não segurar a Fase 2.
+Marcar como pronto para revisão e incluir o Rhuan como revisor. O merge na `main` acontece depois da revisão de pelo menos um dos dois. **Atualizado em 01/11/2026:** como Caio e Rhuan estão ocupados, o Lucas revisa e faz o merge sozinho; os dois ficam como revisores para acompanhar depois. O ajuste de 14.2 e a medição vêm num pull request separado, para não segurar a Fase 2.
 
 ### 14.4 Carga dos últimos 3 meses
 Depois do merge, rodar a carga dos últimos 3 meses (12.2), à noite, com `setsid nohup` e o PC sem suspensão. É ela que dá conteúdo ao portal e matéria-prima para a IA da Fase 3. Frentes que faltaram entram na próxima `mensal`.
