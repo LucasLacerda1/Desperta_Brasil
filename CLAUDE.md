@@ -1344,3 +1344,27 @@ Depois do merge, rodar a carga dos últimos 3 meses (12.2), à noite, com `setsi
 ### 14.5 Antes da Fase 3
 O grupo precisa escolher o modelo de linguagem que vai escrever as notícias (seção 9). Sem isso, a Fase 3 só consegue fazer a parte da RoBERTaLexPT (trechos, embeddings, sqlite-vec e busca), com o gerador falso previsto em 6.1.
 
+---
+
+## 15. Decisões depois do ajuste da `horaria` (01/11/2026)
+
+PR nº 1 com merge na `main`. O ajuste da 14.2 está no PR nº 2 (`fase-2-horaria`), que fica como **rascunho** até a medição em dia útil.
+
+### 15.1 Proposições pendentes não são puladas
+Aceito. Proposição sem filhos (por exemplo, citada por uma votação nova) é conferida mesmo com `sincronizado_em` recente.
+
+### 15.2 Votações antes de eventos
+Aceito, para os itens de pauta já acharem a votação gravada.
+
+### 15.3 Limites em `Config`
+Mudar no PR nº 2: os 20 minutos e as 6 horas saem das constantes de `rotinas.py` e vão para `Config`, lidos de variável de ambiente (`HORARIA_ORCAMENTO_MIN=20`, `HORARIA_RECONFERIR_HORAS=6`), como `TIPOS_ACOMPANHADOS`. Assim dá para ajustar depois da medição sem mexer no código.
+
+### 15.4 Atraso de até 6 horas
+Aceito. Uma mudança de situação logo depois da conferência aparece em até 6 horas ou na `diaria`. Votações, que são o principal do portal, não têm esse atraso.
+
+### 15.5 Ordem dos próximos passos
+1. Carga dos últimos 3 meses (14.4) numa noite com o PC ligado, a partir da `main`.
+2. Medição da `horaria` na terça, 03/11, se houver sessão no Plenário (início da tarde, fim da tarde e noite). Se passar de 20 minutos, avisar o grupo.
+3. Depois da medição: tirar o PR nº 2 de rascunho, Lucas revisa e faz o merge.
+4. Enquanto isso, a Fase 3 pode começar a partir da `main`, numa branch `fase-3-rag`, só com a parte da RoBERTaLexPT (trechos, embeddings, sqlite-vec e busca) e o gerador falso de 6.1, até o grupo escolher o modelo de linguagem (14.5).
+
