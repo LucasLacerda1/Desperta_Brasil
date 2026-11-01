@@ -59,12 +59,12 @@ def ignorar_busca_texto(object, name, type_, reflected, compare_to):
     return not (type_ == "table" and name.startswith("noticia_fts"))
 
 
-def ignorar_indice_vetorial(name, type_, parent_names):
+def ignorar_indices_do_rag(name, type_, parent_names):
     """
     Ler as colunas de vec_trecho exige a extensao sqlite-vec, que o Flask-Migrate nao carrega.
-    Por isso o indice sai aqui pelo nome, antes de o autogenerate tentar ler a tabela.
+    Por isso os indices do RAG saem aqui pelo nome, antes de o autogenerate tentar ler a tabela.
     """
-    return not (type_ == "table" and name.startswith("vec_trecho"))
+    return not (type_ == "table" and name.startswith(("vec_trecho", "trecho_fts")))
 
 
 def run_migrations_offline():
@@ -108,7 +108,7 @@ def run_migrations_online():
 
     conf_args = current_app.extensions['migrate'].configure_args
     conf_args["include_object"] = ignorar_busca_texto
-    conf_args["include_name"] = ignorar_indice_vetorial
+    conf_args["include_name"] = ignorar_indices_do_rag
     if conf_args.get("process_revision_directives") is None:
         conf_args["process_revision_directives"] = process_revision_directives
 
