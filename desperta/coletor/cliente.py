@@ -15,17 +15,33 @@ class ErroAPI(Exception):
         self.status = status
 
 
+class TempoEsgotado(Exception):
+    """O orcamento de tempo da rotina acabou. Nao e falha da API: o resto fica para a proxima coleta."""
+
+
 # === ClienteCamara (chamadas HTTP com novas tentativas e paginacao) ===
 class ClienteCamara:
-    def __init__(self, url_base, timeout=30, esperas=ESPERAS_PADRAO, sessao=None, dormir=time.sleep):
+    def __init__(
+        self, url_base, timeout=30, esperas=ESPERAS_PADRAO, sessao=None, dormir=time.sleep, relogio=time.monotonic
+    ):
         self.url_base = url_base.rstrip("/")
         self.timeout = timeout
         self.esperas = esperas
         self.sessao = sessao or requests.Session()
         self.dormir = dormir
+        self.relogio = relogio
+        self.prazo = None
         # Contadores gravados em coleta.requisicoes e coleta.erros_http
         self.requisicoes = 0
         self.erros_http = 0
+
+    def definir_orcamento(self, segundos):
+        """A partir daqui, nenhuma chamada comeca depois de passar esse tempo; None tira o limite."""
+        self.prazo = None if segundos is None else self.relogio() + segundos
+
+    def _conferir_orcamento(self):
+        if self.prazo is not None and self.relogio() >= self.prazo:
+            raise TempoEsgotado("Orcamento de tempo esgotado: o resto fica para a proxima coleta")
 
     def _chamar(self, url, params=None):
         """Faz a chamada e devolve o JSON; repete em 429, 5xx, timeout e queda de conexao."""
@@ -34,6 +50,7 @@ class ClienteCamara:
         for tentativa in range(len(self.esperas) + 1):
             if tentativa:
                 self.dormir(self.esperas[tentativa - 1])
+            self._conferir_orcamento()
             self.requisicoes += 1
             try:
                 resposta = self.sessao.get(

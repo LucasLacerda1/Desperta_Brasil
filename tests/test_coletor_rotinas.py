@@ -247,10 +247,146 @@ def test_horaria_grava_tudo_na_ordem(base, api, cliente):
     _votacao(api)
     antes = len(_coletas(base))
     rotinas.horaria(cliente, HOJE)
-    assert _recursos(base)[antes:] == ["proposicoes", "eventos", "votacoes"]
+    assert _recursos(base)[antes:] == ["votacoes", "eventos", "proposicoes"]
     assert all(coleta.status == "ok" for coleta in _coletas(base))
     assert base.session.get(Votacao, ID_VOTACAO) is not None
     assert len(base.session.scalars(base.select(PautaItem)).all()) == 3
+
+
+# ======================================================
+# DECISAO 14.2: HORARIA
+# ======================================================
+def _horaria_vazia_menos_proposicoes(api):
+    _proposicao(api)
+    api.responder("eventos", envelope([]))
+    api.responder("votacoes", envelope([]))
+
+
+def _conferida_ha(db, horas):
+    db.session.get(Proposicao, ID_PROPOSICAO).sincronizado_em = datetime.now(timezone.utc).replace(
+        tzinfo=None
+    ) - timedelta(hours=horas)
+    db.session.commit()
+
+
+def _chamadas_do_detalhe(api):
+    return api.caminhos_chamados().count(f"proposicoes/{ID_PROPOSICAO}")
+
+
+def test_horaria_pula_proposicao_conferida_ha_menos_de_6_horas(base, api, cliente):
+    _horaria_vazia_menos_proposicoes(api)
+    rotinas.horaria(cliente, HOJE)
+    assert _chamadas_do_detalhe(api) == 1
+    _conferida_ha(base, 5)
+
+    rotinas.horaria(cliente, HOJE)
+
+    assert _chamadas_do_detalhe(api) == 1
+    aviso = base.session.scalars(
+        base.select(LogSistema).where(LogSistema.acao == "proposicoes_ja_conferidas").order_by(LogSistema.id.desc())
+    ).first()
+    assert aviso.descricao == "1 de 1 puladas"
+
+
+def test_horaria_confere_de_novo_depois_de_6_horas(base, api, cliente):
+    _horaria_vazia_menos_proposicoes(api)
+    rotinas.horaria(cliente, HOJE)
+    _conferida_ha(base, 7)
+    rotinas.horaria(cliente, HOJE)
+    assert _chamadas_do_detalhe(api) == 2
+
+
+def test_horaria_nao_pula_proposicao_pendente(base, api, cliente):
+    _horaria_vazia_menos_proposicoes(api)
+    rotinas.horaria(cliente, HOJE)
+    base.session.get(Proposicao, ID_PROPOSICAO).filhos_sincronizados_em = None
+    base.session.commit()
+    rotinas.horaria(cliente, HOJE)
+    assert _chamadas_do_detalhe(api) == 2
+    assert base.session.get(Proposicao, ID_PROPOSICAO).filhos_sincronizados_em is not None
+
+
+def test_diaria_confere_mesmo_o_que_a_horaria_pularia(base, api, cliente):
+    _horaria_vazia_menos_proposicoes(api)
+    rotinas.horaria(cliente, HOJE)
+    rotinas.diaria(cliente, HOJE)
+    assert _chamadas_do_detalhe(api) == 2
+
+
+class RelogioFalso:
+    """Cada leitura avanca o tempo: permite acabar o orcamento num ponto exato da rotina."""
+
+    def __init__(self, passo):
+        self.agora = 0
+        self.passo = passo
+
+    def __call__(self):
+        self.agora += self.passo
+        return self.agora
+
+
+def _status_por_recurso(db, antes):
+    return [(coleta.recurso, coleta.status, coleta.mensagem_erro) for coleta in _coletas(db)[antes:]]
+
+
+def test_horaria_para_no_orcamento_e_fecha_como_parcial(base, api, cliente):
+    _proposicao(api)
+    _evento(api)
+    _votacao(api)
+    antes = len(_coletas(base))
+    # 1 leitura para definir o prazo e 1 por chamada: passam a lista e o detalhe; os votos ja nao
+    cliente.relogio = RelogioFalso(rotinas.ORCAMENTO_HORARIA_SEGUNDOS * 0.4)
+
+    rotinas.horaria(cliente, HOJE)
+
+    mensagem = "Orcamento de tempo esgotado: o resto fica para a proxima coleta"
+    assert _status_por_recurso(base, antes) == [
+        ("votacoes", "parcial", mensagem),
+        ("eventos", "parcial", mensagem),
+        ("proposicoes", "parcial", mensagem),
+    ]
+    assert api.caminhos_chamados()[-1] == f"votacoes/{ID_VOTACAO}"
+    # A votacao parou no meio: foi desfeita, e nao ficou gravada sem os votos
+    assert base.session.get(Votacao, ID_VOTACAO) is None
+    assert base.session.scalar(base.select(LogSistema).where(LogSistema.acao == "tempo_esgotado")).nivel == "aviso"
+
+
+def test_horaria_termina_o_que_cabe_no_orcamento_e_deixa_as_proposicoes(base, api, cliente):
+    api.responder("votacoes", envelope([]))
+    api.responder("proposicoes", lambda params: pytest.fail("proposicoes nao deveriam ser chamadas"))
+    relogio = RelogioFalso(0)
+    cliente.relogio = relogio
+
+    def eventos_que_gastam_o_orcamento(params):
+        relogio.agora = rotinas.ORCAMENTO_HORARIA_SEGUNDOS
+        return envelope([])
+
+    api.responder("eventos", eventos_que_gastam_o_orcamento)
+    antes = len(_coletas(base))
+
+    rotinas.horaria(cliente, HOJE)
+
+    assert [(recurso, status) for recurso, status, _ in _status_por_recurso(base, antes)] == [
+        ("votacoes", "ok"),
+        ("eventos", "ok"),
+        ("proposicoes", "parcial"),
+    ]
+
+
+def test_orcamento_nao_fica_valendo_depois_da_horaria(base, api, cliente):
+    api.responder("proposicoes", envelope([]))
+    api.responder("eventos", envelope([]))
+    api.responder("votacoes", envelope([]))
+    rotinas.horaria(cliente, HOJE)
+    assert cliente.prazo is None
+
+
+def test_comando_horaria_com_orcamento_esgotado_termina_e_libera_a_trava(comandos, db, api, monkeypatch):
+    monkeypatch.setattr(rotinas, "ORCAMENTO_HORARIA_SEGUNDOS", 0)
+    resultado = comandos.invoke(args=["coletar", "horaria"])
+    assert resultado.exit_code == 0, resultado.output
+    assert api.chamadas == []
+    assert not os.path.exists(comandos.caminho_trava)
 
 
 def test_diaria_proposicoes_de_3_dias_e_pendentes(base, api, cliente):

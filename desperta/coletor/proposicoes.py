@@ -156,7 +156,26 @@ def _ids_pendentes(limite, tipos, ja_vistos):
     return list(db.session.scalars(consulta))
 
 
-def coletar(cliente, inicio=None, fim=None, sigla_tipo=None, tipo="incremental", limite_pendentes=LIMITE_PENDENTES):
+def _ja_conferidas(ids, intervalo):
+    """Decisao 14.2: conferidas ha pouco. Pendente nao entra: ainda faltam os filhos dela."""
+    corte = agora_utc() - intervalo
+    consulta = db.select(Proposicao.id).where(
+        Proposicao.id.in_(ids),
+        Proposicao.sincronizado_em >= corte,
+        Proposicao.filhos_sincronizados_em.is_not(None),
+    )
+    return set(db.session.scalars(consulta))
+
+
+def coletar(
+    cliente,
+    inicio=None,
+    fim=None,
+    sigla_tipo=None,
+    tipo="incremental",
+    limite_pendentes=LIMITE_PENDENTES,
+    pular_conferidas_ha=None,
+):
     if inicio is None or fim is None:
         inicio, fim = janela_incremental("proposicoes")
     tipos = sigla_tipo.split(",") if sigla_tipo else current_app.config["TIPOS_ACOMPANHADOS"]
@@ -173,6 +192,10 @@ def coletar(cliente, inicio=None, fim=None, sigla_tipo=None, tipo="incremental",
         with Execucao(cliente, "proposicoes", tipo, "/proposicoes", params, inicio_janela, fim_janela) as execucao:
             referencias = Referencias(execucao)
             ids = [item["id"] for item in cliente.paginar("proposicoes", params)]
+            if pular_conferidas_ha is not None:
+                conferidas = _ja_conferidas(ids, pular_conferidas_ha)
+                execucao.log("info", "proposicoes_ja_conferidas", f"{len(conferidas)} de {len(ids)} puladas")
+                ids = [id_proposicao for id_proposicao in ids if id_proposicao not in conferidas]
             for id_proposicao in ids + _ids_pendentes(limite_pendentes, tipos, ids):
                 execucao.processar(
                     "proposicao",

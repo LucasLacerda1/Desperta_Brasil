@@ -19,6 +19,9 @@ DIAS_DIARIA = 3
 DIAS_SEMANAL = 30
 # A horaria tem meta de 20 minutos: pendentes ficam para a diaria
 LIMITE_EVENTOS_HORARIA = 20
+# Decisao 14.2: a diaria da madrugada confere de novo o que a horaria pular
+ORCAMENTO_HORARIA_SEGUNDOS = 20 * 60
+RECONFERIR_HORARIA_DEPOIS = timedelta(hours=6)
 
 
 def base(cliente, id_legislatura=None):
@@ -33,12 +36,19 @@ def base(cliente, id_legislatura=None):
 
 
 def horaria(cliente, hoje=None):
-    """Proposicoes dos tipos acompanhados com janela de 1 dia; eventos e votacoes de ontem e hoje."""
+    """
+    Votacoes e eventos de ontem e hoje; por ultimo, proposicoes dos tipos acompanhados com janela de 1 dia.
+    Ao fim do orcamento, a coleta em andamento e as seguintes fecham como parcial, sem itens.
+    """
     hoje = hoje or date.today()
     ontem = hoje - timedelta(days=1)
-    proposicoes.coletar(cliente, hoje, hoje, limite_pendentes=0)
-    eventos.coletar(cliente, ontem, hoje, limite_pendentes=LIMITE_EVENTOS_HORARIA)
-    votacoes.coletar(cliente, ontem, hoje)
+    cliente.definir_orcamento(ORCAMENTO_HORARIA_SEGUNDOS)
+    try:
+        votacoes.coletar(cliente, ontem, hoje)
+        eventos.coletar(cliente, ontem, hoje, limite_pendentes=LIMITE_EVENTOS_HORARIA)
+        proposicoes.coletar(cliente, hoje, hoje, limite_pendentes=0, pular_conferidas_ha=RECONFERIR_HORARIA_DEPOIS)
+    finally:
+        cliente.definir_orcamento(None)
 
 
 def diaria(cliente, hoje=None):
