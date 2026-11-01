@@ -1,0 +1,46 @@
+{
+ "dados": {
+  "id": 414367,
+  "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/414367",
+  "siglaTipo": "PEC",
+  "codTipo": 136,
+  "numero": 300,
+  "ano": 2008,
+  "ementa": "Altera a redação do § 9º do art. 144 da Constituição Federal.",
+  "dataApresentacao": "2008-11-04T18:36",
+  "uriOrgaoNumerador": "https://dadosabertos.camara.leg.br/api/v2/orgaos/2003",
+  "statusProposicao": {
+   "dataHora": "2026-04-15T14:21",
+   "sequencia": 366,
+   "siglaOrgao": "MESA",
+   "uriOrgao": "https://dadosabertos.camara.leg.br/api/v2/orgaos/4",
+   "uriUltimoRelator": "https://dadosabertos.camara.leg.br/api/v2/deputados/149327",
+   "regime": "Especial (Art. 202 c/c 191, I, RICD)",
+   "descricaoTramitacao": "Apresentação de Requerimento",
+   "codTipoTramitacao": "194",
+   "descricaoSituacao": "Tramitando em Conjunto",
+   "codSituacao": 925,
+   "despacho": "Apresentação do REQ n. 2102/2026 (Requerimento de Inclusão de Matéria na Ordem do Dia), pelo Deputado Cabo Gilberto Silva (PL/PB), que \"Requer urgência para a inclusão na Ordem do Dia da PEC n° 300, de 2008 e da PEC 446, de 2009 - que institui o piso salarial nacional para os servidores policiais e do Corpo de Bombeiros\".",
+   "url": "https://www.camara.leg.br/proposicoesWeb/prop_mostrarintegra?codteor=3113985",
+   "ambito": "Regimental",
+   "apreciacao": "Proposição Sujeita à Apreciação do Plenário"
+  },
+  "uriAutores": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/414367/autores",
+  "descricaoTipo": "Proposta de Emenda à Constituição",
+  "ementaDetalhada": "Estabelece que a remuneração dos Policiais Militares dos estados não poderá ser inferior à da Polícia Militar do Distrito Federal, aplicando-se também aos integrantes do Corpo de Bombeiros Militar e aos inativos.",
+  "keywords": "Segurança Pública, proibição, remuneração, Polícia Militar, estados, inferioridade, Policial Militar, Distrito Federal, extensão, Corpo de Bombeiro Militar, inativo, equiparação, isonomia salarial.",
+  "uriPropPrincipal": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/463451",
+  "uriPropAnterior": null,
+  "uriPropPosterior": null,
+  "urlInteiroTeor": "https://www.camara.leg.br/proposicoesWeb/prop_mostrarintegra?codteor=610200",
+  "urnFinal": null,
+  "texto": null,
+  "justificativa": null
+ },
+ "links": [
+  {
+   "rel": "self",
+   "href": "https://dadosabertos.camara.leg.br/api/v2/proposicao"
+  }
+ ]
+}

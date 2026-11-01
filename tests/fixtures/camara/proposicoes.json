@@ -1,0 +1,20 @@
+{
+ "dados": [
+  {
+   "id": 414367,
+   "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/414367",
+   "siglaTipo": "PEC",
+   "codTipo": 136,
+   "numero": 300,
+   "ano": 2008,
+   "ementa": "Altera a redação do § 9º do art. 144 da Constituição Federal.",
+   "dataApresentacao": "2008-11-04T18:36"
+  }
+ ],
+ "links": [
+  {
+   "rel": "self",
+   "href": "https://dadosabertos.camara.leg.br/api/v2/proposicoes"
+  }
+ ]
+}

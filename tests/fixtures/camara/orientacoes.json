@@ -1,0 +1,31 @@
+{
+ "dados": [
+  {
+   "orientacaoVoto": "Não",
+   "codTipoLideranca": "B",
+   "siglaPartidoBloco": "Bl MdbPsdRepPode",
+   "codPartidoBloco": null,
+   "uriPartidoBloco": null
+  },
+  {
+   "orientacaoVoto": "Sim",
+   "codTipoLideranca": "P",
+   "siglaPartidoBloco": "NOVO",
+   "codPartidoBloco": 37901,
+   "uriPartidoBloco": "https://dadosabertos.camara.leg.br/api/v2/partidos/37901"
+  },
+  {
+   "orientacaoVoto": "Liberado",
+   "codTipoLideranca": "B",
+   "siglaPartidoBloco": "Governo",
+   "codPartidoBloco": null,
+   "uriPartidoBloco": null
+  }
+ ],
+ "links": [
+  {
+   "rel": "self",
+   "href": "https://dadosabertos.camara.leg.br/api/v2/orientacoes"
+  }
+ ]
+}

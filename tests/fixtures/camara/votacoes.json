@@ -1,0 +1,23 @@
+{
+ "dados": [
+  {
+   "id": "2422697-83",
+   "uri": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2422697-83",
+   "data": "2024-05-28",
+   "dataHoraRegistro": "2024-05-28T22:21:08",
+   "siglaOrgao": "PLEN",
+   "uriOrgao": "https://dadosabertos.camara.leg.br/api/v2/orgaos/180",
+   "uriEvento": "https://dadosabertos.camara.leg.br/api/v2/eventos/73144",
+   "proposicaoObjeto": null,
+   "uriProposicaoObjeto": null,
+   "descricao": "Rejeitada a Emenda de Plenário n° 7. Sim: 187; não: 202; abstenção: 1; total: 390.",
+   "aprovacao": 0
+  }
+ ],
+ "links": [
+  {
+   "rel": "self",
+   "href": "https://dadosabertos.camara.leg.br/api/v2/votacoes"
+  }
+ ]
+}

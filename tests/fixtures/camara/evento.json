@@ -1,0 +1,43 @@
+{
+ "dados": {
+  "uriDeputados": null,
+  "uriConvidados": null,
+  "fases": null,
+  "id": 73144,
+  "uri": "https://dadosabertos.camara.leg.br/api/v2/eventos/73144",
+  "dataHoraInicio": "2024-05-28T14:00",
+  "dataHoraFim": "2024-05-28T23:32",
+  "situacao": "Encerrada",
+  "descricaoTipo": "Sessão Deliberativa",
+  "descricao": "Sessão Deliberativa Extraordinária (semipresencial)\r\n",
+  "localExterno": null,
+  "orgaos": [
+   {
+    "id": 180,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/orgaos/180",
+    "sigla": "PLEN",
+    "nome": "Plenário",
+    "apelido": "Plenário",
+    "codTipoOrgao": 26,
+    "tipoOrgao": "Plenário Virtual",
+    "nomePublicacao": "Plenário",
+    "nomeResumido": "Plenário"
+   }
+  ],
+  "requerimentos": [],
+  "localCamara": {
+   "nome": "Plenário da Câmara dos Deputados",
+   "predio": null,
+   "sala": null,
+   "andar": null
+  },
+  "urlDocumentoPauta": "https://dadosabertos.camara.leg.br/api/v2/eventos/73144/pauta",
+  "urlRegistro": "https://www.youtube.com/watch?v=qXTC-kwz4_M"
+ },
+ "links": [
+  {
+   "rel": "self",
+   "href": "https://dadosabertos.camara.leg.br/api/v2/evento"
+  }
+ ]
+}

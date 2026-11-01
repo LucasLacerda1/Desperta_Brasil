@@ -1,0 +1,1853 @@
+{
+ "dados": {
+  "id": "2422697-83",
+  "uri": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2422697-83",
+  "data": "2024-05-28",
+  "dataHoraRegistro": "2024-05-28T22:21:08",
+  "siglaOrgao": "PLEN",
+  "uriOrgao": "https://dadosabertos.camara.leg.br/api/v2/orgaos/180",
+  "idOrgao": 180,
+  "uriEvento": "https://dadosabertos.camara.leg.br/api/v2/eventos/73144",
+  "idEvento": 73144,
+  "descricao": "Rejeitada a Emenda de Plenário n° 7. Sim: 187; não: 202; abstenção: 1; total: 390.",
+  "aprovacao": 0,
+  "descUltimaAberturaVotacao": "Votação do DTQ 23: PSB: Emenda de Plenário n° 7 (art. 161, II).",
+  "dataHoraUltimaAberturaVotacao": "2024-05-28T22:08:54",
+  "ultimaApresentacaoProposicao": {
+   "dataHoraRegistro": "2024-05-28T21:16:59",
+   "descricao": "Parecer às Emendas de Plenário proferido pelo relator, Dep. Átila Lira (PP-PI), pela Comissão Especial, que conclui pela adequação financeira e orçamentária, constitucionalidade, juridicidade e boa técnica legislativa de todas as Emendas de Plenário com apoiamento regimental (Emendas nºs 13 a 77); e, no mérito, pela rejeição dessas.",
+   "uriProposicaoCitada": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2437127"
+  },
+  "efeitosRegistrados": [],
+  "objetosPossiveis": [
+   {
+    "id": 2437118,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2437118",
+    "siglaTipo": "RPDR",
+    "codTipo": 889,
+    "numero": 28,
+    "ano": 2024,
+    "ementa": "Requerimento Procedimental Genérico - PL 914/2024",
+    "dataApresentacao": "2024-05-28T21:12"
+   },
+   {
+    "id": 2437119,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2437119",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 54,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Destaque de Emenda - PL 914/2024",
+    "dataApresentacao": "2024-05-28T21:10"
+   },
+   {
+    "id": 2437116,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2437116",
+    "siglaTipo": "DTQ",
+    "codTipo": 1011,
+    "numero": 23,
+    "ano": 0,
+    "ementa": "Destaque de Emenda - PL 914/2024",
+    "dataApresentacao": "2024-05-28T21:10"
+   },
+   {
+    "id": 2437099,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2437099",
+    "siglaTipo": "RPDR",
+    "codTipo": 889,
+    "numero": 27,
+    "ano": 2024,
+    "ementa": "Requerimento Procedimental Genérico - PL 914/2024",
+    "dataApresentacao": "2024-05-28T21:08"
+   },
+   {
+    "id": 2437089,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2437089",
+    "siglaTipo": "PRLE",
+    "codTipo": 1001,
+    "numero": 1,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-28T21:02"
+   },
+   {
+    "id": 2437088,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2437088",
+    "siglaTipo": "RPDR",
+    "codTipo": 889,
+    "numero": 26,
+    "ano": 2024,
+    "ementa": "Requerimento Procedimental Genérico - PL 914/2024",
+    "dataApresentacao": "2024-05-28T20:57"
+   },
+   {
+    "id": 2437083,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2437083",
+    "siglaTipo": "RPDR",
+    "codTipo": 889,
+    "numero": 25,
+    "ano": 2024,
+    "ementa": "Requerimento Procedimental Genérico - PL 914/2024",
+    "dataApresentacao": "2024-05-28T20:48"
+   },
+   {
+    "id": 2437066,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2437066",
+    "siglaTipo": "SBT",
+    "codTipo": 255,
+    "numero": 1,
+    "ano": 0,
+    "ementa": "",
+    "dataApresentacao": "2024-05-28T20:41"
+   },
+   {
+    "id": 2437065,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2437065",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 53,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal - PL 914/2024",
+    "dataApresentacao": "2024-05-28T20:40"
+   },
+   {
+    "id": 2437063,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2437063",
+    "siglaTipo": "RPDR",
+    "codTipo": 889,
+    "numero": 23,
+    "ano": 2024,
+    "ementa": "Requerimento Procedimental Genérico - PL 914/2024",
+    "dataApresentacao": "2024-05-28T20:39"
+   },
+   {
+    "id": 2437058,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2437058",
+    "siglaTipo": "RPD",
+    "codTipo": 1000,
+    "numero": 52,
+    "ano": 0,
+    "ementa": "Requerimento de Encerramento da Discussão e do Encaminhamento da Votação - PL 914/2024",
+    "dataApresentacao": "2024-05-28T20:38"
+   },
+   {
+    "id": 2437055,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2437055",
+    "siglaTipo": "RPDR",
+    "codTipo": 889,
+    "numero": 22,
+    "ano": 2024,
+    "ementa": "Requerimento Procedimental Genérico - PL 914/2024",
+    "dataApresentacao": "2024-05-28T20:33"
+   },
+   {
+    "id": 2437054,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2437054",
+    "siglaTipo": "RPDR",
+    "codTipo": 889,
+    "numero": 21,
+    "ano": 2024,
+    "ementa": "Requerimento Procedimental Genérico - PL 914/2024",
+    "dataApresentacao": "2024-05-28T20:27"
+   },
+   {
+    "id": 2437023,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2437023",
+    "siglaTipo": "RPDR",
+    "codTipo": 889,
+    "numero": 20,
+    "ano": 2024,
+    "ementa": "Requerimento Procedimental Genérico - PL 914/2024",
+    "dataApresentacao": "2024-05-28T19:47"
+   },
+   {
+    "id": 2437033,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2437033",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 51,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Destaque para Votação em Separado - PL 914/2024",
+    "dataApresentacao": "2024-05-28T19:47"
+   },
+   {
+    "id": 2437031,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2437031",
+    "siglaTipo": "DTQ",
+    "codTipo": 846,
+    "numero": 22,
+    "ano": 0,
+    "ementa": "Destaque para Votação em Separado - PL 914/2024",
+    "dataApresentacao": "2024-05-28T19:47"
+   },
+   {
+    "id": 2437027,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2437027",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 77,
+    "ano": 0,
+    "ementa": "Suprimam-se o art. 32 e inciso II do art. 33 do substitutivo apresentado pela Comissão Especial destinada a proferir parecer ao PL 914, de 2024.",
+    "dataApresentacao": "2024-05-28T19:45"
+   },
+   {
+    "id": 2437030,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2437030",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 50,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Requerimento de Retirada de Matéria da Pauta - PL 914/2024",
+    "dataApresentacao": "2024-05-28T19:43"
+   },
+   {
+    "id": 2437028,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2437028",
+    "siglaTipo": "RPD",
+    "codTipo": 328,
+    "numero": 49,
+    "ano": 0,
+    "ementa": "Requerimento de Retirada de Matéria da Pauta - PL 914/2024",
+    "dataApresentacao": "2024-05-28T19:43"
+   },
+   {
+    "id": 2437016,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2437016",
+    "siglaTipo": "RPDR",
+    "codTipo": 889,
+    "numero": 19,
+    "ano": 2024,
+    "ementa": "Requerimento Procedimental Genérico - PL 914/2024",
+    "dataApresentacao": "2024-05-28T19:40"
+   },
+   {
+    "id": 2437014,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2437014",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 48,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Destaque para Votação em Separado - PL 914/2024",
+    "dataApresentacao": "2024-05-28T19:22"
+   },
+   {
+    "id": 2437011,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2437011",
+    "siglaTipo": "DTQ",
+    "codTipo": 846,
+    "numero": 21,
+    "ano": 0,
+    "ementa": "Destaque para Votação em Separado - PL 914/2024",
+    "dataApresentacao": "2024-05-28T19:22"
+   },
+   {
+    "id": 2437012,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2437012",
+    "siglaTipo": "PRLP",
+    "codTipo": 891,
+    "numero": 5,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-28T19:22"
+   },
+   {
+    "id": 2437010,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2437010",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 76,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação – Programa Mover",
+    "dataApresentacao": "2024-05-28T19:21"
+   },
+   {
+    "id": 2437000,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2437000",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 47,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Requerimento de Retirada de Matéria da Pauta - PL 914/2024",
+    "dataApresentacao": "2024-05-28T18:46"
+   },
+   {
+    "id": 2436998,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2436998",
+    "siglaTipo": "RPD",
+    "codTipo": 328,
+    "numero": 46,
+    "ano": 0,
+    "ementa": "Requerimento de Retirada de Matéria da Pauta - PL 914/2024",
+    "dataApresentacao": "2024-05-28T18:46"
+   },
+   {
+    "id": 2436994,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2436994",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 45,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Destaque de Emenda - PL 914/2024",
+    "dataApresentacao": "2024-05-28T18:33"
+   },
+   {
+    "id": 2436993,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2436993",
+    "siglaTipo": "DTQ",
+    "codTipo": 1011,
+    "numero": 20,
+    "ano": 0,
+    "ementa": "Destaque de Emenda - PL 914/2024",
+    "dataApresentacao": "2024-05-28T18:33"
+   },
+   {
+    "id": 2436992,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2436992",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 75,
+    "ano": 0,
+    "ementa": "Acrescenta-se à Seção I ao capítulo III, “Da Tributação e dos veículos sustentáveis”, nos seguintes termos e onde couber, renumerando-se os demais artigos:",
+    "dataApresentacao": "2024-05-28T18:23"
+   },
+   {
+    "id": 2436968,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2436968",
+    "siglaTipo": "PRLP",
+    "codTipo": 891,
+    "numero": 4,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-28T17:06"
+   },
+   {
+    "id": 2436963,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2436963",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 74,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação – Programa Mover.",
+    "dataApresentacao": "2024-05-28T16:48"
+   },
+   {
+    "id": 2436958,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2436958",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 73,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-28T16:36"
+   },
+   {
+    "id": 2437056,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2437056",
+    "siglaTipo": "PPP",
+    "codTipo": 192,
+    "numero": 1,
+    "ano": 0,
+    "ementa": "Parecer proferido em Plenário pelo relator, Dep. Átila Lira (PP-PI), pela Comissão Especial, que conclui pela compatibilidade e adequação financeira e orçamentária do Projeto e das Emendas de Plenário nºs 1 a 12; pela constitucionalidade, juridicidade e boa técnica legislativa do Projeto e das Emendas de Plenário nºs 1 a 12; e, no mérito, pela aprovação do Projeto e da Emenda de Plenário nº 4, na forma do Substitutivo, e pela rejeição das Emendas de Plenário nºs 1 a 3, e 5 a 12.",
+    "dataApresentacao": "2024-05-28T14:00"
+   },
+   {
+    "id": 2437127,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2437127",
+    "siglaTipo": "PEP",
+    "codTipo": 442,
+    "numero": 1,
+    "ano": 0,
+    "ementa": "Parecer às Emendas de Plenário proferido pelo relator, Dep. Átila Lira (PP-PI), pela Comissão Especial, que conclui pela adequação financeira e orçamentária, constitucionalidade, juridicidade e boa técnica legislativa de todas as Emendas de Plenário com apoiamento regimental (Emendas nºs 13 a 77); e, no mérito, pela rejeição dessas.",
+    "dataApresentacao": "2024-05-28T14:00"
+   },
+   {
+    "id": 2437211,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2437211",
+    "siglaTipo": "RDF",
+    "codTipo": 197,
+    "numero": 1,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação (Programa Mover); estabelece a política de conteúdo local; altera o Decreto-Lei nº 1.804, de 3 de setembro de 1980; e revoga dispositivos da Lei nº 13.755, de 10 de dezembro de 2018.",
+    "dataApresentacao": "2024-05-28T00:01"
+   },
+   {
+    "id": 2436703,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2436703",
+    "siglaTipo": "DTQ",
+    "codTipo": 1011,
+    "numero": 19,
+    "ano": 0,
+    "ementa": "Destaque de Emenda - PL 914/2024",
+    "dataApresentacao": "2024-05-27T20:51"
+   },
+   {
+    "id": 2436693,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2436693",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 43,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Requerimento de Adiamento da Discussão Matéria Urgente - PL 914/2024",
+    "dataApresentacao": "2024-05-27T20:29"
+   },
+   {
+    "id": 2436688,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2436688",
+    "siglaTipo": "RPD",
+    "codTipo": 892,
+    "numero": 40,
+    "ano": 0,
+    "ementa": "Requerimento de Adiamento da Discussão Matéria Urgente - PL 914/2024",
+    "dataApresentacao": "2024-05-27T20:29"
+   },
+   {
+    "id": 2436694,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2436694",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 44,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Requerimento de Adiamento da Votação Matéria Urgente - PL 914/2024",
+    "dataApresentacao": "2024-05-27T20:28"
+   },
+   {
+    "id": 2436692,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2436692",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 42,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Requerimento de Retirada de Matéria da Pauta - PL 914/2024",
+    "dataApresentacao": "2024-05-27T20:28"
+   },
+   {
+    "id": 2436690,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2436690",
+    "siglaTipo": "RPD",
+    "codTipo": 467,
+    "numero": 41,
+    "ano": 0,
+    "ementa": "Requerimento de Adiamento da Votação Matéria Urgente - PL 914/2024",
+    "dataApresentacao": "2024-05-27T20:28"
+   },
+   {
+    "id": 2436687,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2436687",
+    "siglaTipo": "RPD",
+    "codTipo": 328,
+    "numero": 39,
+    "ano": 0,
+    "ementa": "Requerimento de Retirada de Matéria da Pauta - PL 914/2024",
+    "dataApresentacao": "2024-05-27T20:28"
+   },
+   {
+    "id": 2436681,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2436681",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 38,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Requerimento de Retirada de Matéria da Pauta - PL 914/2024",
+    "dataApresentacao": "2024-05-27T20:23"
+   },
+   {
+    "id": 2436680,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2436680",
+    "siglaTipo": "RPD",
+    "codTipo": 328,
+    "numero": 37,
+    "ano": 0,
+    "ementa": "Requerimento de Retirada de Matéria da Pauta - PL 914/2024",
+    "dataApresentacao": "2024-05-27T20:23"
+   },
+   {
+    "id": 2436678,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2436678",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 72,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-27T20:20"
+   },
+   {
+    "id": 2436668,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2436668",
+    "siglaTipo": "RPDR",
+    "codTipo": 889,
+    "numero": 18,
+    "ano": 2024,
+    "ementa": "Requerimento Procedimental Genérico - PL 914/2024",
+    "dataApresentacao": "2024-05-27T19:36"
+   },
+   {
+    "id": 2435970,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2435970",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 36,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Destaque para Votação em Separado - PL 914/2024",
+    "dataApresentacao": "2024-05-22T19:52"
+   },
+   {
+    "id": 2435969,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2435969",
+    "siglaTipo": "DTQ",
+    "codTipo": 846,
+    "numero": 18,
+    "ano": 0,
+    "ementa": "Destaque para Votação em Separado - PL 914/2024",
+    "dataApresentacao": "2024-05-22T19:52"
+   },
+   {
+    "id": 2435968,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2435968",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 35,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Destaque para Votação em Separado - PL 914/2024",
+    "dataApresentacao": "2024-05-22T19:52"
+   },
+   {
+    "id": 2435967,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2435967",
+    "siglaTipo": "DTQ",
+    "codTipo": 846,
+    "numero": 17,
+    "ano": 0,
+    "ementa": "Destaque para Votação em Separado - PL 914/2024",
+    "dataApresentacao": "2024-05-22T19:52"
+   },
+   {
+    "id": 2435964,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2435964",
+    "siglaTipo": "RPDR",
+    "codTipo": 889,
+    "numero": 16,
+    "ano": 2024,
+    "ementa": "Requerimento Procedimental Genérico - PL 914/2024",
+    "dataApresentacao": "2024-05-22T19:50"
+   },
+   {
+    "id": 2435937,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2435937",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 34,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Destaque para Votação em Separado - PL 914/2024",
+    "dataApresentacao": "2024-05-22T19:22"
+   },
+   {
+    "id": 2435936,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2435936",
+    "siglaTipo": "DTQ",
+    "codTipo": 846,
+    "numero": 16,
+    "ano": 0,
+    "ementa": "Destaque para Votação em Separado - PL 914/2024",
+    "dataApresentacao": "2024-05-22T19:22"
+   },
+   {
+    "id": 2435925,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2435925",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 71,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação – Programa Mover.",
+    "dataApresentacao": "2024-05-22T18:37"
+   },
+   {
+    "id": 2435923,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2435923",
+    "siglaTipo": "RPDR",
+    "codTipo": 889,
+    "numero": 15,
+    "ano": 2024,
+    "ementa": "Requerimento Procedimental Genérico - PL 914/2024",
+    "dataApresentacao": "2024-05-22T18:28"
+   },
+   {
+    "id": 2435922,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2435922",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 33,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Destaque de Emenda - PL 914/2024",
+    "dataApresentacao": "2024-05-22T18:15"
+   },
+   {
+    "id": 2435907,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2435907",
+    "siglaTipo": "DTQ",
+    "codTipo": 1011,
+    "numero": 15,
+    "ano": 0,
+    "ementa": "Destaque de Emenda - PL 914/2024",
+    "dataApresentacao": "2024-05-22T17:41"
+   },
+   {
+    "id": 2435903,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2435903",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 32,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Requerimento de Retirada de Matéria da Pauta - PL 914/2024",
+    "dataApresentacao": "2024-05-22T17:39"
+   },
+   {
+    "id": 2435902,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2435902",
+    "siglaTipo": "RPD",
+    "codTipo": 328,
+    "numero": 31,
+    "ano": 0,
+    "ementa": "Requerimento de Retirada de Matéria da Pauta - PL 914/2024",
+    "dataApresentacao": "2024-05-22T17:39"
+   },
+   {
+    "id": 2435890,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2435890",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 70,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa MOVER.",
+    "dataApresentacao": "2024-05-22T17:28"
+   },
+   {
+    "id": 2435887,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2435887",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 30,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Destaque de Emenda - PL 914/2024",
+    "dataApresentacao": "2024-05-22T17:26"
+   },
+   {
+    "id": 2435885,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2435885",
+    "siglaTipo": "DTQ",
+    "codTipo": 1011,
+    "numero": 14,
+    "ano": 0,
+    "ementa": "Destaque de Emenda - PL 914/2024",
+    "dataApresentacao": "2024-05-22T17:26"
+   },
+   {
+    "id": 2435845,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2435845",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 69,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-22T15:40"
+   },
+   {
+    "id": 2435274,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2435274",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 68,
+    "ano": 0,
+    "ementa": "Emenda de plenário PL 914/24",
+    "dataApresentacao": "2024-05-21T18:45"
+   },
+   {
+    "id": 2435204,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2435204",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 29,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Destaque de Emenda - PL 914/2024",
+    "dataApresentacao": "2024-05-21T17:07"
+   },
+   {
+    "id": 2435203,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2435203",
+    "siglaTipo": "DTQ",
+    "codTipo": 1011,
+    "numero": 13,
+    "ano": 0,
+    "ementa": "Destaque de Emenda - PL 914/2024",
+    "dataApresentacao": "2024-05-21T17:07"
+   },
+   {
+    "id": 2435201,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2435201",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 67,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-21T17:04"
+   },
+   {
+    "id": 2435196,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2435196",
+    "siglaTipo": "RPD",
+    "codTipo": 328,
+    "numero": 27,
+    "ano": 0,
+    "ementa": "Requerimento de Retirada de Matéria da Pauta - PL 914/2024",
+    "dataApresentacao": "2024-05-21T16:55"
+   },
+   {
+    "id": 2435198,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2435198",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 28,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal",
+    "dataApresentacao": "2024-05-21T16:55"
+   },
+   {
+    "id": 2435187,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2435187",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 66,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-21T16:34"
+   },
+   {
+    "id": 2435183,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2435183",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 26,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Requerimento de Retirada de Matéria da Pauta - PL 914/2024",
+    "dataApresentacao": "2024-05-21T16:24"
+   },
+   {
+    "id": 2435181,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2435181",
+    "siglaTipo": "RPD",
+    "codTipo": 328,
+    "numero": 25,
+    "ano": 0,
+    "ementa": "Requerimento de Retirada de Matéria da Pauta - PL 914/2024",
+    "dataApresentacao": "2024-05-21T16:24"
+   },
+   {
+    "id": 2435165,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2435165",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 65,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover. EMENDA de plenário Nº Suprima-se o inciso II do artigo 31 do Substitutivo apresentado e acrescente-se o texto abaixo, renumerando-se os demais artigos:",
+    "dataApresentacao": "2024-05-21T16:00"
+   },
+   {
+    "id": 2435166,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2435166",
+    "siglaTipo": "RPDR",
+    "codTipo": 889,
+    "numero": 12,
+    "ano": 2024,
+    "ementa": "Requerimento Procedimental Genérico - PL 914/2024",
+    "dataApresentacao": "2024-05-21T15:59"
+   },
+   {
+    "id": 2434317,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2434317",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 64,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-15T21:01"
+   },
+   {
+    "id": 2434256,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2434256",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 63,
+    "ano": 0,
+    "ementa": "Modifique-se os seguintes dispositivos do Substitutivo apresentado ao PL 914/2024, para que passem a vigorar com a redação a seguir:",
+    "dataApresentacao": "2024-05-15T19:32"
+   },
+   {
+    "id": 2434229,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2434229",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 24,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Requerimento de Retirada de Matéria da Pauta - PL 914/2024",
+    "dataApresentacao": "2024-05-15T18:41"
+   },
+   {
+    "id": 2434226,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2434226",
+    "siglaTipo": "RPD",
+    "codTipo": 328,
+    "numero": 23,
+    "ano": 0,
+    "ementa": "Requerimento de Retirada de Matéria da Pauta - PL 914/2024",
+    "dataApresentacao": "2024-05-15T18:41"
+   },
+   {
+    "id": 2434222,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2434222",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 22,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Requerimento de Retirada de Matéria da Pauta - PL 914/2024",
+    "dataApresentacao": "2024-05-15T18:41"
+   },
+   {
+    "id": 2434218,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2434218",
+    "siglaTipo": "RPD",
+    "codTipo": 328,
+    "numero": 21,
+    "ano": 0,
+    "ementa": "Requerimento de Retirada de Matéria da Pauta - PL 914/2024",
+    "dataApresentacao": "2024-05-15T18:41"
+   },
+   {
+    "id": 2434216,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2434216",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 62,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação – Programa Mover",
+    "dataApresentacao": "2024-05-15T18:39"
+   },
+   {
+    "id": 2434205,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2434205",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 61,
+    "ano": 0,
+    "ementa": "Acrescente-se, onde couber, o seguinte inciso ao art. 20 do Projeto de Lei nº 914, de 2024:",
+    "dataApresentacao": "2024-05-15T18:36"
+   },
+   {
+    "id": 2434204,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2434204",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 60,
+    "ano": 0,
+    "ementa": "Acrescente-se o art. 20-A ao Projeto de Lei nº 914, de 2024",
+    "dataApresentacao": "2024-05-15T18:36"
+   },
+   {
+    "id": 2433687,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2433687",
+    "siglaTipo": "DTQ",
+    "codTipo": 1011,
+    "numero": 12,
+    "ano": 0,
+    "ementa": "Destaque de Emenda - PL 914/2024",
+    "dataApresentacao": "2024-05-14T22:14"
+   },
+   {
+    "id": 2433668,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2433668",
+    "siglaTipo": "RPDR",
+    "codTipo": 889,
+    "numero": 5,
+    "ano": 2024,
+    "ementa": "Requerimento Procedimental Genérico - PL 914/2024",
+    "dataApresentacao": "2024-05-14T20:33"
+   },
+   {
+    "id": 2433665,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2433665",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 20,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Destaque de Emenda - PL 914/2024",
+    "dataApresentacao": "2024-05-14T20:27"
+   },
+   {
+    "id": 2433664,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2433664",
+    "siglaTipo": "DTQ",
+    "codTipo": 1011,
+    "numero": 11,
+    "ano": 0,
+    "ementa": "Destaque de Emenda - PL 914/2024",
+    "dataApresentacao": "2024-05-14T20:27"
+   },
+   {
+    "id": 2433660,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2433660",
+    "siglaTipo": "DTQ",
+    "codTipo": 1011,
+    "numero": 10,
+    "ano": 0,
+    "ementa": "Destaque de Emenda - PL 914/2024",
+    "dataApresentacao": "2024-05-14T20:23"
+   },
+   {
+    "id": 2433659,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2433659",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 59,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-14T20:22"
+   },
+   {
+    "id": 2433651,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2433651",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 58,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação – Programa Mover.",
+    "dataApresentacao": "2024-05-14T20:00"
+   },
+   {
+    "id": 2433636,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2433636",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 19,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Requerimento de Retirada de Matéria da Pauta - PL 914/2024",
+    "dataApresentacao": "2024-05-14T19:33"
+   },
+   {
+    "id": 2433583,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2433583",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 18,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Requerimento de Adiamento da Discussão Matéria Urgente - PL 914/2024",
+    "dataApresentacao": "2024-05-14T19:33"
+   },
+   {
+    "id": 2433579,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2433579",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 17,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Requerimento de Adiamento da Votação Matéria Urgente - PL 914/2024",
+    "dataApresentacao": "2024-05-14T19:33"
+   },
+   {
+    "id": 2433575,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2433575",
+    "siglaTipo": "RPD",
+    "codTipo": 328,
+    "numero": 16,
+    "ano": 0,
+    "ementa": "Requerimento de Retirada de Matéria da Pauta - PL 914/2024",
+    "dataApresentacao": "2024-05-14T19:33"
+   },
+   {
+    "id": 2433571,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2433571",
+    "siglaTipo": "RPD",
+    "codTipo": 467,
+    "numero": 15,
+    "ano": 0,
+    "ementa": "Requerimento de Adiamento da Votação Matéria Urgente - PL 914/2024",
+    "dataApresentacao": "2024-05-14T19:33"
+   },
+   {
+    "id": 2433569,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2433569",
+    "siglaTipo": "RPD",
+    "codTipo": 892,
+    "numero": 14,
+    "ano": 0,
+    "ementa": "Requerimento de Adiamento da Discussão Matéria Urgente - PL 914/2024",
+    "dataApresentacao": "2024-05-14T19:33"
+   },
+   {
+    "id": 2433515,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2433515",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 57,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-14T18:50"
+   },
+   {
+    "id": 2433509,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2433509",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 56,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover",
+    "dataApresentacao": "2024-05-14T18:38"
+   },
+   {
+    "id": 2433507,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2433507",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 55,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover",
+    "dataApresentacao": "2024-05-14T18:38"
+   },
+   {
+    "id": 2433505,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2433505",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 54,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover",
+    "dataApresentacao": "2024-05-14T18:38"
+   },
+   {
+    "id": 2433465,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2433465",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 13,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Requerimento de Retirada de Matéria da Pauta - PL 914/2024",
+    "dataApresentacao": "2024-05-14T17:26"
+   },
+   {
+    "id": 2433461,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2433461",
+    "siglaTipo": "RPD",
+    "codTipo": 328,
+    "numero": 12,
+    "ano": 0,
+    "ementa": "Requerimento de Retirada de Matéria da Pauta - PL 914/2024",
+    "dataApresentacao": "2024-05-14T17:26"
+   },
+   {
+    "id": 2433445,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2433445",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 53,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-14T17:16"
+   },
+   {
+    "id": 2433438,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2433438",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 52,
+    "ano": 0,
+    "ementa": "Altera o inciso II do § 4º do art. 13, o inciso I do §1º e o caput do art. 19 do Projeto de Lei nº 914, de 2024.",
+    "dataApresentacao": "2024-05-14T17:02"
+   },
+   {
+    "id": 2433414,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2433414",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 51,
+    "ano": 0,
+    "ementa": "Acrescente-se os seguintes incisos ao art. 15 do Projeto de Lei nº 914, de 2024, renumerando-se os já existentes, da forma que segue:",
+    "dataApresentacao": "2024-05-14T16:31"
+   },
+   {
+    "id": 2433412,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2433412",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 50,
+    "ano": 0,
+    "ementa": "Dê-se ao inciso III do §3º do art. 9º do Projeto de Lei nº 914, de 2024, a seguinte redação:",
+    "dataApresentacao": "2024-05-14T16:31"
+   },
+   {
+    "id": 2432338,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2432338",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 49,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-08T19:05"
+   },
+   {
+    "id": 2432337,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2432337",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 48,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-08T19:05"
+   },
+   {
+    "id": 2432254,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2432254",
+    "siglaTipo": "PRLP",
+    "codTipo": 891,
+    "numero": 3,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-08T17:44"
+   },
+   {
+    "id": 2432247,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2432247",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 47,
+    "ano": 0,
+    "ementa": "Acrescente-se o inciso IV ao §4º do art. 16 do Projeto de Lei nº 914, de 2024, reescrevendo o dispositivo da forma que segue.",
+    "dataApresentacao": "2024-05-08T17:21"
+   },
+   {
+    "id": 2432246,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2432246",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 46,
+    "ano": 0,
+    "ementa": "Dê-se às alíneas a, b, c e d do inciso II do art. 6º do Projeto de Lei nº 914, de 2024, a seguinte redação.",
+    "dataApresentacao": "2024-05-08T17:21"
+   },
+   {
+    "id": 2432245,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2432245",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 45,
+    "ano": 0,
+    "ementa": "Acrescente-se novo inciso II ao §2º do art. 17 do Projeto de Lei nº 914, de 2024, renumerando-se os demais, como segue.",
+    "dataApresentacao": "2024-05-08T17:21"
+   },
+   {
+    "id": 2432180,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2432180",
+    "siglaTipo": "DTQ",
+    "codTipo": 846,
+    "numero": 9,
+    "ano": 0,
+    "ementa": "Destaque para Votação em Separado - PL 914/2024",
+    "dataApresentacao": "2024-05-08T15:54"
+   },
+   {
+    "id": 2432181,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2432181",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 11,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Destaque para Votação em Separado - PL 914/2024",
+    "dataApresentacao": "2024-05-08T15:54"
+   },
+   {
+    "id": 2432151,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2432151",
+    "siglaTipo": "RPDR",
+    "codTipo": 889,
+    "numero": 1,
+    "ano": 2024,
+    "ementa": "Requerimento Procedimental Genérico - PL 914/2024",
+    "dataApresentacao": "2024-05-08T15:03"
+   },
+   {
+    "id": 2432152,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2432152",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 10,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Destaque de Emenda - PL 914/2024",
+    "dataApresentacao": "2024-05-08T14:59"
+   },
+   {
+    "id": 2432150,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2432150",
+    "siglaTipo": "DTQ",
+    "codTipo": 1011,
+    "numero": 8,
+    "ano": 0,
+    "ementa": "Destaque de Emenda - PL 914/2024",
+    "dataApresentacao": "2024-05-08T14:59"
+   },
+   {
+    "id": 2432148,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2432148",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 44,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovac¸a~o - Programa MOVER.",
+    "dataApresentacao": "2024-05-08T14:52"
+   },
+   {
+    "id": 2432147,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2432147",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 43,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação – Programa MOVER.",
+    "dataApresentacao": "2024-05-08T14:52"
+   },
+   {
+    "id": 2432145,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2432145",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 42,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação – Programa Mover.",
+    "dataApresentacao": "2024-05-08T14:51"
+   },
+   {
+    "id": 2432143,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2432143",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 41,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação – Programa Mover.",
+    "dataApresentacao": "2024-05-08T14:51"
+   },
+   {
+    "id": 2432017,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2432017",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 40,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovac¸a~o - Programa MOVER.",
+    "dataApresentacao": "2024-05-08T11:52"
+   },
+   {
+    "id": 2431830,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431830",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 9,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Destaque de Emenda - PL 914/2024",
+    "dataApresentacao": "2024-05-07T20:10"
+   },
+   {
+    "id": 2431829,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431829",
+    "siglaTipo": "DTQ",
+    "codTipo": 1011,
+    "numero": 7,
+    "ano": 0,
+    "ementa": "Destaque de Emenda - PL 914/2024",
+    "dataApresentacao": "2024-05-07T20:10"
+   },
+   {
+    "id": 2431819,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431819",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 39,
+    "ano": 0,
+    "ementa": "Emenda de Plenário a Projeto com Urgência - PL 914/2024",
+    "dataApresentacao": "2024-05-07T20:01"
+   },
+   {
+    "id": 2431809,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431809",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 8,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Destaque de Emenda - PL 914/2024",
+    "dataApresentacao": "2024-05-07T19:41"
+   },
+   {
+    "id": 2431808,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431808",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 7,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Destaque para Votação em Separado - PL 914/2024",
+    "dataApresentacao": "2024-05-07T19:41"
+   },
+   {
+    "id": 2431803,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431803",
+    "siglaTipo": "DTQ",
+    "codTipo": 846,
+    "numero": 6,
+    "ano": 0,
+    "ementa": "Destaque para Votação em Separado - PL 914/2024",
+    "dataApresentacao": "2024-05-07T19:32"
+   },
+   {
+    "id": 2431801,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431801",
+    "siglaTipo": "DTQ",
+    "codTipo": 1011,
+    "numero": 5,
+    "ano": 0,
+    "ementa": "Destaque de Emenda - PL 914/2024",
+    "dataApresentacao": "2024-05-07T19:32"
+   },
+   {
+    "id": 2431807,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431807",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 6,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Destaque para Votação em Separado - PL 914/2024",
+    "dataApresentacao": "2024-05-07T19:31"
+   },
+   {
+    "id": 2431799,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431799",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 5,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Destaque de Emenda - PL 914/2024",
+    "dataApresentacao": "2024-05-07T19:31"
+   },
+   {
+    "id": 2431797,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431797",
+    "siglaTipo": "DTQ",
+    "codTipo": 846,
+    "numero": 4,
+    "ano": 0,
+    "ementa": "Destaque para Votação em Separado - PL 914/2024",
+    "dataApresentacao": "2024-05-07T19:31"
+   },
+   {
+    "id": 2431795,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431795",
+    "siglaTipo": "DTQ",
+    "codTipo": 1011,
+    "numero": 3,
+    "ano": 0,
+    "ementa": "Destaque de Emenda - PL 914/2024",
+    "dataApresentacao": "2024-05-07T19:31"
+   },
+   {
+    "id": 2431785,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431785",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 38,
+    "ano": 0,
+    "ementa": "Acrescente-se o seguinte artigo ao substitutivo apresentado ao Projeto de Lei nº 914/2024:",
+    "dataApresentacao": "2024-05-07T19:18"
+   },
+   {
+    "id": 2431780,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431780",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 37,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-07T19:13"
+   },
+   {
+    "id": 2431779,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431779",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 36,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação – Programa MOVER.",
+    "dataApresentacao": "2024-05-07T19:12"
+   },
+   {
+    "id": 2431777,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431777",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 35,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-07T19:12"
+   },
+   {
+    "id": 2431775,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431775",
+    "siglaTipo": "PRLP",
+    "codTipo": 891,
+    "numero": 2,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-07T19:05"
+   },
+   {
+    "id": 2431772,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431772",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 4,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Destaque de Emenda - PL 914/2024",
+    "dataApresentacao": "2024-05-07T19:03"
+   },
+   {
+    "id": 2431771,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431771",
+    "siglaTipo": "DTQ",
+    "codTipo": 1011,
+    "numero": 2,
+    "ano": 0,
+    "ementa": "Destaque de Emenda - PL 914/2024",
+    "dataApresentacao": "2024-05-07T19:03"
+   },
+   {
+    "id": 2431765,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431765",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 34,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa MOVER.",
+    "dataApresentacao": "2024-05-07T18:54"
+   },
+   {
+    "id": 2431764,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431764",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 33,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa MOVER.",
+    "dataApresentacao": "2024-05-07T18:54"
+   },
+   {
+    "id": 2431763,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431763",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 3,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Destaque de Emenda - PL 914/2024",
+    "dataApresentacao": "2024-05-07T18:51"
+   },
+   {
+    "id": 2431762,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431762",
+    "siglaTipo": "DTQ",
+    "codTipo": 1011,
+    "numero": 1,
+    "ano": 0,
+    "ementa": "Destaque de Emenda - PL 914/2024",
+    "dataApresentacao": "2024-05-07T18:51"
+   },
+   {
+    "id": 2431761,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431761",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 32,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover",
+    "dataApresentacao": "2024-05-07T18:48"
+   },
+   {
+    "id": 2431760,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431760",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 31,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover",
+    "dataApresentacao": "2024-05-07T18:48"
+   },
+   {
+    "id": 2431759,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431759",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 30,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover",
+    "dataApresentacao": "2024-05-07T18:48"
+   },
+   {
+    "id": 2431757,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431757",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 29,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover",
+    "dataApresentacao": "2024-05-07T18:48"
+   },
+   {
+    "id": 2431755,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431755",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 28,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-07T18:48"
+   },
+   {
+    "id": 2431751,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431751",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 27,
+    "ano": 0,
+    "ementa": "Emenda de Plenário a Projeto com Urgência - PL 914/2024",
+    "dataApresentacao": "2024-05-07T18:43"
+   },
+   {
+    "id": 2431749,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431749",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 26,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-07T18:40"
+   },
+   {
+    "id": 2431747,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431747",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 25,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação – Programa Mover.",
+    "dataApresentacao": "2024-05-07T18:40"
+   },
+   {
+    "id": 2431742,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431742",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 24,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação – Programa Mover.",
+    "dataApresentacao": "2024-05-07T18:36"
+   },
+   {
+    "id": 2431740,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431740",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 23,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação – Programa Mover.",
+    "dataApresentacao": "2024-05-07T18:36"
+   },
+   {
+    "id": 2431738,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431738",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 22,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-07T18:36"
+   },
+   {
+    "id": 2431736,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431736",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 21,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-07T18:36"
+   },
+   {
+    "id": 2431729,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431729",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 20,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação – Programa MOVER.",
+    "dataApresentacao": "2024-05-07T18:30"
+   },
+   {
+    "id": 2431725,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431725",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 18,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação – Programa Mover.",
+    "dataApresentacao": "2024-05-07T18:20"
+   },
+   {
+    "id": 2431726,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431726",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 19,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação – Programa Mover",
+    "dataApresentacao": "2024-05-07T18:20"
+   },
+   {
+    "id": 2431722,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431722",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 17,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação – Programa MOVER.",
+    "dataApresentacao": "2024-05-07T18:17"
+   },
+   {
+    "id": 2431721,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431721",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 16,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-07T18:13"
+   },
+   {
+    "id": 2431713,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431713",
+    "siglaTipo": "RPD",
+    "codTipo": 332,
+    "numero": 2,
+    "ano": 0,
+    "ementa": "Requerimento de Votação Nominal-Requerimento de Retirada de Matéria da Pauta - PL 914/2024",
+    "dataApresentacao": "2024-05-07T18:05"
+   },
+   {
+    "id": 2431712,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431712",
+    "siglaTipo": "RPD",
+    "codTipo": 328,
+    "numero": 1,
+    "ano": 0,
+    "ementa": "Requerimento de Retirada de Matéria da Pauta - PL 914/2024",
+    "dataApresentacao": "2024-05-07T18:05"
+   },
+   {
+    "id": 2431709,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431709",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 15,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-07T18:01"
+   },
+   {
+    "id": 2431707,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431707",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 14,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-07T17:56"
+   },
+   {
+    "id": 2431704,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431704",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 13,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-07T17:52"
+   },
+   {
+    "id": 2431123,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431123",
+    "siglaTipo": "REQ",
+    "codTipo": 392,
+    "numero": 1470,
+    "ano": 2024,
+    "ementa": "Requer que o Projeto de Lei n. 914/2024 passe a tramitar sob o regime de urgência.",
+    "dataApresentacao": "2024-05-07T09:56"
+   },
+   {
+    "id": 2431077,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431077",
+    "siglaTipo": "MSC",
+    "codTipo": 404,
+    "numero": 174,
+    "ano": 2024,
+    "ementa": "Dirijo-me a Vossas Excelências a fim de solicitar seja considerada sem efeito, e, portanto, cancelada, a urgência pedida com apoio no § 1 do art. 64 da Constituição para o Projeto de Lei nº 914, de 2024, que \"Institui o Programa Mobilidade Verde e Inovação - Programa Mover\", enviado ao Congresso Nacional com a Mensagem nº 84, de 2024.",
+    "dataApresentacao": "2024-05-06T19:55"
+   },
+   {
+    "id": 2431059,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431059",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 12,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-06T19:20"
+   },
+   {
+    "id": 2431058,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431058",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 11,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-06T19:20"
+   },
+   {
+    "id": 2431057,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431057",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 10,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-06T19:19"
+   },
+   {
+    "id": 2431056,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431056",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 9,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-06T19:19"
+   },
+   {
+    "id": 2431052,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431052",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 8,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-06T19:02"
+   },
+   {
+    "id": 2431049,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431049",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 7,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-06T18:48"
+   },
+   {
+    "id": 2431020,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431020",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 6,
+    "ano": 0,
+    "ementa": "Altera redação do Capítulo V do PL 914/2024, que institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-06T16:48"
+   },
+   {
+    "id": 2431019,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431019",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 5,
+    "ano": 0,
+    "ementa": "Altera redação dos artigos 13 e 26 do PL 914/2024, que institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-06T16:45"
+   },
+   {
+    "id": 2431018,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431018",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 4,
+    "ano": 0,
+    "ementa": "Altera a redação dos arts. 4º e 26 do PL 914/2024, que institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-06T16:42"
+   },
+   {
+    "id": 2431016,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431016",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 3,
+    "ano": 0,
+    "ementa": "Altera redação do art. 3º ao PL 914/2024, que institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-06T16:41"
+   },
+   {
+    "id": 2431015,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2431015",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 2,
+    "ano": 0,
+    "ementa": "Acrescenta dispositivo ao PL 914/2024, que institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-06T16:28"
+   },
+   {
+    "id": 2430956,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2430956",
+    "siglaTipo": "EMP",
+    "codTipo": 870,
+    "numero": 1,
+    "ano": 0,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.",
+    "dataApresentacao": "2024-05-06T13:52"
+   },
+   {
+    "id": 2422702,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2422702",
+    "siglaTipo": "MSC",
+    "codTipo": 406,
+    "numero": 84,
+    "ano": 2024,
+    "ementa": "Nos termos do § 1º do art. 64 da Constituição, submete à deliberação do Congresso Nacional o texto do projeto de lei que “Institui o Programa Mobilidade Verde e Inovação - Programa Mover.”.",
+    "dataApresentacao": "2024-03-21T11:34"
+   }
+  ],
+  "proposicoesAfetadas": [
+   {
+    "id": 2422697,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/proposicoes/2422697",
+    "siglaTipo": "PL",
+    "codTipo": 139,
+    "numero": 914,
+    "ano": 2024,
+    "ementa": "Institui o Programa Mobilidade Verde e Inovação - Programa Mover.  NOVA EMENTA: Institui o Programa Mobilidade Verde e Inovação (Programa Mover); altera o Decreto-Lei nº 1.804, de 3 de setembro de 1980; e revoga dispositivos da Lei nº 13.755, de 10 de dezembro de 2018.",
+    "dataApresentacao": "2024-03-21T11:28"
+   }
+  ]
+ },
+ "links": [
+  {
+   "rel": "self",
+   "href": "https://dadosabertos.camara.leg.br/api/v2/votacao"
+  }
+ ]
+}

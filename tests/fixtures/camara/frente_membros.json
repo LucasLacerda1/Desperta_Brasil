@@ -1,0 +1,25 @@
+{
+ "dados": [
+  {
+   "id": 220686,
+   "uri": "https://dadosabertos.camara.leg.br/api/v2/deputados/220686",
+   "nome": "Duarte Jr.",
+   "siglaPartido": "AVANTE",
+   "uriPartido": "https://dadosabertos.camara.leg.br/api/v2/partidos/36898",
+   "siglaUf": "MA",
+   "idLegislatura": 57,
+   "urlFoto": "https://www.camara.leg.br/internet/deputado/bandep/220686.jpg",
+   "email": "dep.duartejr@camara.leg.br",
+   "titulo": "Coordenador",
+   "codTitulo": 14,
+   "dataInicio": null,
+   "dataFim": null
+  }
+ ],
+ "links": [
+  {
+   "rel": "self",
+   "href": "https://dadosabertos.camara.leg.br/api/v2/frentes/55703/membros"
+  }
+ ]
+}

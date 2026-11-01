@@ -1,0 +1,52 @@
+{
+ "dados": [
+  {
+   "parlamentar": {
+    "id": 133439,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/deputados/133439",
+    "nome": "André Figueiredo",
+    "siglaPartido": "PDT",
+    "uriPartido": "https://dadosabertos.camara.leg.br/api/v2/partidos/36786",
+    "siglaUf": "CE",
+    "idLegislatura": 57,
+    "email": "dep.andrefigueiredo@camara.leg.br",
+    "urlFoto": "https://www.camara.leg.br/internet/deputado/bandep/133439.jpgmaior.jpg"
+   },
+   "titulo": "Presidente",
+   "bancada": {
+    "tipo": "Partido Político",
+    "nome": "PDT",
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/partidos/36786"
+   },
+   "dataInicio": "2023-01-31",
+   "dataFim": "2025-09-17"
+  },
+  {
+   "parlamentar": {
+    "id": 178975,
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/deputados/178975",
+    "nome": "Baleia Rossi",
+    "siglaPartido": "MDB",
+    "uriPartido": "https://dadosabertos.camara.leg.br/api/v2/partidos/36899",
+    "siglaUf": "SP",
+    "idLegislatura": 57,
+    "email": "dep.baleiarossi@camara.leg.br",
+    "urlFoto": "https://www.camara.leg.br/internet/deputado/bandep/178975.jpgmaior.jpg"
+   },
+   "titulo": "Presidente",
+   "bancada": {
+    "tipo": "Partido Político",
+    "nome": "MDB",
+    "uri": "https://dadosabertos.camara.leg.br/api/v2/partidos/36899"
+   },
+   "dataInicio": "2023-02-01",
+   "dataFim": null
+  }
+ ],
+ "links": [
+  {
+   "rel": "self",
+   "href": "https://dadosabertos.camara.leg.br/api/v2/lideres"
+  }
+ ]
+}
