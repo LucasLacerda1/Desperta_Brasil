@@ -230,6 +230,9 @@ def coletar_relatorio():
     click.echo("\ncoluna | falhas")
     for coluna, total in relatorio.falhas_por_coluna():
         click.echo(f"{coluna} | {total}")
+    click.echo("\ntexto vazio em coluna obrigatoria | linhas")
+    for coluna, total in relatorio.textos_vazios_obrigatorios():
+        click.echo(f"{coluna} | {total}")
     click.echo("\nfalha da API | total")
     for falha, total in relatorio.falhas_da_api():
         click.echo(f"{falha} | {total}")

@@ -31,6 +31,22 @@ def falhas_por_coluna():
     return contagem.most_common()
 
 
+def textos_vazios_obrigatorios():
+    """
+    Decisao 14.1: a API manda '' em colunas obrigatorias e isso nao falha no NOT NULL.
+    Fica gravado como veio; aqui so conta, por coluna, para aparecer no relatorio.
+    """
+    contagem = Counter()
+    for tabela in db.metadata.sorted_tables:
+        for coluna in tabela.columns:
+            if coluna.nullable or not isinstance(coluna.type, db.String):
+                continue
+            total = db.session.scalar(db.select(db.func.count()).select_from(tabela).where(db.func.trim(coluna) == ""))
+            if total:
+                contagem[f"{tabela.name}.{coluna.name}"] = total
+    return contagem.most_common()
+
+
 def falhas_da_api():
     """Falhas que nao dizem nada sobre as colunas: a API nao respondeu, por endpoint e motivo."""
     descricoes = db.session.scalars(db.select(LogSistema.descricao).where(LogSistema.acao.in_(ACOES_DE_FALHA)))

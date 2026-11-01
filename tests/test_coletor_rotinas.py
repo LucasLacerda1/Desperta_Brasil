@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+import fabricas
 from api_falsa import carregar, envelope
 from desperta.coletor import cli as modulo_cli
 from desperta.coletor import proposicoes, relatorio, rotinas, trava, votacoes
@@ -49,9 +50,7 @@ def _votacao(api):
 def _apoio(api):
     api.responder("legislaturas", carregar("legislaturas"))
     api.responder("partidos", envelope([{"id": 37906, "sigla": "PL"}]))
-    api.responder(
-        "deputados", lambda params: carregar("deputados") if params["siglaSexo"] == "M" else envelope([])
-    )
+    api.responder("deputados", lambda params: carregar("deputados") if params["siglaSexo"] == "M" else envelope([]))
     api.responder("orgaos", carregar("orgaos"))
     api.responder("referencias/proposicoes/codTema", carregar("temas"))
 
@@ -522,6 +521,23 @@ def test_relatorio_separa_falhas_de_coluna_e_da_api(comandos, db, api, cliente):
     saida = comandos.invoke(args=["coletar", "relatorio"]).output
     assert "falha da API | total" in saida
     assert "/proposicoes: HTTP 504 | 1" in saida
+
+
+def test_relatorio_conta_textos_vazios_so_em_colunas_obrigatorias(comandos, db):
+    db.session.add_all(
+        [
+            fabricas.orgao(id=1, sigla="", apelido="  "),
+            fabricas.orgao(id=2, sigla=""),
+            fabricas.orgao(id=3),
+            fabricas.proposicao(keywords=""),
+        ]
+    )
+    db.session.commit()
+
+    assert relatorio.textos_vazios_obrigatorios() == [("orgao.sigla", 2), ("orgao.apelido", 1)]
+    saida = comandos.invoke(args=["coletar", "relatorio"]).output
+    assert "texto vazio em coluna obrigatoria | linhas" in saida
+    assert "orgao.sigla | 2" in saida
 
 
 def test_relatorio_conta_proposicoes_pendentes_e_falha_repetida(base, api, cliente):
