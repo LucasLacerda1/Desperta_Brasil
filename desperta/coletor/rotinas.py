@@ -1,5 +1,7 @@
 from datetime import date, timedelta
 
+from flask import current_app
+
 from . import (
     blocos,
     deputados,
@@ -19,9 +21,6 @@ DIAS_DIARIA = 3
 DIAS_SEMANAL = 30
 # A horaria tem meta de 20 minutos: pendentes ficam para a diaria
 LIMITE_EVENTOS_HORARIA = 20
-# Decisao 14.2: a diaria da madrugada confere de novo o que a horaria pular
-ORCAMENTO_HORARIA_SEGUNDOS = 20 * 60
-RECONFERIR_HORARIA_DEPOIS = timedelta(hours=6)
 
 
 def base(cliente, id_legislatura=None):
@@ -42,11 +41,13 @@ def horaria(cliente, hoje=None):
     """
     hoje = hoje or date.today()
     ontem = hoje - timedelta(days=1)
-    cliente.definir_orcamento(ORCAMENTO_HORARIA_SEGUNDOS)
+    cliente.definir_orcamento(current_app.config["HORARIA_ORCAMENTO_MIN"] * 60)
+    # A diaria da madrugada confere de novo o que for pulado aqui
+    reconferir = timedelta(hours=current_app.config["HORARIA_RECONFERIR_HORAS"])
     try:
         votacoes.coletar(cliente, ontem, hoje)
         eventos.coletar(cliente, ontem, hoje, limite_pendentes=LIMITE_EVENTOS_HORARIA)
-        proposicoes.coletar(cliente, hoje, hoje, limite_pendentes=0, pular_conferidas_ha=RECONFERIR_HORARIA_DEPOIS)
+        proposicoes.coletar(cliente, hoje, hoje, limite_pendentes=0, pular_conferidas_ha=reconferir)
     finally:
         cliente.definir_orcamento(None)
 

@@ -13,6 +13,7 @@ from api_falsa import carregar, envelope
 from desperta.coletor import cli as modulo_cli
 from desperta.coletor import proposicoes, relatorio, rotinas, trava, votacoes
 from desperta.coletor.cliente import ClienteCamara
+from desperta.config import Config
 from desperta.orgaos.models import DeputadoOrgao, Evento, Orgao, PautaItem
 from desperta.parlamentares.models import Bloco, Frente, Lideranca
 from desperta.proposicoes.models import Proposicao, ProposicaoAutor, Tramitacao
@@ -296,6 +297,15 @@ def test_horaria_confere_de_novo_depois_de_6_horas(base, api, cliente):
     assert _chamadas_do_detalhe(api) == 2
 
 
+def test_horas_de_reconferencia_vem_da_configuracao(app, base, api, cliente):
+    app.config["HORARIA_RECONFERIR_HORAS"] = 1
+    _horaria_vazia_menos_proposicoes(api)
+    rotinas.horaria(cliente, HOJE)
+    _conferida_ha(base, 2)
+    rotinas.horaria(cliente, HOJE)
+    assert _chamadas_do_detalhe(api) == 2
+
+
 def test_horaria_nao_pula_proposicao_pendente(base, api, cliente):
     _horaria_vazia_menos_proposicoes(api)
     rotinas.horaria(cliente, HOJE)
@@ -329,13 +339,13 @@ def _status_por_recurso(db, antes):
     return [(coleta.recurso, coleta.status, coleta.mensagem_erro) for coleta in _coletas(db)[antes:]]
 
 
-def test_horaria_para_no_orcamento_e_fecha_como_parcial(base, api, cliente):
+def test_horaria_para_no_orcamento_e_fecha_como_parcial(app, base, api, cliente):
     _proposicao(api)
     _evento(api)
     _votacao(api)
     antes = len(_coletas(base))
     # 1 leitura para definir o prazo e 1 por chamada: passam a lista e o detalhe; os votos ja nao
-    cliente.relogio = RelogioFalso(rotinas.ORCAMENTO_HORARIA_SEGUNDOS * 0.4)
+    cliente.relogio = RelogioFalso(app.config["HORARIA_ORCAMENTO_MIN"] * 60 * 0.4)
 
     rotinas.horaria(cliente, HOJE)
 
@@ -351,14 +361,14 @@ def test_horaria_para_no_orcamento_e_fecha_como_parcial(base, api, cliente):
     assert base.session.scalar(base.select(LogSistema).where(LogSistema.acao == "tempo_esgotado")).nivel == "aviso"
 
 
-def test_horaria_termina_o_que_cabe_no_orcamento_e_deixa_as_proposicoes(base, api, cliente):
+def test_horaria_termina_o_que_cabe_no_orcamento_e_deixa_as_proposicoes(app, base, api, cliente):
     api.responder("votacoes", envelope([]))
     api.responder("proposicoes", lambda params: pytest.fail("proposicoes nao deveriam ser chamadas"))
     relogio = RelogioFalso(0)
     cliente.relogio = relogio
 
     def eventos_que_gastam_o_orcamento(params):
-        relogio.agora = rotinas.ORCAMENTO_HORARIA_SEGUNDOS
+        relogio.agora = app.config["HORARIA_ORCAMENTO_MIN"] * 60
         return envelope([])
 
     api.responder("eventos", eventos_que_gastam_o_orcamento)
@@ -373,6 +383,10 @@ def test_horaria_termina_o_que_cabe_no_orcamento_e_deixa_as_proposicoes(base, ap
     ]
 
 
+def test_limites_da_horaria_tem_os_padroes_da_decisao():
+    assert (Config.HORARIA_ORCAMENTO_MIN, Config.HORARIA_RECONFERIR_HORAS) == (20, 6)
+
+
 def test_orcamento_nao_fica_valendo_depois_da_horaria(base, api, cliente):
     api.responder("proposicoes", envelope([]))
     api.responder("eventos", envelope([]))
@@ -381,8 +395,9 @@ def test_orcamento_nao_fica_valendo_depois_da_horaria(base, api, cliente):
     assert cliente.prazo is None
 
 
-def test_comando_horaria_com_orcamento_esgotado_termina_e_libera_a_trava(comandos, db, api, monkeypatch):
-    monkeypatch.setattr(rotinas, "ORCAMENTO_HORARIA_SEGUNDOS", 0)
+def test_comando_horaria_com_orcamento_esgotado_termina_e_libera_a_trava(app, comandos, db, api):
+    # O orcamento vem da configuracao: com 0 minutos, nenhuma chamada comeca
+    app.config["HORARIA_ORCAMENTO_MIN"] = 0
     resultado = comandos.invoke(args=["coletar", "horaria"])
     assert resultado.exit_code == 0, resultado.output
     assert api.chamadas == []
