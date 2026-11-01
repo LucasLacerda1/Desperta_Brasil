@@ -7,7 +7,7 @@
 
 - **Idioma:** responda, comente o código e escreva mensagens de commit em **português do Brasil**.
 - **Padrão obrigatório:** o código segue a estrutura do projeto **TaskFlow**, usado como exemplo pelo professor da disciplina (Programação Web Avançada, UVV). A seção 3 descreve esse padrão. Não invente outra organização, não troque o Flask-SQLAlchemy por outro ORM e não use outro estilo de modelo.
-- **Ordem do trabalho:** o projeto é construído por fases (seção 7). **As Fases 1 (banco) e 1.5 (ajuste físico do banco, `docs/AJUSTE_BANCO_SISTEMA.md`) estão concluídas. A fase atual é a Fase 2: coletor.** Não comece o coletor, a IA, as rotas da API ou o front-end antes da fase anterior estar pronta e testada, a não ser que o grupo peça. Antes de mudar código, leia as seções 10 e 11 (decisões tomadas depois das Fases 1 e 1.5).
+- **Ordem do trabalho:** o projeto é construído por fases (seção 7). **As Fases 1 (banco), 1.5 (ajuste físico do banco, `docs/AJUSTE_BANCO_SISTEMA.md`) e 2 (coletor) estão concluídas; a Fase 2b fechou sem migração (14.1). Falta só o ajuste da `horaria` (14.2), numa branch pequena. Depois vem a Fase 3: IA e RAG.** Não comece o coletor, a IA, as rotas da API ou o front-end antes da fase anterior estar pronta e testada, a não ser que o grupo peça. Antes de mudar código, leia as seções 10 a 14 (decisões tomadas depois de cada relatório).
 - **Git:** a `main` no GitHub é a versão estável. Cada fase é feita numa branch própria (`fase-2-coletor`, `fase-3-ia`…), com commits pequenos ao fim de cada passo e mensagem em português; ao terminar a fase, abrir um pull request para a `main`, para o grupo revisar. Não fazer push direto na `main`. Nunca versione `.venv/`, `instance/`, `.env` nem arquivos `*.db`, `*.db-wal`, `*.db-shm`.
 - **O modelo do banco já foi decidido pelo grupo** (32 tabelas, seção 5). Não acrescente, remova nem renomeie tabelas ou colunas por conta própria. A única exceção são as colunas técnicas, índices e configurações listados em `docs/AJUSTE_BANCO_SISTEMA.md` (camada física: controle de sincronização, índices, FTS5, migrações), que não mudam o modelo lógico. Se achar um problema no modelo, aponte e pergunte antes de mudar.
 - **Ao terminar cada passo:** rode os testes (`invoke test`) e mostre o resultado.
@@ -1139,7 +1139,7 @@ Critérios de pronto (os testes devem cobrir):
 ### Fase 1.5 — Ajuste físico do banco (CONCLUÍDA em 30/10/2026: 239 testes, `flask db check` sem diferenças)
 Seguir `docs/AJUSTE_BANCO_SISTEMA.md`: convenção de nomes, Flask-Migrate com a migração inicial, SQLite em WAL, colunas de sincronização, campos novos em `coleta`, chave natural em `lideranca`, índices, busca FTS5 e os testes da seção 13 daquele arquivo. Continua com 32 tabelas e 42 FKs.
 
-### Fase 2 — Coletor (ATUAL, na branch `fase-2-coletor`)
+### Fase 2 — Coletor (CONCLUÍDA em 01/11/2026: 409 testes, amostra sem falha de coluna; PR nº 1)
 Pacote `desperta/coletor/` (cliente HTTP com backoff, um módulo por endpoint, upsert pelo id), comandos `flask coletar ...` e tarefas invoke. Registra `coleta` e `log_sistema`. Testes com respostas da API gravadas em arquivos JSON (sem chamar a API real nos testes).
 
 Além da seção 6, a Fase 2 precisa:
@@ -1150,7 +1150,7 @@ Além da seção 6, a Fase 2 precisa:
 - **Pedidos do relatório da Fase 1.5:** seguir a decisão 11.4 (contadores HTTP, endpoints com 504, `nullable` testado numa cópia do banco).
 - **Decisões depois do relatório da Fase 2:** seguir a seção 12. O que falta para fechar a fase está em 12.7.
 
-### Fase 2b — Ajustes de `nullable` (logo depois da carga de validação)
+### Fase 2b — Ajustes de `nullable` (FECHADA em 01/11/2026 sem migração, ver 14.1)
 O Flask-Migrate já foi iniciado na Fase 1.5. Quando o grupo decidir os ajustes de `nullable` da carga de validação, aplicá-los como uma nova migração (`flask db migrate` + revisão + `flask db upgrade`). Toda mudança no esquema é migração, não `create_all()`.
 
 ### Fase 3 — IA e RAG
@@ -1317,4 +1317,30 @@ A primeira execução pode passar de 3 horas (cerca de 7.200 chamadas). Isso é 
 
 ### 13.9 Cuidado com commits
 Rodar `invoke test` e conferir o resultado **antes** de fazer o commit, em comandos separados. Não fazer commit com teste falhando.
+
+---
+
+## 14. Decisões tomadas depois do relatório final da Fase 2 (01/11/2026)
+
+### 14.1 Fase 2b: textos vazios em colunas obrigatórias
+A amostra não teve nenhuma falha de `NOT NULL`. Apareceram só textos vazios (`''`) que a própria API manda: `tramitacao.despacho` (7 linhas), `orgao.sigla` (2) e `orgao.apelido` (1).
+- **Decisão: nada muda no banco.** As três colunas continuam `NOT NULL` e guardam `''` como a API manda (regra da seção 9 do ajuste físico: em coluna obrigatória, texto vazio fica `''`). A Fase 2b fecha **sem migração**.
+- Na API do portal e no front-end (Fases 4 e 5), texto vazio é tratado como "sem valor": não mostrar despacho vazio, e mostrar `orgao.nome` quando `sigla` estiver vazia.
+- O `flask coletar relatorio` passa a contar também textos vazios em colunas obrigatórias de texto, para isso aparecer sem consulta à parte.
+
+### 14.2 `horaria` em dia cheio (35 min, meta de 20)
+O teste do dia cheio foi um caso extremo (dois dias inteiros de uma vez, 2.674 chamadas só de proposições), mas mostra o risco: no fim de um dia movimentado, cada `horaria` voltaria a conferir todas as proposições do dia. Ajustes, numa branch pequena (`fase-2-horaria`) depois do merge do PR nº 1:
+- **Não reconferir o que já foi conferido há pouco:** na `horaria`, pular proposições com `sincronizado_em` de menos de 6 horas. A `diaria` da madrugada confere todas de novo.
+- **Orçamento de tempo:** a `horaria` para sozinha ao chegar a 20 minutos, fecha a coleta como `parcial` e deixa o resto para a próxima hora (ou para a `diaria`). A ordem é votações e eventos primeiro, proposições por último, porque votações são o que o portal mais destaca.
+- Testes para os dois casos.
+- **Medir num dia útil com sessão no Plenário** (terça ou quarta à tarde; 02/11 é feriado de Finados). Rodar `time flask coletar horaria` três vezes no mesmo dia (início da tarde, fim da tarde e noite) e registrar tempo e requisições.
+
+### 14.3 Pull request nº 1
+Marcar como pronto para revisão e incluir o Rhuan como revisor. O merge na `main` acontece depois da revisão de pelo menos um dos dois. O ajuste de 14.2 e a medição vêm num pull request separado, para não segurar a Fase 2.
+
+### 14.4 Carga dos últimos 3 meses
+Depois do merge, rodar a carga dos últimos 3 meses (12.2), à noite, com `setsid nohup` e o PC sem suspensão. É ela que dá conteúdo ao portal e matéria-prima para a IA da Fase 3. Frentes que faltaram entram na próxima `mensal`.
+
+### 14.5 Antes da Fase 3
+O grupo precisa escolher o modelo de linguagem que vai escrever as notícias (seção 9). Sem isso, a Fase 3 só consegue fazer a parte da RoBERTaLexPT (trechos, embeddings, sqlite-vec e busca), com o gerador falso previsto em 6.1.
 
