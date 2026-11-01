@@ -117,7 +117,7 @@ def test_partidos_trazem_o_logo_do_detalhe(db, api, cliente):
 
 def _responder_deputados(api):
     def por_sexo(params):
-        return carregar("deputados_manual") if params["siglaSexo"] == "M" else envelope([])
+        return carregar("deputados") if params["siglaSexo"] == "M" else envelope([])
 
     api.responder("deputados", por_sexo)
 
@@ -156,7 +156,7 @@ def test_legislatura_mais_antiga_nao_troca_a_mais_nova(base, api, cliente):
     _responder_deputados(api)
     deputados.coletar(cliente, 57)
 
-    corpo = carregar("deputados_manual")
+    corpo = carregar("deputados")
     corpo["dados"][0].update(idLegislatura=56, siglaPartido="ANTIGO", siglaUf="SP")
     api.responder("deputados", lambda params: corpo if params["siglaSexo"] == "M" else envelope([]))
     deputados.coletar(cliente, 56)
@@ -177,9 +177,9 @@ def test_coleta_de_deputados_com_504_fica_parcial_e_nao_propaga(base, api, clien
 
 def test_504_na_pagina_2_guarda_a_pagina_1_e_tenta_o_outro_filtro(base, api, cliente):
     """Aconteceu na carga real: a pagina 1 de siglaSexo=M veio, e a pagina 2 deu 504."""
-    pagina_1 = carregar("deputados_manual")
+    pagina_1 = carregar("deputados")
     pagina_1["links"].append({"rel": "next", "href": f"{URL_BASE}/deputados-pagina-2"})
-    feminino = carregar("deputados_manual")
+    feminino = carregar("deputados")
     feminino["dados"][0]["id"] = 204554
 
     api.responder("deputados", lambda params: pagina_1 if params["siglaSexo"] == "M" else feminino)
@@ -335,18 +335,18 @@ def test_id_de_partido_valido_continua_sendo_usado(base, api, cliente):
 def test_frentes_sem_parametro_itens_nos_membros(base, api, cliente):
     api.responder("frentes", carregar("frentes"))
     api.responder("frentes/55703", carregar("frente"))
-    api.responder("frentes/55703/membros", carregar("frente_membros_manual"))
+    api.responder("frentes/55703/membros", carregar("frente_membros"))
     frentes.coletar(cliente, 57)
     assert base.session.get(Frente, 55703).titulo.startswith("Frente Parlamentar")
     membro = base.session.get(FrenteMembro, (55703, 220686))
-    assert (membro.titulo, membro.cod_titulo) == ("Coordenador", "1")
+    assert (membro.titulo, membro.cod_titulo) == ("Coordenador", "14")
     assert ("frentes/55703/membros", None) in api.chamadas
 
 
 def test_senador_em_frente_fica_de_fora_com_aviso(base, api, cliente):
     api.responder("frentes", carregar("frentes"))
     api.responder("frentes/55703", carregar("frente"))
-    api.responder("frentes/55703/membros", carregar("frente_membros_manual"))
+    api.responder("frentes/55703/membros", carregar("frente_membros"))
     api.responder("deputados/220686", 404)
     frentes.coletar(cliente, 57)
     assert _total(base, FrenteMembro) == 0

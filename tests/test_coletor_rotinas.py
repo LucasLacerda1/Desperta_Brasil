@@ -50,7 +50,7 @@ def _apoio(api):
     api.responder("legislaturas", carregar("legislaturas"))
     api.responder("partidos", envelope([{"id": 37906, "sigla": "PL"}]))
     api.responder(
-        "deputados", lambda params: carregar("deputados_manual") if params["siglaSexo"] == "M" else envelope([])
+        "deputados", lambda params: carregar("deputados") if params["siglaSexo"] == "M" else envelope([])
     )
     api.responder("orgaos", carregar("orgaos"))
     api.responder("referencias/proposicoes/codTema", carregar("temas"))
@@ -329,7 +329,7 @@ def test_base_grava_as_tabelas_de_apoio_e_devolve_a_legislatura(db, api, cliente
 def test_mensal_grava_as_frentes(base, api, cliente):
     api.responder("frentes", carregar("frentes"))
     api.responder("frentes/55703", carregar("frente"))
-    api.responder("frentes/55703/membros", carregar("frente_membros_manual"))
+    api.responder("frentes/55703/membros", carregar("frente_membros"))
     rotinas.mensal(cliente)
     assert base.session.get(Frente, 55703) is not None
 
