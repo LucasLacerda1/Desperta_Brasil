@@ -53,6 +53,12 @@ def carga_validacao(c):
 
 
 @task
+def indexar(c):
+    """Cria os trechos e os embeddings do RAG (precisa de pip install -e ".[ia]")."""
+    c.run("flask --app app.py ia indexar", echo=True)
+
+
+@task
 def run(c):
     """Executa a aplicacao Flask."""
     c.run("flask --app app.py run --debug", pty=True)

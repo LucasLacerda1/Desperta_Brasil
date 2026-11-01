@@ -56,6 +56,24 @@ Só roda uma coleta por vez: a trava fica em `instance/coletor.lock`. Quem encon
 
 Cada coleta grava uma linha em `coleta` e os erros em `log_sistema`. Um registro com problema não derruba a coleta: ela termina como `parcial`.
 
+## RAG (Fase 3)
+
+A RoBERTaLexPT roda só neste módulo, na CPU; a API Flask não carrega o modelo. Precisa das dependências de IA:
+
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cpu   # sem GPU, ocupa bem menos disco
+pip install -e ".[ia]"
+```
+
+```bash
+flask ia indexar                   # trechos e embeddings do que é novo ou mudou; pode parar e rodar de novo
+flask ia indexar --tipo votacao    # só um tipo; --limite 500 para no máximo 500 trechos novos
+flask ia buscar "reforma tributária" --tipo proposicao --inicio 2025-01-01 --fim 2025-12-31
+flask ia reconstruir               # refaz o índice vetorial a partir de trecho_rag
+```
+
+Sem essas dependências, os testes de `tests/test_ia.py` são pulados. Depois de cada coleta, rode `flask ia indexar`. O índice (`vec_trecho`) não é modelo SQLAlchemy nem conta entre as 32 tabelas.
+
 ## Problema conhecido
 
 `pytest --cov=desperta.coletor` falha dentro do SQLAlchemy (`TypeError` em `_cache_key_cy`). Use o comando oficial, `invoke test`, que mede com `--cov=desperta`.
