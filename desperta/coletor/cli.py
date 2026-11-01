@@ -25,22 +25,23 @@ def _caminho_trava():
     return os.path.join(current_app.instance_path, "coletor.lock")
 
 
+def _avisar(acao, descricao):
+    db.session.add(LogSistema(nivel="aviso", modulo="coletor", acao=acao, descricao=descricao))
+    db.session.commit()
+
+
 def _uma_coleta_por_vez(funcao):
-    """Decisao 12.1: com outra coleta rodando, este comando nao roda e deixa um aviso no log."""
+    """Decisoes 12.1 e 13.6: com outra coleta rodando, este comando nao roda e deixa um aviso no log."""
 
     @functools.wraps(funcao)
     def executar(*args, **kwargs):
         caminho = _caminho_trava()
-        if not trava.adquirir(caminho):
-            db.session.add(
-                LogSistema(
-                    nivel="aviso",
-                    modulo="coletor",
-                    acao="coleta_em_andamento",
-                    descricao=f"{funcao.__name__} nao rodou: existe a trava {caminho}",
-                )
-            )
-            db.session.commit()
+
+        def trava_abandonada(motivo):
+            _avisar("trava_abandonada", f"Trava {caminho} removida: {motivo}")
+
+        if not trava.adquirir(caminho, ao_abandonar=trava_abandonada):
+            _avisar("coleta_em_andamento", f"{funcao.__name__} nao rodou: existe a trava {caminho}")
             click.echo("Outra coleta esta rodando; nada foi feito.")
             return
         sinal_anterior = trava.sair_limpo_em_sigterm()
@@ -229,11 +230,16 @@ def coletar_relatorio():
     click.echo("\ncoluna | falhas")
     for coluna, total in relatorio.falhas_por_coluna():
         click.echo(f"{coluna} | {total}")
+    click.echo("\nfalha da API | total")
+    for falha, total in relatorio.falhas_da_api():
+        click.echo(f"{falha} | {total}")
     click.echo("\naviso | total")
     for acao, total in relatorio.avisos_por_tipo():
         click.echo(f"{acao} | {total}")
     com_id_errado, sem_ligacao = relatorio.blocos_com_id_errado()
     click.echo(f"\nblocos com id errado: {com_id_errado}; siglas sem ligacao: {sem_ligacao}")
+    pendentes, repetidas = relatorio.proposicoes_pendentes()
+    click.echo(f"proposicoes pendentes: {pendentes}; com falha repetida: {repetidas}")
 
 
 def init_app(app):

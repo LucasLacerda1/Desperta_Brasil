@@ -1,7 +1,10 @@
 import json
 import os
 import signal
-from datetime import date, datetime, timedelta
+import subprocess
+import sys
+from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
 
@@ -356,6 +359,44 @@ def test_trava_com_mais_de_6_horas_e_abandonada(tmp_path):
     assert trava.adquirir(caminho, inicio + timedelta(hours=6, minutes=1)) is True
 
 
+def _trava_de_outro_processo(caminho, pid, inicio=None):
+    inicio = inicio or datetime.now(timezone.utc).replace(tzinfo=None)
+    caminho.write_text(json.dumps({"pid": pid, "inicio": inicio.isoformat()}))
+
+
+def _pid_morto():
+    processo = subprocess.Popen([sys.executable, "-c", "pass"])
+    processo.wait()
+    return processo.pid
+
+
+def test_trava_de_processo_vivo_segura(tmp_path):
+    caminho = tmp_path / "coletor.lock"
+    _trava_de_outro_processo(caminho, os.getppid())
+    assert trava.adquirir(str(caminho)) is False
+    assert json.loads(caminho.read_text())["pid"] == os.getppid()
+
+
+def test_trava_de_processo_morto_e_abandonada(tmp_path):
+    caminho = tmp_path / "coletor.lock"
+    pid = _pid_morto()
+    _trava_de_outro_processo(caminho, pid)
+    motivos = []
+    assert trava.adquirir(str(caminho), ao_abandonar=motivos.append) is True
+    assert motivos == [f"o processo {pid} nao existe mais"]
+    assert json.loads(caminho.read_text())["pid"] == os.getpid()
+
+
+def test_processo_vivo_com_mais_de_6_horas_e_abandonada(tmp_path):
+    """O numero do PID pode ter sido reaproveitado por outro programa."""
+    caminho = tmp_path / "coletor.lock"
+    agora = datetime(2026, 10, 30, 15, 0)
+    _trava_de_outro_processo(caminho, os.getppid(), agora - timedelta(hours=7))
+    motivos = []
+    assert trava.adquirir(str(caminho), agora, motivos.append) is True
+    assert motivos == ["mais de 6 horas"]
+
+
 def test_trava_ilegivel_e_abandonada(tmp_path):
     caminho = tmp_path / "coletor.lock"
     caminho.write_text("nao e json")
@@ -416,6 +457,19 @@ def test_comando_com_trava_nao_roda_e_avisa(comandos, db, api):
     assert os.path.exists(comandos.caminho_trava)
 
 
+def test_comando_remove_trava_de_processo_morto_avisa_e_roda(comandos, db, api):
+    pid = _pid_morto()
+    _trava_de_outro_processo(Path(comandos.caminho_trava), pid)
+    api.responder("legislaturas", carregar("legislaturas"))
+    resultado = comandos.invoke(args=["coletar", "legislaturas"])
+    assert resultado.exit_code == 0, resultado.output
+    assert "Outra coleta" not in resultado.output
+    assert _recursos(db) == ["legislaturas"]
+    aviso = db.session.scalar(db.select(LogSistema).where(LogSistema.acao == "trava_abandonada"))
+    assert aviso.nivel == "aviso" and str(pid) in aviso.descricao
+    assert not os.path.exists(comandos.caminho_trava)
+
+
 def test_erro_no_comando_libera_a_trava(comandos, api, monkeypatch):
     def quebrar(*args, **kwargs):
         raise ZeroDivisionError
@@ -446,3 +500,47 @@ def test_relatorio_nao_precisa_da_trava(comandos, db):
     assert resultado.exit_code == 0
     assert "blocos com id errado" in resultado.output
     assert relatorio.avisos_por_tipo() == []
+
+
+# ======================================================
+# RELATORIO
+# ======================================================
+def test_relatorio_separa_falhas_de_coluna_e_da_api(comandos, db, api, cliente):
+    lista = carregar("proposicoes")
+    _proposicao(api)
+    corpo = carregar("proposicao")
+    corpo["dados"]["urlInteiroTeor"] = None
+    api.responder(f"proposicoes/{ID_PROPOSICAO}", corpo)
+    proposicoes.coletar(cliente, HOJE, HOJE, limite_pendentes=0)
+
+    api.responder("proposicoes", lista)
+    api.responder(f"proposicoes/{ID_PROPOSICAO}", [504] * 5)
+    proposicoes.coletar(cliente, HOJE, HOJE, limite_pendentes=0)
+
+    assert relatorio.falhas_por_coluna() == [("proposicao.url_inteiro_teor", 1)]
+    assert relatorio.falhas_da_api() == [("/proposicoes: HTTP 504", 1)]
+    saida = comandos.invoke(args=["coletar", "relatorio"]).output
+    assert "falha da API | total" in saida
+    assert "/proposicoes: HTTP 504 | 1" in saida
+
+
+def test_relatorio_conta_proposicoes_pendentes_e_falha_repetida(base, api, cliente):
+    """Decisao 13.5: filho com falha deixa a proposicao pendente, e o grupo precisa ver quantas."""
+    _proposicao(api)
+    tramitacoes = carregar("proposicao_tramitacoes")
+    tramitacoes["dados"][0]["despacho"] = None
+    api.responder(f"proposicoes/{ID_PROPOSICAO}/tramitacoes", tramitacoes)
+    _proposicao_citada(base, 1, "REQ")
+
+    proposicoes.coletar(cliente, HOJE, HOJE, limite_pendentes=0)
+    assert relatorio.proposicoes_pendentes() == (1, 0)
+
+    proposicoes.coletar(cliente, HOJE, HOJE, limite_pendentes=0)
+    assert relatorio.proposicoes_pendentes() == (1, 1)
+    assert relatorio.falhas_por_coluna() == [("tramitacao.despacho", 2)]
+
+
+def test_relatorio_nao_conta_pendente_resolvida(base, api, cliente):
+    _proposicao(api)
+    proposicoes.coletar(cliente, HOJE, HOJE, limite_pendentes=0)
+    assert relatorio.proposicoes_pendentes() == (0, 0)

@@ -11,18 +11,39 @@ def _agora():
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-def _abandonada(caminho, agora):
-    """Trava ilegivel ou com mais de 6 horas nao segura mais ninguem."""
+def _processo_existe(pid):
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        # Existe, mas e de outro usuario
+        return True
+    return True
+
+
+def _motivo_abandono(caminho, agora):
+    """Devolve por que a trava esta abandonada, ou None se ela ainda vale."""
     try:
         with open(caminho, encoding="utf-8") as arquivo:
-            inicio = datetime.fromisoformat(json.load(arquivo)["inicio"])
+            dados = json.load(arquivo)
+        inicio = datetime.fromisoformat(dados["inicio"])
+        pid = int(dados["pid"])
     except (OSError, ValueError, KeyError, TypeError):
-        return True
-    return agora - inicio > timedelta(hours=HORAS_ABANDONO)
+        return "arquivo ilegivel"
+    # O limite de horas vem primeiro: o numero do PID pode ter sido reaproveitado por outro programa
+    if agora - inicio > timedelta(hours=HORAS_ABANDONO):
+        return f"mais de {HORAS_ABANDONO} horas"
+    if not _processo_existe(pid):
+        return f"o processo {pid} nao existe mais"
+    return None
 
 
-def adquirir(caminho, agora=None):
-    """Cria a trava em arquivo; devolve False se outra coleta esta rodando."""
+def adquirir(caminho, agora=None, ao_abandonar=None):
+    """
+    Cria a trava em arquivo; devolve False se outra coleta esta rodando.
+    ao_abandonar(motivo) e chamada quando uma trava abandonada e removida.
+    """
     agora = agora or _agora()
     os.makedirs(os.path.dirname(caminho), exist_ok=True)
     for _ in range(2):
@@ -30,9 +51,12 @@ def adquirir(caminho, agora=None):
             # O_EXCL garante que so um processo consegue criar o arquivo
             descritor = os.open(caminho, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         except FileExistsError:
-            if not _abandonada(caminho, agora):
+            motivo = _motivo_abandono(caminho, agora)
+            if motivo is None:
                 return False
             os.remove(caminho)
+            if ao_abandonar:
+                ao_abandonar(motivo)
             continue
         with os.fdopen(descritor, "w", encoding="utf-8") as arquivo:
             json.dump({"pid": os.getpid(), "inicio": agora.isoformat()}, arquivo)

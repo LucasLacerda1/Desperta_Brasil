@@ -52,7 +52,7 @@ Agendamento do RF02, conforme a decisão 12.1 do `CLAUDE.md` (exemplo de `cronta
 0 4 1 * *  cd /caminho/Desperta_Brasil && .venv/bin/flask coletar mensal
 ```
 
-Só roda uma coleta por vez: a trava fica em `instance/coletor.lock`. Quem encontra a trava não roda e grava um aviso em `log_sistema`. Trava com mais de 6 horas é considerada abandonada.
+Só roda uma coleta por vez: a trava fica em `instance/coletor.lock`. Quem encontra a trava não roda e grava um aviso em `log_sistema`. Trava de um processo que não existe mais, ou com mais de 6 horas, é considerada abandonada: é removida, com um aviso no log.
 
 Cada coleta grava uma linha em `coleta` e os erros em `log_sistema`. Um registro com problema não derruba a coleta: ela termina como `parcial`.
 
