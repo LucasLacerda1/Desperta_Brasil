@@ -1243,7 +1243,7 @@ O aviso de depreciação de `get_engine` no `migrations/env.py` não afeta nada 
 
 ### 12.1 Volume da API e RF02
 A API tem muito mais proposições do que o previsto (cerca de 13 mil só em março de 2025), e cada uma pede pelo menos 4 chamadas. Do jeito que estava, a rotina diária não terminaria em um dia. Decisões:
-- **Não buscar de novo o que não mudou:** só chamar `/autores`, `/temas` e `/tramitacoes` quando a proposição é nova ou quando `statusProposicao.dataHora` (`data_status`) mudou. Se não mudou, atualizar só `sincronizado_em`.
+- **Não buscar de novo o que não mudou:** só chamar `/autores`, `/temas` e `/tramitacoes` quando a proposição é nova ou quando `statusProposicao.dataHora` (`data_status`) mudou. Se não mudou, os filhos não são buscados; a linha da proposição ainda é atualizada se o hash mudou (ex.: ementa corrigida), senão só `sincronizado_em` (ver 13.4).
 - **Tipos acompanhados no MVP:** `PL`, `PLP`, `PEC`, `MPV` e `PDL`, numa constante `TIPOS_ACOMPANHADOS` em `Config` (lida de variável de ambiente). Outros tipos (`REQ`, `INC`, etc.) só entram quando são citados por uma votação ou um item de pauta, pelo `referencias.py`.
 - **Novo calendário (substitui o RF02 antigo):**
   - `horaria`: votações e eventos do dia anterior e de hoje; proposições dos tipos acompanhados com janela de 1 dia.
@@ -1284,4 +1284,37 @@ A API devolve o id do bloco no lugar do id do partido. **Exceção aceita:** qua
 
 ### 12.8 GitHub
 A `main` do GitHub é criada a partir do commit `e7f6d2c` (fim da Fase 1.5). A branch `fase-2-coletor` sobe junto, e o pull request é aberto como **rascunho** já agora, para o grupo acompanhar. Ele vira pronto para revisão quando os itens de 12.7 terminarem. Se o `gh` não estiver instalado, o pull request é aberto pelo site do GitHub.
+
+---
+
+## 13. Decisões tomadas depois da parte 2 da Fase 2 (30/10/2026)
+
+Respostas aos 7 pontos do relatório da parte 2. Todas aceitas como o Claude Code fez, com um acréscimo na trava (13.6).
+
+### 13.1 Tabelas de apoio na `semanal`
+Aceito. Legislaturas, partidos, deputados, órgãos e temas são atualizados na rotina `semanal`.
+
+### 13.2 `horaria` só com o dia de hoje
+Aceito. O que mudar no fim da noite entra na `diaria` da madrugada, que cobre 3 dias.
+
+### 13.3 `horaria` sem pendentes de proposições e com no máximo 20 eventos para recoletar
+Aceito, para caber na meta de 20 minutos. Os pendentes ficam para a `diaria`.
+
+### 13.4 Conteúdo que muda com `data_status` igual
+Aceito. O hash continua decidindo se a linha é atualizada; `data_status` só decide se os filhos (autores, temas, tramitações) são buscados de novo. O texto da 12.1 foi ajustado.
+
+### 13.5 Filho com falha deixa a proposição pendente
+Aceito, com o limite de 200 pendentes por janela. O `relatorio` deve mostrar quantas proposições estão pendentes por falha repetida, para o grupo ver o tamanho do problema. A correção de verdade vem com os ajustes de `nullable` da Fase 2b.
+
+### 13.6 Trava: conferir se o processo ainda existe
+**Acréscimo:** ao encontrar `instance/coletor.lock`, o coletor confere se o PID gravado ainda está rodando (`os.kill(pid, 0)`: `ProcessLookupError` = processo morto). Se o processo não existe, a trava é abandonada: remover, gravar um aviso em `log_sistema` e seguir com a coleta. Se o processo existe, não rodar. O limite de 6 horas continua como segunda proteção, para o caso de o número do PID ter sido reaproveitado por outro programa. Com testes para os três casos: PID vivo, PID morto e trava com mais de 6 horas.
+
+### 13.7 RF02 no documento do MVP
+Continua com o grupo: atualizar o RF02 com o calendário de 12.1 e 13.1 a 13.3.
+
+### 13.8 Primeira `diaria`
+A primeira execução pode passar de 3 horas (cerca de 7.200 chamadas). Isso é aceito uma vez: rodar a primeira `diaria` com `nohup`, logo depois da amostra. A meta de 3 horas vale a partir da segunda execução. Se a segunda também passar, avisar o grupo.
+
+### 13.9 Cuidado com commits
+Rodar `invoke test` e conferir o resultado **antes** de fazer o commit, em comandos separados. Não fazer commit com teste falhando.
 
