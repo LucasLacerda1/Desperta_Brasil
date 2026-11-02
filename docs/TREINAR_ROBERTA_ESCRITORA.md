@@ -1,7 +1,7 @@
 # Desperta Brasil — treinar a RoBERTaLexPT para escrever (Fase 3b)
 
 > Para o Claude Code. Coloque em `docs/TREINAR_ROBERTA_ESCRITORA.md` e peça: "Leia docs/TREINAR_ROBERTA_ESCRITORA.md e comece pela etapa 1".
-> Escrito em 01/11/2026. Vem depois dos passos da 16.6 do `CLAUDE.md` (ver 17.3). Decisão do grupo: a própria RoBERTaLexPT deve aprender a escrever as notícias, em vez de usar um modelo de linguagem pronto.
+> Escrito em 01/11/2026. A etapa 1 pode começar já; as outras vêm depois dos passos da 16.6 do `CLAUDE.md` (ver 19.4). Decisão do grupo: a própria RoBERTaLexPT deve aprender a escrever as notícias, em vez de usar um modelo de linguagem pronto.
 
 ## 0. O que é possível e o que não é
 
@@ -14,7 +14,7 @@ A RoBERTaLexPT-base é um **encoder**: lê texto e gera vetores. Ela não tem a 
 Essa técnica é conhecida como *warm-start* (artigo de Rothe, Narayan e Severyn, 2020, "Leveraging Pre-trained Checkpoints for Sequence Generation Tasks", que fez o BERT2BERT e o RoBERTa2RoBERTa). No Hugging Face ela é feita com `EncoderDecoderModel.from_encoder_decoder_pretrained(...)`. O modelo resultante tem cerca de 250 a 280 milhões de parâmetros.
 
 **Limites que o grupo aceitou:**
-- O treino precisa de **placa de vídeo (GPU)**. No processador do PC levaria semanas. Usar Google Colab ou Kaggle, que têm GPU grátis com limite de horas por semana.
+- O treino precisa de **placa de vídeo (GPU)**. No processador do PC levaria semanas. **Usar a GPU principal do PC do Lucas, a NVIDIA RTX 4050** (seção 3.0 e seção 20 do `CLAUDE.md`). Google Colab ou Kaggle só se a 4050 não der conta.
 - O modelo aprende só o que os exemplos mostram. São necessários **milhares de pares** de exemplo.
 - Modelos desse tamanho escrevem bem textos **curtos**. Por isso a "Roberta escritora" vai escrever **título e resumo** (2 ou 3 frases, os campos `titulo` e `resumo` de `noticia`). O `corpo` da notícia é montado pelo código com os dados do banco (seções 1 e 5).
 - Pode inventar fatos. Por isso toda notícia continua entrando como `rascunho` e passa pelo editor (RF06), e a avaliação (seção 4) conta erros de fato.
@@ -57,17 +57,35 @@ A fonte natural é a **Agência Câmara de Notícias** (`camara.leg.br/noticias`
 - Separar por **data**: os 80% mais antigos para treino, 10% para validação e os 10% mais recentes para teste.
 - Código da coleta em `scripts/dataset/` (fora do pacote `desperta`, não roda no portal), com comando `invoke dataset`.
 
-## 3. Etapa 3 — treino (fora do PC, com GPU)
+## 3. Etapa 3 — treino (na RTX 4050)
 
-- Um notebook `scripts/treino/treinar_roberta_escritora.ipynb` para o Google Colab ou Kaggle, que:
+### 3.0 Qual GPU usar
+- **A GPU do treino é a principal do PC: NVIDIA GeForce RTX 4050.** O notebook tem uma GPU integrada também; ela **não** deve ser usada.
+- Antes de treinar, conferir e anotar no relatório: `nvidia-smi` mostra a RTX 4050; `torch.cuda.is_available()` é `True`; `torch.cuda.get_device_name(0)` contém `4050`; memória total de vídeo (`torch.cuda.get_device_properties(0).total_memory`).
+- O script **para com erro** se a GPU não for a 4050 ou se o CUDA não estiver disponível. Nunca cair para o processador sem avisar.
+- Usar `CUDA_VISIBLE_DEVICES=0` e `device = torch.device("cuda:0")`. No Ubuntu, se `nvidia-smi` não achar a placa, o driver da NVIDIA ou o modo da placa (`prime-select`) precisa de ajuste: **parar e avisar o Lucas**, sem mexer no driver por conta própria.
+- O `.venv` hoje tem o PyTorch só para CPU (16.5). Trocar pelo PyTorch com CUDA (decisão 20.2) e registrar no README o comando usado.
+
+### 3.1 Ajustes para caber na memória
+A RTX 4050 de notebook costuma ter **6 GB** de memória de vídeo. Conferir o valor real. Com 6 GB:
+- `fp16=True` (ou `bf16=True`, que a 4050 suporta), `gradient_checkpointing=True`;
+- lote de 4 com `gradient_accumulation_steps=4` (lote efetivo de 16); se faltar memória, lote 2 com acumulação 8;
+- entrada até 512 tokens e saída até 128;
+- se ainda faltar memória, trocar o otimizador para `adafactor` (do próprio Transformers). Não usar biblioteca fechada.
+- Anotar o pico de memória (`torch.cuda.max_memory_allocated()`).
+
+### 3.2 O treino
+- O PC fica ligado na tomada, sem suspensão, com boa ventilação. O treino salva checkpoint a cada época e pode continuar de onde parou (`resume_from_checkpoint`).
+
+- Um script `scripts/treino/treinar_roberta_escritora.py` (com `invoke treinar`), que roda no PC do Lucas na RTX 4050 e também em Colab/Kaggle sem mudar o código. Ele:
   1. instala `transformers`, `datasets`, `evaluate` e `rouge_score`;
-  2. carrega `pares.jsonl` (enviado pelo usuário ao Google Drive ou ao Kaggle);
+  2. carrega `instance/dataset/pares.jsonl`;
   3. monta o modelo: `EncoderDecoderModel.from_encoder_decoder_pretrained("eduagarcia/RoBERTaLexPT-base", "eduagarcia/RoBERTaLexPT-base", tie_encoder_decoder=True)`; configura `decoder_start_token_id`, `eos_token_id` e `pad_token_id` com o tokenizer da RoBERTaLexPT;
-  4. treina com `Seq2SeqTrainer`: `fp16=True`, lote 8 a 16, taxa de aprendizado em torno de 5e-5, 5 a 10 épocas, avaliação por época e parada antecipada pela perda de validação;
+  4. treina com `Seq2SeqTrainer` na RTX 4050, com os ajustes de 3.1, taxa de aprendizado em torno de 5e-5, 5 a 10 épocas, avaliação por época e parada antecipada pela perda de validação;
   5. gera com `num_beams=4`, `max_new_tokens=128`, `no_repeat_ngram_size=3`;
-  6. salva o melhor modelo e o tokenizer numa pasta `roberta-escritora/` para baixar.
+  6. salva os checkpoints no disco do PC (`instance/treino/`) e o melhor modelo e o tokenizer em `ROBERTA_ESCRITORA_DIR` (padrão `<MODELOS_DIR>/roberta-escritora/`), no PC. A RoBERTaLexPT-base de partida é lida de `ROBERTA_DIR`, que fica no pendrive (seção 21 do `CLAUDE.md`).
 - Começar com um treino curto (1 época em 1.000 pares) para conferir se tudo roda, antes do treino longo.
-- Anotar no relatório: GPU usada, horas de treino e perda final.
+- Anotar no relatório: nome da GPU (precisa ser a RTX 4050), memória de vídeo, pico de memória, horas de treino e perda final.
 
 ## 4. Etapa 4 — avaliação
 
@@ -75,23 +93,23 @@ A fonte natural é a **Agência Câmara de Notícias** (`camara.leg.br/noticias`
 2. **Erros de fato (o mais importante):** sortear 50 casos do teste e conferir, um por um, se o texto gerado tem número, nome, data, partido ou resultado que **não está na entrada**. O Claude Code faz a conferência automática (todo número e nome próprio do texto precisa existir na entrada) e marca os suspeitos; o grupo confere à mão.
 3. Ler 20 textos e dar nota de 1 a 5 para clareza (feito pelo grupo).
 
-**Critério para a Roberta escritora entrar no portal:** no máximo 2 erros de fato em 50 casos, e clareza média de pelo menos 3,5. Se não passar, o portal fica com o `GeradorFrases`, e a Roberta escritora continua como experimento.
+**Critério para a Roberta escritora entrar no portal:** no máximo 2 erros de fato em 50 casos, e clareza média de pelo menos 4,0. Se não passar, o portal fica com o `GeradorFrases`, e a Roberta escritora continua como experimento.
 
 ## 5. Etapa 5 — integração (só se passar na avaliação)
 
 - `GeradorRoberta` em `desperta/ia/gerador.py`, com a mesma interface: recebe os dados, monta a entrada no **mesmo formato do treino** (seção 2.2), gera `titulo` e `resumo`; o `corpo` vem do `GeradorFrases`.
-- Modelo em `instance/modelos/roberta-escritora/` (fora do git), carregado só no módulo de IA, nunca na API Flask (6.1 do `CLAUDE.md`).
-- Roda no processador. Medir quanto tempo leva cada notícia.
+- Modelo em `ROBERTA_ESCRITORA_DIR` (padrão `<MODELOS_DIR>/roberta-escritora/`, no PC, fora do git; seção 21 do `CLAUDE.md`), carregado só no módulo de IA, nunca na API Flask (6.1 do `CLAUDE.md`). Ele não depende do pendrive.
+- Usa a RTX 4050 quando houver (`IA_DISPOSITIVO`, seção 20 do `CLAUDE.md`) e precisa funcionar também no processador, para um servidor sem placa. Medir o tempo por notícia nos dois.
 - Depois de gerar, rodar a conferência automática de fatos da seção 4; se achar número ou nome fora da entrada, gravar a notícia como `rascunho` com um aviso no `noticia_revisao.comentario` para o editor.
 - `geracao_ia.modelo_geracao = "roberta-escritora-v1"` e `versao_prompt` com a versão do formato de entrada.
 - Créditos: a RoBERTaLexPT tem licença CC-BY-4.0, que permite modificar com atribuição. Citar os autores (Garcia et al., PROPOR 2024) no README e na página "Sobre" do portal.
 
 ## 6. Ordem e o que não fazer
 
-Ordem: etapa 1 (plano B) → etapa 2 (dados, numa branch `fase-3b-roberta-escritora`; relatório com volume e licença) → **o grupo confirma** → etapa 3 (treino no Colab/Kaggle, com o usuário rodando o notebook) → etapa 4 → etapa 5 se passar.
+Ordem: etapa 1 (plano B) → etapa 2 (dados, numa branch `fase-3b-roberta-escritora`; relatório com volume e licença) → **o grupo confirma** → etapa 3 (treino na RTX 4050 do PC do Lucas) → etapa 4 → etapa 5 se passar.
 
 Não fazer:
-- Não treinar no PC sem GPU.
+- Não treinar no processador nem na GPU integrada: só na RTX 4050.
 - Não criar tabelas novas para o dataset: ele fica em arquivo.
 - Não publicar nada sem passar pelo editor.
 - Não coletar a Agência Câmara se os termos não permitirem.
