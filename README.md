@@ -61,7 +61,10 @@ Cada coleta grava uma linha em `coleta` e os erros em `log_sistema`. Um registro
 A RoBERTaLexPT roda só neste módulo; a API Flask não carrega o modelo. Precisa das dependências de IA:
 
 ```bash
-pip install torch --index-url https://download.pytorch.org/whl/cpu   # sem GPU, ocupa bem menos disco
+# Com a RTX 4050 (driver 595, CUDA 13.2); o .venv fica com cerca de 5,7 GB
+pip install "torch==2.15.0+cu132" --index-url https://download.pytorch.org/whl/cu132 --extra-index-url https://pypi.org/simple
+# Sem placa da NVIDIA; o .venv fica com cerca de 1,3 GB
+pip install torch --index-url https://download.pytorch.org/whl/cpu
 pip install -e ".[ia]"
 ```
 
