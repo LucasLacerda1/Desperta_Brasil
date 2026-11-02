@@ -54,7 +54,7 @@ def carga_validacao(c):
 
 @task(name="baixar-modelo")
 def baixar_modelo(c):
-    """Baixa a RoBERTaLexPT uma vez para instance/modelos (cerca de 500 MB)."""
+    """Baixa a RoBERTaLexPT uma vez para ROBERTA_DIR (cerca de 500 MB)."""
     c.run("flask --app app.py ia baixar-modelo", echo=True)
 
 

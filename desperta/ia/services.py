@@ -11,11 +11,11 @@ from desperta.proposicoes.models import Proposicao, Tramitacao
 from desperta.sistema.models import LogSistema
 from desperta.votacoes.models import Votacao
 
-from . import centralizacao, palavras, trechos, vetores
+from . import centralizacao, embeddings, palavras, trechos, vetores
 from .models import GeracaoTrecho, TrechoRAG
 
 LOTE_INDEXACAO = 64
-MODOS_BUSCA = ("hibrida", "vetorial", "palavras")
+MODOS_BUSCA = ("hibrida", "hibrida_peso", "vetorial", "palavras")
 
 
 @dataclass
@@ -189,12 +189,12 @@ def _ids_no_periodo(inicio, fim, tipos):
 
 
 def _juntar_por_rrf(listas):
-    """Reciprocal Rank Fusion: cada lista soma 1 / (constante + posicao) ao trecho."""
+    """Reciprocal Rank Fusion: cada lista, com o seu peso, soma peso / (constante + posicao) ao trecho."""
     constante = current_app.config["RAG_RRF_K"]
     notas = Counter()
-    for lista in listas:
+    for lista, peso in listas:
         for posicao, trecho_id in enumerate(lista, start=1):
-            notas[trecho_id] += 1 / (constante + posicao)
+            notas[trecho_id] += peso / (constante + posicao)
     return notas
 
 
@@ -222,10 +222,12 @@ def buscar(modelo, consulta, top_k=None, tipos=None, inicio=None, fim=None, modo
         embedding = centralizacao.transformador()(modelo.embutir([consulta])[0])
         notas = {trecho_id: 1 - distancia for trecho_id, distancia in vetores.buscar(embedding, k, candidatos)}
     else:
-        listas = [palavras.buscar(consulta, limite, candidatos)]
-        if modo == "hibrida":
+        listas = [(palavras.buscar(consulta, limite, candidatos), 1.0)]
+        if modo in ("hibrida", "hibrida_peso"):
             embedding = centralizacao.transformador()(modelo.embutir([consulta])[0])
-            listas.append([trecho_id for trecho_id, _ in vetores.buscar(embedding, limite, candidatos)])
+            lista = [trecho_id for trecho_id, _ in vetores.buscar(embedding, limite, candidatos)]
+            # Decisao 19.2: hibrida_peso tenta manter os acertos do vetor sem derrubar os das palavras
+            listas.append((lista, current_app.config["RAG_PESO_VETOR"] if modo == "hibrida_peso" else 1.0))
         notas = _juntar_por_rrf(listas)
 
     melhores = sorted(notas.items(), key=lambda item: item[1], reverse=True)[:k]
@@ -245,11 +247,15 @@ def _proposicao_do_trecho(trecho):
 
 
 def medir_busca(modelo, consultas, modos=MODOS_BUSCA, k=8):
-    """Decisao 16.2: quantas das proposicoes esperadas aparecem nos k primeiros, em cada modo."""
+    """
+    Decisao 16.2: quantas das proposicoes esperadas aparecem nos k primeiros, em cada modo.
+    Decisao 19.2: tambem quantas das marcadas a mao em "fora_do_assunto" aparecem.
+    """
     resultado = {}
     for modo in modos:
         acertos = 0
         total = 0
+        fora = 0
         por_consulta = []
         for item in consultas:
             esperadas = set(item["esperadas"])
@@ -259,6 +265,42 @@ def medir_busca(modelo, consultas, modos=MODOS_BUSCA, k=8):
             certas = len(esperadas & achadas)
             acertos += certas
             total += len(esperadas)
+            fora += len(set(item.get("fora_do_assunto", [])) & achadas)
             por_consulta.append((item["consulta"], certas, len(esperadas)))
-        resultado[modo] = {"acertos": acertos, "total": total, "consultas": por_consulta}
+        resultado[modo] = {"acertos": acertos, "total": total, "fora_do_assunto": fora, "consultas": por_consulta}
     return resultado
+
+
+def carregar_modelo():
+    """
+    Decisao 21.3: confere a pasta antes de importar o torch e, sem ela, para com aviso no log.
+    Decisao 20.2: registra o dispositivo de cada execucao.
+    """
+    config = current_app.config
+    pasta = embeddings.caminho_no_projeto(current_app, config["ROBERTA_DIR"])
+    faltando = embeddings.arquivos_faltando(pasta)
+    if faltando:
+        mensagem = f"RoBERTaLexPT não encontrada em {pasta}. O pendrive está conectado?"
+        db.session.add(
+            LogSistema(
+                nivel="aviso",
+                modulo="IA",
+                acao="roberta_ausente",
+                descricao=f"{mensagem} Faltam: {', '.join(faltando)}",
+            )
+        )
+        db.session.commit()
+        raise embeddings.RobertaAusente(mensagem)
+    embeddings.preparar_ambiente(current_app)
+    dispositivo = embeddings.escolher_dispositivo(config["IA_DISPOSITIVO"])
+    modelo = embeddings.ModeloEmbedding(config["EMBEDDING_MODEL"], pasta=pasta, dispositivo=dispositivo)
+    db.session.add(
+        LogSistema(
+            nivel="info",
+            modulo="IA",
+            acao="carregar_modelo",
+            descricao=f"pasta={pasta} dispositivo={embeddings.nome_do_dispositivo(dispositivo)}",
+        )
+    )
+    db.session.commit()
+    return modelo

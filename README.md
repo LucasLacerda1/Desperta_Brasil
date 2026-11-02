@@ -58,7 +58,7 @@ Cada coleta grava uma linha em `coleta` e os erros em `log_sistema`. Um registro
 
 ## RAG (Fase 3)
 
-A RoBERTaLexPT roda só neste módulo, na CPU; a API Flask não carrega o modelo. Precisa das dependências de IA:
+A RoBERTaLexPT roda só neste módulo; a API Flask não carrega o modelo. Precisa das dependências de IA:
 
 ```bash
 pip install torch --index-url https://download.pytorch.org/whl/cpu   # sem GPU, ocupa bem menos disco
@@ -66,17 +66,27 @@ pip install -e ".[ia]"
 ```
 
 ```bash
-flask ia baixar-modelo             # baixa a RoBERTaLexPT uma vez para instance/modelos (cerca de 500 MB)
+flask ia baixar-modelo             # baixa a RoBERTaLexPT uma vez para ROBERTA_DIR (cerca de 500 MB)
+flask ia mover-roberta --para /media/<usuario>/DESPERTA/roberta-lexpt-base   # copia e confere; não apaga a antiga
 flask ia indexar                   # trechos e embeddings do que é novo ou mudou; pode parar e rodar de novo
 flask ia indexar --tipo votacao    # só um tipo; --limite 500 para no máximo 500 trechos novos
 flask ia buscar "reforma tributária" --tipo proposicao --inicio 2025-01-01 --fim 2025-12-31
 flask ia medir-busca               # acertos de cada modo nas consultas de tests/dados/consultas_busca.json
 flask ia reconstruir               # refaz os índices a partir de trecho_rag
+flask ia gerar nova 2459654        # rascunho de uma proposição nova; também: situacao <id> e votacao <id>
 ```
 
 Depois do download, use `HF_HUB_OFFLINE=1` no `.env`: o modelo roda sem internet. Sem as dependências de IA, os testes de `tests/test_ia.py` são pulados. Depois de cada coleta, rode `flask ia indexar`.
 
-A busca é híbrida: junta o índice vetorial (`vec_trecho`) e o de palavras (`trecho_fts`) por Reciprocal Rank Fusion. Os índices não são modelos SQLAlchemy nem contam entre as 32 tabelas. Só as tramitações dos últimos `RAG_TRAMITACAO_DIAS` dias (padrão: 90) viram trecho.
+A RoBERTaLexPT-base fica em `ROBERTA_DIR`, numa pasta simples, sem os links do cache do Hugging Face. Sem essa pasta (pendrive desconectado), `indexar`, `buscar` e `medir-busca` param com uma mensagem clara e um aviso no log, e `gerar` usa só a busca por palavras. O coletor, a API e os testes não dependem dela.
+
+`IA_DISPOSITIVO` escolhe onde o modelo roda: `auto` (a RTX 4050 se existir, senão o processador), `cuda` (para com erro sem a placa) ou `cpu`. O dispositivo de cada execução fica em `log_sistema`.
+
+A busca é híbrida: junta o índice vetorial (`vec_trecho`) e o de palavras (`trecho_fts`) por Reciprocal Rank Fusion. O modo `hibrida_peso` faz o mesmo com a lista vetorial pesando `RAG_PESO_VETOR` (padrão: 0,5). Os índices não são modelos SQLAlchemy nem contam entre as 32 tabelas. Só as tramitações dos últimos `RAG_TRAMITACAO_DIAS` dias (padrão: 90) viram trecho.
+
+Em `tests/dados/consultas_busca.json`, cada consulta pode ter a lista `fora_do_assunto`, com as proposições marcadas à mão, e o `medir-busca` conta quantas aparecem nos 8 primeiros.
+
+As notícias são escritas pelo `GERADOR` (padrão: `frases`). O `GeradorFrases` usa frases prontas, sem IA: todo número, nome e data vem dos registros do banco. Votação de requerimento ou de redação final não vira "Câmara aprova projeto". Toda notícia entra como `rascunho`, e cada execução grava `geracao_ia`, mesmo com erro. Proposição sem tema não gera notícia, porque `noticia.cod_tema` é obrigatório.
 
 Para medir a centralização dos embeddings:
 

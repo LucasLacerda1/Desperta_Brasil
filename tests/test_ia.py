@@ -11,7 +11,7 @@ import pytest
 import fabricas
 from desperta import create_app
 from desperta.config import TestConfig
-from desperta.ia import centralizacao, palavras, services, trechos, vetores
+from desperta.ia import centralizacao, embeddings, palavras, services, trechos, vetores
 from desperta.ia.embeddings import ModeloEmbedding, preparar_ambiente
 from desperta.ia.gerador import Gerador, GeradorFalso
 from desperta.ia.models import GeracaoIA, GeracaoTrecho, TrechoRAG
@@ -469,25 +469,44 @@ def test_arquivo_de_consultas_tem_20_consultas_com_esperadas():
 
 
 # ======================================================
-# DECISAO 16.7: ONDE O MODELO FICA
+# DECISOES 16.7 E 21: ONDE O MODELO FICA
 # ======================================================
+def _pasta_de_modelo(pasta):
+    pasta.mkdir(parents=True, exist_ok=True)
+    for nome in ("config.json", "tokenizer_config.json", "tokenizer.json"):
+        (pasta / nome).write_text("{}")
+    (pasta / "model.safetensors").write_bytes(b"0" * 2_000_000)
+    return pasta
+
+
+class CarregadorFalso:
+    """No lugar da ModeloEmbedding de verdade: guarda de onde o modelo seria lido."""
+
+    pastas = []
+
+    def __init__(self, nome, pasta=None, dispositivo="cpu"):
+        CarregadorFalso.pastas.append(pasta)
+        self.nome = nome
+        self.dispositivo = dispositivo
+
+    def embutir(self, textos):
+        return [bytes(3072) for _ in textos]
+
+
 @pytest.fixture
-def ambiente_hf(monkeypatch):
-    # O teste muda estas variaveis: o monkeypatch devolve os valores no fim
-    monkeypatch.setenv("HF_HOME", "x")
+def carregador(monkeypatch):
+    CarregadorFalso.pastas = []
+    monkeypatch.setattr("desperta.ia.embeddings.ModeloEmbedding", CarregadorFalso)
     monkeypatch.setenv("HF_HUB_OFFLINE", "x")
+    return CarregadorFalso
 
 
-def test_modelo_fica_dentro_do_projeto(app, ambiente_hf):
-    # O .env da maquina pode ter HF_HUB_OFFLINE=1: o teste nao depende dele
-    app.config.update(HF_HOME="instance/modelos", HF_HUB_OFFLINE="0")
-    pasta = preparar_ambiente(app)
-    assert pasta == os.path.join(os.path.dirname(app.instance_path), "instance/modelos")
-    assert os.environ["HF_HOME"] == pasta
-    assert os.environ["HF_HUB_OFFLINE"] == "0"
+def test_padrao_da_roberta_fica_dentro_de_modelos_dir():
+    assert TestConfig.ROBERTA_DIR_PADRAO == os.path.join(TestConfig.MODELOS_DIR, "roberta-lexpt-base")
 
 
-def test_modelo_offline_pela_configuracao_e_baixar_sempre_online(app, ambiente_hf):
+def test_offline_pela_configuracao_e_baixar_sempre_online(app, monkeypatch):
+    monkeypatch.setenv("HF_HUB_OFFLINE", "x")
     app.config["HF_HUB_OFFLINE"] = "1"
     preparar_ambiente(app)
     assert os.environ["HF_HUB_OFFLINE"] == "1"
@@ -495,22 +514,166 @@ def test_modelo_offline_pela_configuracao_e_baixar_sempre_online(app, ambiente_h
     assert os.environ["HF_HUB_OFFLINE"] == "0"
 
 
-def test_comando_baixar_modelo(app, comandos, monkeypatch, ambiente_hf, tmp_path):
-    (tmp_path / "pesos.bin").write_bytes(b"0" * 2_000_000)
-    (tmp_path / "atalho.bin").symlink_to(tmp_path / "pesos.bin")
-    monkeypatch.setitem(app.config, "HF_HOME", str(tmp_path))
-    pedidos = []
+def test_caminho_relativo_parte_da_raiz_e_absoluto_fica_como_esta(app):
+    raiz = os.path.dirname(app.instance_path)
+    assert embeddings.caminho_no_projeto(app, "instance/modelos") == os.path.join(raiz, "instance/modelos")
+    assert embeddings.caminho_no_projeto(app, "/media/x/DESPERTA") == "/media/x/DESPERTA"
 
-    def modelo_falso(offline=None):
-        pedidos.append(offline)
-        preparar_ambiente(app, offline)
-        return ModeloFalso()
 
-    monkeypatch.setattr("desperta.ia.cli._modelo", modelo_falso)
-    resultado = comandos.invoke(args=["ia", "baixar-modelo"])
+def test_pasta_completa_nao_falta_nada(tmp_path):
+    assert embeddings.arquivos_faltando(_pasta_de_modelo(tmp_path)) == []
+
+
+def test_tokenizador_pode_vir_em_vocab_e_merges(tmp_path):
+    _pasta_de_modelo(tmp_path)
+    (tmp_path / "tokenizer.json").unlink()
+    assert embeddings.arquivos_faltando(tmp_path) == ["tokenizer.json"]
+    (tmp_path / "vocab.json").write_text("{}")
+    (tmp_path / "merges.txt").write_text("")
+    assert embeddings.arquivos_faltando(tmp_path) == []
+
+
+def test_pasta_que_nao_existe_falta_tudo(tmp_path):
+    assert "model.safetensors" in embeddings.arquivos_faltando(tmp_path / "nada")
+
+
+@pytest.mark.parametrize("criar", [False, True], ids=["nao-existe", "vazia"])
+def test_sem_a_roberta_para_com_mensagem_e_aviso_no_log(app, db, tmp_path, criar):
+    pasta = tmp_path / "pendrive"
+    if criar:
+        pasta.mkdir()
+    app.config["ROBERTA_DIR"] = str(pasta)
+    with pytest.raises(embeddings.RobertaAusente, match="O pendrive está conectado"):
+        services.carregar_modelo()
+    log = db.session.scalar(db.select(LogSistema).filter_by(acao="roberta_ausente"))
+    assert (log.nivel, log.modulo) == ("aviso", "IA")
+    assert str(pasta) in log.descricao
+
+
+def test_comandos_que_usam_a_roberta_saem_com_erro_sem_ela(app, db, tmp_path):
+    app.config["ROBERTA_DIR"] = str(tmp_path / "pendrive")
+    for comando in (["ia", "indexar"], ["ia", "buscar", "x"], ["ia", "medir-busca"]):
+        resultado = app.test_cli_runner().invoke(args=comando)
+        assert resultado.exit_code != 0
+        assert "O pendrive está conectado" in resultado.output
+
+
+def test_com_a_pasta_carrega_dela_e_registra_o_dispositivo(app, db, carregador, tmp_path):
+    app.config.update(ROBERTA_DIR=str(_pasta_de_modelo(tmp_path)), IA_DISPOSITIVO="cpu")
+    services.carregar_modelo()
+    assert carregador.pastas == [str(tmp_path)]
+    log = db.session.scalar(db.select(LogSistema).filter_by(acao="carregar_modelo"))
+    assert "dispositivo=cpu" in log.descricao
+
+
+def test_baixar_modelo_salva_em_roberta_dir_online_e_sem_deixar_cache(app, carregador, monkeypatch, tmp_path):
+    destino = tmp_path / "modelos" / "roberta"
+    app.config.update(MODELOS_DIR=str(tmp_path / "modelos"), ROBERTA_DIR=str(destino), ROBERTA_DIR_PADRAO=str(destino))
+    app.config["HF_HUB_OFFLINE"] = "1"
+    chamadas = []
+
+    def salvar(nome, pasta, cache):
+        chamadas.append((nome, pasta, os.environ["HF_HUB_OFFLINE"]))
+        _pasta_de_modelo(tmp_path / "modelos" / "roberta")
+
+    monkeypatch.setattr("desperta.ia.embeddings.salvar_modelo", salvar)
+    resultado = app.test_cli_runner().invoke(args=["ia", "baixar-modelo"])
     assert resultado.exit_code == 0, resultado.output
-    assert pedidos == [False]
-    assert "(2 MB)" in resultado.output
+    assert chamadas == [(app.config["EMBEDDING_MODEL"], str(destino), "0")]
+    assert "model.safetensors" in resultado.output and "(2 MB)" in resultado.output
+    assert sorted(os.listdir(tmp_path / "modelos")) == ["roberta"]
+    assert carregador.pastas == [str(destino)]
+
+
+def test_baixar_modelo_nao_baixa_de_novo_se_a_pasta_esta_completa(app, carregador, monkeypatch, tmp_path):
+    app.config["ROBERTA_DIR"] = str(_pasta_de_modelo(tmp_path))
+    monkeypatch.setattr("desperta.ia.embeddings.salvar_modelo", lambda *a: pytest.fail("nao devia baixar"))
+    assert app.test_cli_runner().invoke(args=["ia", "baixar-modelo"]).exit_code == 0
+
+
+def test_baixar_modelo_nao_vai_para_o_pc_com_o_pendrive_desconectado(app, carregador, monkeypatch, tmp_path):
+    app.config["ROBERTA_DIR"] = str(tmp_path / "DESPERTA" / "roberta")
+    monkeypatch.setattr("desperta.ia.embeddings.salvar_modelo", lambda *a: pytest.fail("nao devia baixar"))
+    resultado = app.test_cli_runner().invoke(args=["ia", "baixar-modelo"])
+    assert resultado.exit_code != 0
+    assert "O pendrive está conectado" in resultado.output
+
+
+def test_mover_roberta_copia_confere_e_nao_apaga_a_antiga(app, carregador, tmp_path):
+    origem = _pasta_de_modelo(tmp_path / "origem")
+    destino = tmp_path / "pendrive" / "roberta"
+    app.config["ROBERTA_DIR"] = str(origem)
+    resultado = app.test_cli_runner().invoke(args=["ia", "mover-roberta", "--para", str(destino)])
+    assert resultado.exit_code == 0, resultado.output
+    assert sorted(os.listdir(destino)) == sorted(os.listdir(origem))
+    assert (origem / "model.safetensors").exists()
+    assert not any((destino / nome).is_symlink() for nome in os.listdir(destino))
+    assert f"ROBERTA_DIR={destino}" in resultado.output
+    assert carregador.pastas == [str(destino)]
+
+
+def test_mover_roberta_recusa_pasta_com_arquivos_e_origem_incompleta(app, carregador, tmp_path):
+    origem = _pasta_de_modelo(tmp_path / "origem")
+    ocupada = tmp_path / "ocupada"
+    ocupada.mkdir()
+    (ocupada / "foto.jpg").write_text("x")
+    app.config["ROBERTA_DIR"] = str(origem)
+    resultado = app.test_cli_runner().invoke(args=["ia", "mover-roberta", "--para", str(ocupada)])
+    assert resultado.exit_code != 0 and "nao esta vazia" in resultado.output
+    assert (ocupada / "foto.jpg").read_text() == "x"
+    app.config["ROBERTA_DIR"] = str(tmp_path / "nada")
+    assert app.test_cli_runner().invoke(args=["ia", "mover-roberta", "--para", str(tmp_path / "d")]).exit_code != 0
+
+
+def test_copia_diferente_do_original_e_erro(tmp_path, monkeypatch):
+    origem = _pasta_de_modelo(tmp_path / "origem")
+    hashes = iter(["a", "b"])
+    monkeypatch.setattr("desperta.ia.embeddings._hash_do_arquivo", lambda caminho: next(hashes))
+    with pytest.raises(ValueError, match="ficou diferente"):
+        embeddings.copiar_modelo(origem, tmp_path / "destino")
+
+
+# ======================================================
+# DECISAO 19.2: RRF COM PESO E FORA DO ASSUNTO
+# ======================================================
+def test_rrf_com_peso_conta_menos_a_lista_vetorial(app, origem, modelo):
+    services.indexar(modelo)
+    app.config["RAG_PESO_VETOR"] = 0.5
+    constante = app.config["RAG_RRF_K"]
+    primeiro = services.buscar(modelo, "Merenda escolar nas escolas", top_k=1, modo="hibrida_peso")[0]
+    assert primeiro.similaridade == pytest.approx(1.5 / (constante + 1))
+
+
+def test_peso_baixo_deixa_a_busca_por_palavras_decidir(app, origem):
+    modelo = ModeloCego()
+    services.indexar(modelo)
+    app.config["RAG_PESO_VETOR"] = 0.0
+    resultados = services.buscar(modelo, "orcamento", top_k=1, modo="hibrida_peso")
+    assert _referencias(resultados) == [("evento", "70001")]
+
+
+def test_o_padrao_da_busca_continua_hibrida_sem_peso(app, origem, modelo):
+    services.indexar(modelo)
+    primeiro = services.buscar(modelo, "Merenda escolar nas escolas", top_k=1)[0]
+    assert primeiro.similaridade == pytest.approx(2 / (app.config["RAG_RRF_K"] + 1))
+
+
+def test_medir_conta_o_que_foi_marcado_como_fora_do_assunto(origem, modelo):
+    services.indexar(modelo)
+    consultas = [{"consulta": "merenda escolar", "esperadas": [2], "fora_do_assunto": [2, 999]}]
+    assert services.medir_busca(modelo, consultas, modos=("palavras",))["palavras"]["fora_do_assunto"] == 1
+
+
+# ======================================================
+# DECISAO 20: DISPOSITIVO
+# ======================================================
+def test_cpu_nunca_olha_a_placa():
+    assert embeddings.escolher_dispositivo("cpu") == "cpu"
+
+
+def test_dispositivo_desconhecido():
+    with pytest.raises(ValueError):
+        embeddings.escolher_dispositivo("tpu")
 
 
 # ======================================================
@@ -551,7 +714,7 @@ def test_drop_db_tira_os_indices(app, db):
 # ======================================================
 @pytest.fixture
 def comandos(app, monkeypatch, modelo):
-    monkeypatch.setattr("desperta.ia.cli._modelo", lambda offline=None: modelo)
+    monkeypatch.setattr("desperta.ia.cli._modelo", lambda: modelo)
     app.config["EMBEDDING_MODEL"] = MODELO
     return app.test_cli_runner()
 
@@ -646,12 +809,12 @@ class RedeFalsa:
 
 
 @pytest.fixture
-def embeddings():
+def rede():
     return ModeloEmbedding("modelo", tokenizador=TokenizadorFalso(), modelo=RedeFalsa())
 
 
-def test_mean_pooling_ignora_preenchimento_e_normaliza(embeddings):
-    primeiro, segundo = embeddings.embutir(["a", "bb"])
+def test_mean_pooling_ignora_preenchimento_e_normaliza(rede):
+    primeiro, segundo = rede.embutir(["a", "bb"])
     assert len(primeiro) == len(segundo) == 3072
     assert struct.unpack("768f", primeiro)[0] == pytest.approx(1.0)
     valores = struct.unpack("768f", segundo)
@@ -659,17 +822,37 @@ def test_mean_pooling_ignora_preenchimento_e_normaliza(embeddings):
     assert valores[1] == pytest.approx(1.0)
 
 
-def test_embutir_mantem_a_ordem_de_entrada(embeddings):
-    longo, curto = embeddings.embutir(["texto bem mais longo", "a"])
+def test_embutir_mantem_a_ordem_de_entrada(rede):
+    longo, curto = rede.embutir(["texto bem mais longo", "a"])
     # O mais curto vai primeiro no lote, mas cada resultado volta para a posicao do seu texto
     assert struct.unpack("768f", curto)[0] == pytest.approx(1.0)
     assert struct.unpack("768f", longo)[1] == pytest.approx(1.0)
 
 
-def test_dividir_texto_curto_fica_num_trecho_so(embeddings):
-    assert embeddings.dividir("1 2 3", 400, 50) == [("1 2 3", 3)]
+def test_dividir_texto_curto_fica_num_trecho_so(rede):
+    assert rede.dividir("1 2 3", 400, 50) == [("1 2 3", 3)]
 
 
-def test_dividir_texto_longo_com_sobreposicao(embeddings):
+def test_dividir_texto_longo_com_sobreposicao(rede):
     texto = " ".join(str(numero) for numero in range(1, 8))
-    assert embeddings.dividir(texto, 4, 1) == [("1 2 3 4", 4), ("4 5 6 7", 4)]
+    assert rede.dividir(texto, 4, 1) == [("1 2 3 4", 4), ("4 5 6 7", 4)]
+
+
+@pytest.mark.parametrize(
+    "preferencia,tem_placa,esperado",
+    [("auto", True, "cuda:0"), ("auto", False, "cpu"), ("cuda", True, "cuda:0")],
+)
+def test_escolher_dispositivo(monkeypatch, preferencia, tem_placa, esperado):
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: tem_placa)
+    assert embeddings.escolher_dispositivo(preferencia) == esperado
+
+
+def test_cuda_sem_placa_para_com_erro(monkeypatch):
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
+    with pytest.raises(embeddings.DispositivoIndisponivel):
+        embeddings.escolher_dispositivo("cuda")
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="sem CUDA nesta maquina")
+def test_placa_real_e_a_rtx_4050():
+    assert "4050" in embeddings.nome_do_dispositivo("cuda:0")

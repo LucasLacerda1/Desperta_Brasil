@@ -1,40 +1,74 @@
 import json
 import os
+import tempfile
 from datetime import date
 
 import click
 from flask import current_app
 from flask.cli import AppGroup
 
-from . import centralizacao, services
-from .embeddings import ModeloEmbedding, preparar_ambiente
+from . import centralizacao, embeddings, geracao, services
+from .gerador import CASOS
 from .models import TRECHO_RAG_TIPOS
 
 ia = AppGroup("ia", help="Trechos, embeddings e busca do RAG.")
 
 
-def _modelo(offline=None):
-    preparar_ambiente(current_app, offline)
-    return ModeloEmbedding(current_app.config["EMBEDDING_MODEL"])
+def _modelo():
+    try:
+        return services.carregar_modelo()
+    except (embeddings.RobertaAusente, embeddings.DispositivoIndisponivel) as erro:
+        raise click.ClickException(str(erro))
 
 
-def _tamanho_em_mb(pasta):
-    total = 0
-    for raiz, _, arquivos in os.walk(pasta):
-        # O Hugging Face liga os arquivos por atalhos: so os arquivos de verdade contam
-        caminhos = (os.path.join(raiz, nome) for nome in arquivos)
-        total += sum(os.path.getsize(caminho) for caminho in caminhos if not os.path.islink(caminho))
-    return total // 1_000_000
+def _conferir_arquivos(pasta, modelo):
+    """Mostra a lista da decisao 21.2 e confere se o modelo carregou de verdade."""
+    if len(modelo.embutir(["teste"])[0]) != 3072:
+        raise click.ClickException("O modelo nao gerou um embedding de 768 dimensoes.")
+    for nome in sorted(os.listdir(pasta)):
+        click.echo(f"  {nome}")
+    click.echo(f"Modelo pronto em {pasta} ({embeddings.tamanho_em_mb(pasta)} MB).")
+
+
+def _carregar_da_pasta(pasta):
+    embeddings.preparar_ambiente(current_app)
+    return embeddings.ModeloEmbedding(current_app.config["EMBEDDING_MODEL"], pasta=pasta)
 
 
 @ia.command("baixar-modelo")
 def baixar_modelo():
-    """Baixa o modelo uma vez para instance/modelos e confere se ele carrega."""
-    modelo = _modelo(offline=False)
-    if len(modelo.embutir(["teste"])[0]) != 3072:
-        raise click.ClickException("O modelo nao gerou um embedding de 768 dimensoes.")
-    pasta = os.environ["HF_HOME"]
-    click.echo(f"Modelo pronto em {pasta} ({_tamanho_em_mb(pasta)} MB). Agora pode usar HF_HUB_OFFLINE=1.")
+    """Baixa a RoBERTaLexPT uma vez para ROBERTA_DIR e confere se ela carrega."""
+    config = current_app.config
+    pasta = embeddings.caminho_no_projeto(current_app, config["ROBERTA_DIR"])
+    if embeddings.arquivos_faltando(pasta):
+        # Decisao 21.3: pendrive desconectado nao vira um download para o disco do PC
+        if config["ROBERTA_DIR"] != config["ROBERTA_DIR_PADRAO"] and not os.path.isdir(os.path.dirname(pasta)):
+            raise click.ClickException(f"A pasta {os.path.dirname(pasta)} nao existe. O pendrive está conectado?")
+        # O cache do Hugging Face so serve durante o download (21.2)
+        modelos = embeddings.caminho_no_projeto(current_app, config["MODELOS_DIR"])
+        os.makedirs(modelos, exist_ok=True)
+        embeddings.preparar_ambiente(current_app, offline=False)
+        with tempfile.TemporaryDirectory(dir=modelos) as cache:
+            embeddings.salvar_modelo(config["EMBEDDING_MODEL"], pasta, cache)
+    _conferir_arquivos(pasta, _carregar_da_pasta(pasta))
+    click.echo("Agora pode usar HF_HUB_OFFLINE=1.")
+
+
+@ia.command("mover-roberta")
+@click.option("--para", "destino", required=True, help="Nova pasta da RoBERTaLexPT (o pendrive).")
+def mover_roberta(destino):
+    """Copia a RoBERTaLexPT para outra pasta e confere; a copia antiga nao e apagada."""
+    origem = embeddings.caminho_no_projeto(current_app, current_app.config["ROBERTA_DIR"])
+    destino = os.path.abspath(destino)
+    if embeddings.arquivos_faltando(origem):
+        raise click.ClickException(f"RoBERTaLexPT não encontrada em {origem}.")
+    try:
+        embeddings.copiar_modelo(origem, destino)
+    except (OSError, ValueError) as erro:
+        raise click.ClickException(str(erro))
+    _conferir_arquivos(destino, _carregar_da_pasta(destino))
+    click.echo(f"Atualize o .env com: ROBERTA_DIR={destino}")
+    click.echo(f"A cópia antiga continua em {origem}; apagar é decisão sua, depois de conferir.")
 
 
 def _data(ctx, param, valor):
@@ -73,13 +107,40 @@ def buscar(consulta, tipos, k, inicio, fim, modo):
 @ia.command("medir-busca")
 @click.argument("arquivo", default="tests/dados/consultas_busca.json")
 def medir_busca(arquivo):
-    """Quantas das proposicoes esperadas aparecem nos 8 primeiros, em cada modo (decisao 16.2)."""
+    """Quantas das proposicoes esperadas aparecem nos 8 primeiros, em cada modo (decisoes 16.2 e 19.2)."""
     with open(arquivo, encoding="utf-8") as entrada:
         consultas = json.load(entrada)["consultas"]
     for modo, resultado in services.medir_busca(_modelo(), consultas).items():
-        click.echo(f"{modo}: {resultado['acertos']} de {resultado['total']}")
+        click.echo(
+            f"{modo}: {resultado['acertos']} de {resultado['total']}; fora do assunto: {resultado['fora_do_assunto']}"
+        )
         for consulta, certas, esperadas in resultado["consultas"]:
             click.echo(f"  {certas}/{esperadas} {consulta}")
+
+
+@ia.command("gerar")
+@click.argument("caso", type=click.Choice(CASOS))
+@click.argument("ref")
+def gerar(caso, ref):
+    """Escreve um rascunho: nova ou situacao recebem o id da proposicao; votacao, o id da votacao."""
+    try:
+        modelo = services.carregar_modelo()
+    except embeddings.RobertaAusente as erro:
+        # Decisao 21.3: sem o pendrive, busca so por palavras; o aviso ja foi para o log
+        click.echo(f"{erro} Usando só a busca por palavras.")
+        modelo = None
+    except embeddings.DispositivoIndisponivel as erro:
+        raise click.ClickException(str(erro))
+    registro, nova = geracao.gerar_noticia(modelo, caso, ref)
+    if registro.status == "erro":
+        raise click.ClickException(f"Geracao {registro.id} com erro: {registro.erro}")
+    if not nova:
+        click.echo(f"Esse fato já tem o rascunho {registro.noticia.slug}; nada foi gerado.")
+        return
+    click.echo(f"Rascunho {registro.noticia.slug} (geracao {registro.id}, {registro.modelo_geracao})")
+    click.echo(registro.noticia.titulo)
+    click.echo(registro.noticia.resumo)
+    click.echo(registro.noticia.corpo)
 
 
 @ia.command("centralizar")
