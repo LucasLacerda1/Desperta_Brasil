@@ -100,10 +100,11 @@ def _coletar_uma(execucao, referencias, item):
     _gravar_afetadas(execucao, referencias, votacao, detalhe.get("proposicoesAfetadas"))
     _gravar_votos(execucao, referencias, votacao.id)
     _gravar_orientacoes(execucao, votacao.id)
+    # Como na 13.5: filho com falha deixa a votacao pendente, e a diaria tenta de novo
     if execucao.falhas == falhas_antes:
         for modelo in (Voto, Orientacao, VotacaoProposicao):
             execucao.remover_sumidos(modelo, modelo.votacao_id == votacao.id)
-    votacao.filhos_sincronizados_em = agora_utc()
+        votacao.filhos_sincronizados_em = agora_utc()
     # A pauta aponta para a votacao: com votacao nova, a pauta do evento precisa ser refeita
     if votacao.situacao_coleta == NOVO and votacao.evento_id:
         db.session.get(Evento, votacao.evento_id).filhos_sincronizados_em = None

@@ -696,6 +696,38 @@ def test_votacao_simbolica_tem_votos_vazios(base, api, cliente):
     assert _ultima_coleta(base).status == "ok"
 
 
+def test_votacao_secreta_grava_os_votos_sem_tipo(base, api, cliente):
+    """Fase 2b: em votacao secreta, a API so registra quem estava presente."""
+    _responder_votacao(api)
+    votos = carregar("votos")
+    for voto in votos["dados"]:
+        voto["tipoVoto"] = None
+    api.responder(f"votacoes/{ID_VOTACAO}/votos", votos)
+    votacoes.coletar(cliente, INICIO, FIM)
+    votacao = base.session.get(Votacao, ID_VOTACAO)
+    assert [voto.tipo_voto for voto in votacao.votos] == [None, None, None]
+    assert votacao.filhos_sincronizados_em is not None
+    assert _ultima_coleta(base).status == "ok"
+
+
+def test_voto_com_falha_deixa_a_votacao_pendente(base, api, cliente):
+    _responder_votacao(api)
+    votos = carregar("votos")
+    votos["dados"][0]["dataRegistroVoto"] = None
+    api.responder(f"votacoes/{ID_VOTACAO}/votos", votos)
+    votacoes.coletar(cliente, INICIO, FIM)
+    assert base.session.get(Votacao, ID_VOTACAO).filhos_sincronizados_em is None
+    assert len(base.session.get(Votacao, ID_VOTACAO).votos) == 2
+    assert _ultima_coleta(base).status == "parcial"
+
+    # Na proxima coleta de pendentes, com a API respondendo certo, a votacao fica completa
+    api.responder(f"votacoes/{ID_VOTACAO}/votos", carregar("votos"))
+    votacoes.coletar_pendentes(cliente)
+    base.session.expire_all()
+    assert base.session.get(Votacao, ID_VOTACAO).filhos_sincronizados_em is not None
+    assert len(base.session.get(Votacao, ID_VOTACAO).votos) == 3
+
+
 def test_janela_de_votacoes_e_dividida_por_ano(base, api, cliente):
     api.responder("votacoes", envelope([]))
     votacoes.coletar(cliente, date(2023, 12, 1), date(2024, 1, 15))
