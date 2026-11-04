@@ -61,7 +61,8 @@ Cada coleta grava uma linha em `coleta` e os erros em `log_sistema`. Um registro
 A RoBERTaLexPT roda só neste módulo; a API Flask não carrega o modelo. Precisa das dependências de IA:
 
 ```bash
-# Com a RTX 4050 (driver 595, CUDA 13.2); o .venv fica com cerca de 5,7 GB
+# Com a RTX 4050 do PC do Lucas (driver 595, CUDA 13.2); o .venv fica com cerca de 5,7 GB.
+# Com outra placa NVIDIA, use o comando que https://pytorch.org/get-started/locally/ indicar para o seu driver.
 pip install "torch==2.15.0+cu132" --index-url https://download.pytorch.org/whl/cu132 --extra-index-url https://pypi.org/simple
 # Sem placa da NVIDIA; o .venv fica com cerca de 1,3 GB
 pip install torch --index-url https://download.pytorch.org/whl/cpu
@@ -83,7 +84,7 @@ Depois do download, use `HF_HUB_OFFLINE=1` no `.env`: o modelo roda sem internet
 
 A RoBERTaLexPT-base fica em `ROBERTA_DIR`, numa pasta simples, sem os links do cache do Hugging Face. Sem essa pasta (pendrive desconectado), `indexar`, `buscar` e `medir-busca` param com uma mensagem clara e um aviso no log, e `gerar` usa só a busca por palavras. O coletor, a API e os testes não dependem dela.
 
-`IA_DISPOSITIVO` escolhe onde o modelo roda: `auto` (a RTX 4050 se existir, senão o processador), `cuda` (para com erro sem a placa) ou `cpu`. O dispositivo de cada execução fica em `log_sistema`.
+`IA_DISPOSITIVO` escolhe onde o modelo roda: `auto` (a placa NVIDIA se existir, senão o processador), `cuda` (para com erro sem a placa) ou `cpu`. O dispositivo de cada execução fica em `log_sistema`.
 
 A busca é híbrida: junta o índice vetorial (`vec_trecho`) e o de palavras (`trecho_fts`) por Reciprocal Rank Fusion. O modo `hibrida_peso` faz o mesmo com a lista vetorial pesando `RAG_PESO_VETOR` (padrão: 0,5). Os índices não são modelos SQLAlchemy nem contam entre as 32 tabelas. Só as tramitações dos últimos `RAG_TRAMITACAO_DIAS` dias (padrão: 90) viram trecho.
 

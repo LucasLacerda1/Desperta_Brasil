@@ -854,5 +854,6 @@ def test_cuda_sem_placa_para_com_erro(monkeypatch):
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="sem CUDA nesta maquina")
-def test_placa_real_e_a_rtx_4050():
-    assert "4050" in embeddings.nome_do_dispositivo("cuda:0")
+def test_nome_da_placa_real_vai_para_o_log():
+    # Vale para qualquer placa NVIDIA; no PC do Lucas, o nome mostra a RTX 4050 (20.1)
+    assert torch.cuda.get_device_name(0) in embeddings.nome_do_dispositivo("cuda:0")
