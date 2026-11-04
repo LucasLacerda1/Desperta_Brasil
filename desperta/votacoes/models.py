@@ -116,8 +116,8 @@ class Voto(VinculoSincronizadoMixin, db.Model):
 
     votacao_id: Mapped[str] = mapped_column(db.Text, db.ForeignKey("votacao.id"), primary_key=True)
     deputado_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("deputado.id"), primary_key=True, index=True)
-    # Sim, Nao, Abstencao, Obstrucao...
-    tipo_voto: Mapped[str] = mapped_column(db.Text, nullable=False)
+    # Sim, Nao, Abstencao, Obstrucao...; nulo em votacao secreta, em que a API so registra a presenca (Fase 2b)
+    tipo_voto: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
     data_registro: Mapped[datetime] = mapped_column(db.DateTime, nullable=False)
     # Partido no dia do voto (D4)
     sigla_partido: Mapped[str] = mapped_column(db.Text, nullable=False)

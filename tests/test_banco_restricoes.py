@@ -67,6 +67,16 @@ def test_fk_e_conferida_no_sqlite(db):
     _falha_ao_gravar(db, fabricas.voto(deputado_id=999))
 
 
+def test_voto_sem_tipo_e_aceito_para_votacao_secreta(db):
+    """Fase 2b: votacao secreta so tem a presenca de cada deputado."""
+    _base_votacao(db)
+    db.session.add_all([fabricas.legislatura(), fabricas.deputado()])
+    db.session.flush()
+    db.session.add(fabricas.voto(tipo_voto=None))
+    db.session.commit()
+    assert db.session.scalar(db.select(fabricas.Voto)).tipo_voto is None
+
+
 def test_mesmo_cargo_em_outra_data_e_aceito(db):
     db.session.add_all([fabricas.legislatura(), fabricas.deputado(), fabricas.orgao()])
     db.session.flush()
