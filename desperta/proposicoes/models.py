@@ -41,15 +41,17 @@ class Proposicao(SincronizacaoMixin, db.Model):
     ementa_detalhada: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
     keywords: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
     data_apresentacao: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, index=True)
-    url_inteiro_teor: Mapped[str] = mapped_column(db.Text, nullable=False)
+    # Opcional (Fase 2b): a API ja mandou proposicao sem link do inteiro teor
+    url_inteiro_teor: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
 
     # ======================================================
     # SITUACAO ATUAL (statusProposicao)
     # ======================================================
     cod_situacao: Mapped[Optional[int]] = mapped_column(db.Integer, nullable=True)
     situacao: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
-    data_status: Mapped[datetime] = mapped_column(db.DateTime, nullable=False)
-    regime: Mapped[str] = mapped_column(db.Text, nullable=False)
+    # Opcionais (Fase 2b): a API ja mandou proposicao sem data da situacao e sem regime
+    data_status: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
+    regime: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
     apreciacao: Mapped[str] = mapped_column(db.Text, nullable=False)
 
     # ======================================================
@@ -253,7 +255,8 @@ class Tramitacao(VinculoSincronizadoMixin, db.Model):
     cod_situacao: Mapped[Optional[int]] = mapped_column(db.Integer, nullable=True)
     situacao: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
     despacho: Mapped[str] = mapped_column(db.Text, nullable=False)
-    regime: Mapped[str] = mapped_column(db.Text, nullable=False)
+    # Opcional (Fase 2b): a API ja mandou tramitacao sem regime (PDL 995/2026)
+    regime: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
     ambito: Mapped[str] = mapped_column(db.Text, nullable=False)
     apreciacao: Mapped[str] = mapped_column(db.Text, nullable=False)
     url: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
