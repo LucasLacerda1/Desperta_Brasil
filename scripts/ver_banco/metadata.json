@@ -1,77 +1,169 @@
 {
   "title": "Desperta Brasil — banco de dados (desenvolvimento)",
-  "description": "Só para olhar o banco durante o desenvolvimento. Abre em modo somente leitura; não faz parte do portal.",
+  "description_html": "\n<style>\n.menu-desperta{font-size:1rem;line-height:1.5;max-width:70em}\n.menu-desperta h2{margin:1.2em 0 .4em;font-size:1.3rem}\n.menu-desperta h3{margin:.8em 0 .2em;font-size:1.05rem}\n.menu-desperta .grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(18em,1fr));gap:.8em 1.6em}\n.menu-desperta form{margin:.3em 0}\n.menu-desperta label{display:block;font-weight:bold}\n.menu-desperta input[type=text]{font-size:1rem;padding:.25em .4em;width:14em}\n.menu-desperta ul{margin:.2em 0 .6em 1.2em;padding:0}\n.menu-desperta li{margin:.15em 0}\n.menu-desperta .nota{color:#444;font-size:.95rem}\n</style>\n<div class=\"menu-desperta\"><p>Escolha o banco abaixo. A página dele tem o menu com a busca rápida, as tabelas por assunto e as consultas prontas. Modo somente leitura; não faz parte do portal.</p></div>",
   "databases": {
     "desperta": {
+      "description_html": "\n<style>\n.menu-desperta{font-size:1rem;line-height:1.5;max-width:70em}\n.menu-desperta h2{margin:1.2em 0 .4em;font-size:1.3rem}\n.menu-desperta h3{margin:.8em 0 .2em;font-size:1.05rem}\n.menu-desperta .grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(18em,1fr));gap:.8em 1.6em}\n.menu-desperta form{margin:.3em 0}\n.menu-desperta label{display:block;font-weight:bold}\n.menu-desperta input[type=text]{font-size:1rem;padding:.25em .4em;width:14em}\n.menu-desperta ul{margin:.2em 0 .6em 1.2em;padding:0}\n.menu-desperta li{margin:.15em 0}\n.menu-desperta .nota{color:#444;font-size:.95rem}\n</style>\n<div class=\"menu-desperta\"><p class=\"nota\">Só para olhar o banco durante o desenvolvimento, em <strong>modo somente leitura</strong>. Clique numa tabela para filtrar, ordenar e ver os registros; os ids ligados mostram o nome. Vazio, <code>''</code> ou <code>.</code> em campo da Câmara quer dizer que ela não informou.</p><h2>Busca rápida</h2><div class=\"grade\"><form action=\"/desperta/proposicao\" method=\"get\"><label for=\"proposicao-id__exact\">Proposição pelo id</label><input type=\"text\" id=\"proposicao-id__exact\" name=\"id__exact\" placeholder=\"ex.: 265999\"> <input type=\"submit\" value=\"Abrir\"></form><form action=\"/desperta/proposicao\" method=\"get\"><label for=\"proposicao-ementa__contains\">Palavra na ementa</label><input type=\"text\" id=\"proposicao-ementa__contains\" name=\"ementa__contains\" placeholder=\"ex.: indígenas\"> <input type=\"submit\" value=\"Buscar\"></form><form action=\"/desperta/votacao\" method=\"get\"><label for=\"votacao-id__exact\">Votação pelo id</label><input type=\"text\" id=\"votacao-id__exact\" name=\"id__exact\" placeholder=\"ex.: 2645346-18\"> <input type=\"submit\" value=\"Abrir\"></form><form action=\"/desperta/deputado\" method=\"get\"><label for=\"deputado-nome__contains\">Deputado pelo nome</label><input type=\"text\" id=\"deputado-nome__contains\" name=\"nome__contains\" placeholder=\"ex.: Marinho\"> <input type=\"submit\" value=\"Buscar\"></form><form action=\"/desperta/trecho_rag\" method=\"get\"><label for=\"trecho_rag-_search\">Palavras no que a Roberta lê</label><input type=\"text\" id=\"trecho_rag-_search\" name=\"_search\" placeholder=\"ex.: demarcação\"> <input type=\"submit\" value=\"Buscar\"></form><form action=\"/desperta/tramitacao\" method=\"get\"><label for=\"tramitacao-despacho__contains\">Palavra no despacho</label><input type=\"text\" id=\"tramitacao-despacho__contains\" name=\"despacho__contains\" placeholder=\"ex.: arquive-se\"> <input type=\"submit\" value=\"Buscar\"></form></div><h2>Tabelas</h2><div class=\"grade\"><div><h3>Proposições</h3><ul><li><a href=\"/desperta/proposicao\">proposicao</a>: Projetos de lei, PECs e outras propostas, com os mesmos ids da API da Câmara</li><li><a href=\"/desperta/tramitacao\">tramitacao</a>: Cada passo do andamento de uma proposição</li><li><a href=\"/desperta/proposicao_autor\">proposicao_autor</a>: Quem assina cada proposição, na ordem de assinatura</li><li><a href=\"/desperta/proposicao_tema\">proposicao_tema</a>: Temas oficiais de cada proposição</li><li><a href=\"/desperta/tema\">tema</a>: Os 32 temas oficiais da Câmara, usados como categorias do portal</li></ul></div><div><h3>Votações</h3><ul><li><a href=\"/desperta/votacao\">votacao</a>: Deliberações em Plenário ou comissão (id em texto, como 2645346-18)</li><li><a href=\"/desperta/voto\">voto</a>: Voto de cada deputado; vazio na votação secreta</li><li><a href=\"/desperta/orientacao\">orientacao</a>: Orientação de partidos e blocos nas votações do Plenário</li><li><a href=\"/desperta/votacao_proposicao\">votacao_proposicao</a>: Proposições afetadas por cada votação</li></ul></div><div><h3>Parlamentares</h3><ul><li><a href=\"/desperta/deputado\">deputado</a>: Deputados, com o partido e a legislatura mais recentes</li><li><a href=\"/desperta/partido\">partido</a>: Partidos (a sigla não é única; as ligações são pelo id)</li><li><a href=\"/desperta/legislatura\">legislatura</a>: Legislaturas e datas</li><li><a href=\"/desperta/lideranca\">lideranca</a>: Líderes e vice-líderes das bancadas</li><li><a href=\"/desperta/bloco\">bloco</a>: Blocos parlamentares</li><li><a href=\"/desperta/bloco_partido\">bloco_partido</a>: Partidos de cada bloco (composição atual)</li><li><a href=\"/desperta/frente\">frente</a>: Frentes parlamentares</li><li><a href=\"/desperta/frente_membro\">frente_membro</a>: Membros de cada frente</li></ul></div><div><h3>Órgãos e eventos</h3><ul><li><a href=\"/desperta/orgao\">orgao</a>: Plenário, comissões e Mesa Diretora</li><li><a href=\"/desperta/deputado_orgao\">deputado_orgao</a>: Cargos dos deputados nos órgãos (composição atual)</li><li><a href=\"/desperta/evento\">evento</a>: Sessões e reuniões</li><li><a href=\"/desperta/pauta_item\">pauta_item</a>: Itens da pauta de cada evento</li></ul></div><div><h3>Portal</h3><ul><li><a href=\"/desperta/noticia\">noticia</a>: Notícias e relatórios; os rascunhos entram aqui</li><li><a href=\"/desperta/noticia_fonte\">noticia_fonte</a>: Registros da API usados em cada notícia</li><li><a href=\"/desperta/noticia_revisao\">noticia_revisao</a>: Histórico de revisão das notícias</li><li><a href=\"/desperta/administrador\">administrador</a>: Equipe do portal (vazia até a Fase 4)</li><li><a href=\"/desperta/visitante\">visitante</a>: Visitantes anônimos (vazia até a Fase 5)</li><li><a href=\"/desperta/visitante_tema\">visitante_tema</a>: Temas mais lidos por visitante</li></ul></div><div><h3>IA e busca</h3><ul><li><a href=\"/desperta/trecho_rag\">trecho_rag</a>: O que a Roberta lê: trechos de texto com o vetor da RoBERTaLexPT (tem busca por palavras)</li><li><a href=\"/desperta/geracao_ia\">geracao_ia</a>: Cada execução da geração de rascunhos, mesmo com erro</li><li><a href=\"/desperta/geracao_trecho\">geracao_trecho</a>: Trechos usados em cada geração</li></ul></div><div><h3>Sistema</h3><ul><li><a href=\"/desperta/coleta\">coleta</a>: Cada coleta da API: período, itens, requisições e status</li><li><a href=\"/desperta/log_sistema\">log_sistema</a>: Log do coletor, da IA e da equipe</li><li><a href=\"/desperta/alembic_version\">alembic_version</a>: Versão do esquema (última migração aplicada)</li></ul></div></div><h2>Consultas prontas</h2><div class=\"grade\"><div><h3>Visão geral</h3><ul><li><a href=\"/desperta/contagem_das_tabelas\">Quantas linhas tem cada tabela</a></li><li><a href=\"/desperta/votacoes_secretas\">Votações secretas (todos os votos sem tipo)</a></li><li><a href=\"/desperta/situacao_das_votacoes\">Votações nominais, secretas, simbólicas e pendentes</a></li><li><a href=\"/desperta/proposicoes_por_tema\">Proposições por tema</a></li><li><a href=\"/desperta/nao_informado_pela_camara\">Campos que a Câmara não informou</a></li><li><a href=\"/desperta/pendentes\">Proposições e votações pendentes</a></li><li><a href=\"/desperta/ultimas_coletas\">Últimas coletas</a></li><li><a href=\"/desperta/erros_no_log\">Erros e avisos do log, agrupados</a></li><li><a href=\"/desperta/vetores_amostra\">Índice vetorial: amostra (precisa da extensão sqlite-vec)</a></li></ul></div><div><h3>Com um valor</h3><form action=\"/desperta/placar_por_partido\" method=\"get\"><label for=\"placar_por_partido-votacao\">Placar de uma votação por partido (id da votação)</label><input type=\"text\" id=\"placar_por_partido-votacao\" name=\"votacao\" placeholder=\"ex.: 2480642-7\"> <input type=\"submit\" value=\"Ver\"></form><form action=\"/desperta/proposicao_completa\" method=\"get\"><label for=\"proposicao_completa-id\">Uma proposição: autores, temas e tramitações (id da proposição)</label><input type=\"text\" id=\"proposicao_completa-id\" name=\"id\" placeholder=\"ex.: 265999\"> <input type=\"submit\" value=\"Ver\"></form><form action=\"/desperta/votacoes_de_uma_proposicao\" method=\"get\"><label for=\"votacoes_de_uma_proposicao-id\">Votações de uma proposição (id da proposição)</label><input type=\"text\" id=\"votacoes_de_uma_proposicao-id\" name=\"id\" placeholder=\"ex.: 2459654\"> <input type=\"submit\" value=\"Ver\"></form><form action=\"/desperta/votos_de_um_deputado\" method=\"get\"><label for=\"votos_de_um_deputado-nome\">Votos de um deputado (procure pelo nome) (nome do deputado)</label><input type=\"text\" id=\"votos_de_um_deputado-nome\" name=\"nome\" placeholder=\"ex.: Aécio\"> <input type=\"submit\" value=\"Ver\"></form><form action=\"/desperta/trechos_de_uma_proposicao\" method=\"get\"><label for=\"trechos_de_uma_proposicao-id\">O que a Roberta lê sobre uma proposição (id da proposição)</label><input type=\"text\" id=\"trechos_de_uma_proposicao-id\" name=\"id\" placeholder=\"ex.: 265999\"> <input type=\"submit\" value=\"Ver\"></form></div></div><p class=\"nota\">Para escrever a sua própria consulta (só <code>SELECT</code>), use o campo de SQL na <a href=\"/desperta\">página do banco</a>.</p></div>",
       "tables": {
         "proposicao": {
-          "description": "Projetos de lei, PECs e outras propostas, com os mesmos ids da API da Câmara"
+          "description": "Projetos de lei, PECs e outras propostas, com os mesmos ids da API da Câmara",
+          "label_column": "ementa",
+          "facets": [
+            "sigla_tipo",
+            "ano",
+            "situacao",
+            "regime"
+          ],
+          "sort_desc": "data_apresentacao",
+          "columns": {
+            "regime": "Regime de tramitação. Vazio ou '.' quer dizer que a Câmara não informou",
+            "data_status": "Data da situação atual. Vazio quer dizer que a Câmara não informou",
+            "url_inteiro_teor": "Link do texto completo. Vazio quer dizer que a Câmara não informou",
+            "filhos_sincronizados_em": "Quando autores, temas e tramitações foram buscados. Vazio = pendente",
+            "hash_origem": "SHA-256 do conteúdo, para saber se mudou na API"
+          }
+        },
+        "tramitacao": {
+          "description": "Cada passo do andamento de uma proposição",
+          "facets": [
+            "sigla_orgao",
+            "situacao"
+          ],
+          "sort_desc": "data_hora",
+          "columns": {
+            "despacho": "Texto vazio quer dizer que a Câmara não mandou despacho"
+          }
         },
         "proposicao_autor": {
           "description": "Quem assina cada proposição, na ordem de assinatura"
         },
         "proposicao_tema": {
-          "description": "Temas oficiais de cada proposição"
+          "description": "Temas oficiais de cada proposição",
+          "facets": [
+            "cod_tema"
+          ]
         },
         "tema": {
-          "description": "Os 32 temas oficiais da Câmara, usados como categorias do portal"
-        },
-        "tramitacao": {
-          "description": "Cada passo do andamento de uma proposição"
+          "description": "Os 32 temas oficiais da Câmara, usados como categorias do portal",
+          "label_column": "nome"
         },
         "votacao": {
-          "description": "Deliberações em Plenário ou comissão (id em texto, ex.: 2645346-18)"
+          "description": "Deliberações em Plenário ou comissão (id em texto, como 2645346-18)",
+          "label_column": "descricao",
+          "facets": [
+            "sigla_orgao",
+            "aprovacao",
+            "data"
+          ],
+          "sort_desc": "data",
+          "columns": {
+            "aprovacao": "1 = aprovada, 0 = rejeitada, vazio = a Câmara não informou",
+            "filhos_sincronizados_em": "Quando votos e orientações foram buscados. Vazio = pendente",
+            "proposicao_id": "Proposição objeto da votação, quando a API informa"
+          }
         },
         "voto": {
-          "description": "Voto de cada deputado; vazio na votação secreta"
+          "description": "Voto de cada deputado; vazio na votação secreta",
+          "facets": [
+            "tipo_voto",
+            "sigla_partido"
+          ],
+          "columns": {
+            "tipo_voto": "Sim, Não, Abstenção, Obstrução ou Artigo 17 (presidente). Vazio = votação secreta",
+            "sigla_partido": "Partido do deputado no dia do voto"
+          }
         },
         "orientacao": {
-          "description": "Orientação de partidos e blocos nas votações do Plenário"
+          "description": "Orientação de partidos e blocos nas votações do Plenário",
+          "facets": [
+            "orientacao",
+            "tipo_lideranca"
+          ]
         },
         "votacao_proposicao": {
           "description": "Proposições afetadas por cada votação"
         },
         "deputado": {
-          "description": "Deputados, com partido e legislatura mais recentes"
+          "description": "Deputados, com o partido e a legislatura mais recentes",
+          "label_column": "nome",
+          "facets": [
+            "sigla_partido",
+            "sigla_uf",
+            "sexo",
+            "id_legislatura"
+          ]
         },
         "partido": {
-          "description": "Partidos (a sigla não é única: ligações sempre pelo id)"
+          "description": "Partidos (a sigla não é única; as ligações são pelo id)",
+          "label_column": "sigla"
         },
         "legislatura": {
           "description": "Legislaturas e datas"
         },
         "lideranca": {
-          "description": "Líderes e vice-líderes das bancadas"
+          "description": "Líderes e vice-líderes das bancadas",
+          "facets": [
+            "bancada_tipo",
+            "titulo"
+          ]
         },
         "bloco": {
-          "description": "Blocos parlamentares"
+          "description": "Blocos parlamentares",
+          "label_column": "nome"
         },
         "bloco_partido": {
           "description": "Partidos de cada bloco (composição atual)"
         },
         "frente": {
-          "description": "Frentes parlamentares"
+          "description": "Frentes parlamentares",
+          "label_column": "titulo"
         },
         "frente_membro": {
-          "description": "Membros de cada frente"
+          "description": "Membros de cada frente",
+          "facets": [
+            "titulo"
+          ]
         },
         "orgao": {
-          "description": "Plenário, comissões e Mesa Diretora"
+          "description": "Plenário, comissões e Mesa Diretora",
+          "label_column": "sigla",
+          "facets": [
+            "tipo_orgao"
+          ]
         },
         "deputado_orgao": {
-          "description": "Cargos dos deputados nos órgãos (composição atual)"
+          "description": "Cargos dos deputados nos órgãos (composição atual)",
+          "facets": [
+            "titulo"
+          ]
         },
         "evento": {
-          "description": "Sessões e reuniões"
+          "description": "Sessões e reuniões",
+          "label_column": "descricao",
+          "facets": [
+            "situacao",
+            "descricao_tipo"
+          ],
+          "sort_desc": "data_hora_inicio"
         },
         "pauta_item": {
-          "description": "Itens da pauta de cada evento"
-        },
-        "administrador": {
-          "description": "Equipe do portal (vazia até a Fase 4)"
+          "description": "Itens da pauta de cada evento",
+          "facets": [
+            "situacao_item",
+            "regime"
+          ]
         },
         "noticia": {
-          "description": "Notícias e relatórios (rascunhos entram aqui)"
+          "description": "Notícias e relatórios; os rascunhos entram aqui",
+          "label_column": "titulo",
+          "facets": [
+            "status",
+            "tipo",
+            "origem"
+          ],
+          "sort_desc": "criado_em",
+          "fts_table": "noticia_fts",
+          "fts_pk": "id"
         },
         "noticia_fonte": {
           "description": "Registros da API usados em cada notícia"
@@ -79,20 +171,9 @@
         "noticia_revisao": {
           "description": "Histórico de revisão das notícias"
         },
-        "geracao_ia": {
-          "description": "Cada execução da geração de rascunhos, mesmo com erro"
-        },
-        "trecho_rag": {
-          "description": "Trechos de texto com o vetor da RoBERTaLexPT (embedding em bytes)"
-        },
-        "geracao_trecho": {
-          "description": "Trechos usados em cada geração"
-        },
-        "log_sistema": {
-          "description": "Log do coletor, da IA e da equipe"
-        },
-        "coleta": {
-          "description": "Cada coleta da API: período, itens, requisições e status"
+        "administrador": {
+          "description": "Equipe do portal (vazia até a Fase 4)",
+          "label_column": "nome"
         },
         "visitante": {
           "description": "Visitantes anônimos (vazia até a Fase 5)"
@@ -100,17 +181,53 @@
         "visitante_tema": {
           "description": "Temas mais lidos por visitante"
         },
+        "trecho_rag": {
+          "description": "O que a Roberta lê: trechos de texto com o vetor da RoBERTaLexPT (tem busca por palavras)",
+          "facets": [
+            "tipo"
+          ],
+          "columns": {
+            "texto": "O texto que a RoBERTaLexPT lê (até 400 tokens)",
+            "embedding": "Vetor de 768 números (3.072 bytes)"
+          },
+          "fts_table": "trecho_fts",
+          "fts_pk": "id"
+        },
+        "geracao_ia": {
+          "description": "Cada execução da geração de rascunhos, mesmo com erro",
+          "facets": [
+            "status",
+            "modelo_geracao"
+          ],
+          "sort_desc": "id"
+        },
+        "geracao_trecho": {
+          "description": "Trechos usados em cada geração"
+        },
+        "coleta": {
+          "description": "Cada coleta da API: período, itens, requisições e status",
+          "label_column": "recurso",
+          "facets": [
+            "recurso",
+            "status",
+            "tipo"
+          ],
+          "sort_desc": "id",
+          "columns": {
+            "status": "ok, parcial (algum registro falhou) ou erro"
+          }
+        },
+        "log_sistema": {
+          "description": "Log do coletor, da IA e da equipe",
+          "facets": [
+            "nivel",
+            "modulo",
+            "acao"
+          ],
+          "sort_desc": "id"
+        },
         "alembic_version": {
           "description": "Versão do esquema (última migração aplicada)"
-        },
-        "vec_trecho": {
-          "hidden": true
-        },
-        "trecho_fts": {
-          "description": "Índice da busca por palavras dos trechos (FTS5)"
-        },
-        "noticia_fts": {
-          "description": "Índice da busca de texto das notícias (FTS5)"
         },
         "noticia_fts_config": {
           "hidden": true
@@ -122,9 +239,6 @@
           "hidden": true
         },
         "noticia_fts_idx": {
-          "hidden": true
-        },
-        "noticia_fts_content": {
           "hidden": true
         },
         "trecho_fts_config": {
@@ -139,7 +253,13 @@
         "trecho_fts_idx": {
           "hidden": true
         },
-        "trecho_fts_content": {
+        "noticia_fts": {
+          "hidden": true
+        },
+        "trecho_fts": {
+          "hidden": true
+        },
+        "sqlite_sequence": {
           "hidden": true
         },
         "vec_trecho_chunks": {
@@ -157,30 +277,46 @@
         "vec_trecho_auxiliary": {
           "hidden": true
         },
-        "sqlite_sequence": {
+        "vec_trecho": {
           "hidden": true
         }
       },
       "queries": {
         "contagem_das_tabelas": {
-          "title": "Quantas linhas tem cada tabela principal",
-          "sql": "SELECT 'proposicao' AS tabela, COUNT(*) AS linhas FROM proposicao UNION ALL SELECT 'proposicao_autor' AS tabela, COUNT(*) AS linhas FROM proposicao_autor UNION ALL SELECT 'proposicao_tema' AS tabela, COUNT(*) AS linhas FROM proposicao_tema UNION ALL SELECT 'tramitacao' AS tabela, COUNT(*) AS linhas FROM tramitacao UNION ALL SELECT 'votacao' AS tabela, COUNT(*) AS linhas FROM votacao UNION ALL SELECT 'voto' AS tabela, COUNT(*) AS linhas FROM voto UNION ALL SELECT 'orientacao' AS tabela, COUNT(*) AS linhas FROM orientacao UNION ALL SELECT 'deputado' AS tabela, COUNT(*) AS linhas FROM deputado UNION ALL SELECT 'partido' AS tabela, COUNT(*) AS linhas FROM partido UNION ALL SELECT 'orgao' AS tabela, COUNT(*) AS linhas FROM orgao UNION ALL SELECT 'evento' AS tabela, COUNT(*) AS linhas FROM evento UNION ALL SELECT 'pauta_item' AS tabela, COUNT(*) AS linhas FROM pauta_item UNION ALL SELECT 'frente' AS tabela, COUNT(*) AS linhas FROM frente UNION ALL SELECT 'frente_membro' AS tabela, COUNT(*) AS linhas FROM frente_membro UNION ALL SELECT 'lideranca' AS tabela, COUNT(*) AS linhas FROM lideranca UNION ALL SELECT 'trecho_rag' AS tabela, COUNT(*) AS linhas FROM trecho_rag UNION ALL SELECT 'noticia' AS tabela, COUNT(*) AS linhas FROM noticia UNION ALL SELECT 'coleta' AS tabela, COUNT(*) AS linhas FROM coleta UNION ALL SELECT 'log_sistema' AS tabela, COUNT(*) AS linhas FROM log_sistema ORDER BY linhas DESC"
+          "title": "Quantas linhas tem cada tabela",
+          "sql": "SELECT 'proposicao' AS tabela, COUNT(*) AS linhas FROM proposicao UNION ALL SELECT 'tramitacao' AS tabela, COUNT(*) AS linhas FROM tramitacao UNION ALL SELECT 'proposicao_autor' AS tabela, COUNT(*) AS linhas FROM proposicao_autor UNION ALL SELECT 'proposicao_tema' AS tabela, COUNT(*) AS linhas FROM proposicao_tema UNION ALL SELECT 'tema' AS tabela, COUNT(*) AS linhas FROM tema UNION ALL SELECT 'votacao' AS tabela, COUNT(*) AS linhas FROM votacao UNION ALL SELECT 'voto' AS tabela, COUNT(*) AS linhas FROM voto UNION ALL SELECT 'orientacao' AS tabela, COUNT(*) AS linhas FROM orientacao UNION ALL SELECT 'votacao_proposicao' AS tabela, COUNT(*) AS linhas FROM votacao_proposicao UNION ALL SELECT 'deputado' AS tabela, COUNT(*) AS linhas FROM deputado UNION ALL SELECT 'partido' AS tabela, COUNT(*) AS linhas FROM partido UNION ALL SELECT 'legislatura' AS tabela, COUNT(*) AS linhas FROM legislatura UNION ALL SELECT 'lideranca' AS tabela, COUNT(*) AS linhas FROM lideranca UNION ALL SELECT 'bloco' AS tabela, COUNT(*) AS linhas FROM bloco UNION ALL SELECT 'bloco_partido' AS tabela, COUNT(*) AS linhas FROM bloco_partido UNION ALL SELECT 'frente' AS tabela, COUNT(*) AS linhas FROM frente UNION ALL SELECT 'frente_membro' AS tabela, COUNT(*) AS linhas FROM frente_membro UNION ALL SELECT 'orgao' AS tabela, COUNT(*) AS linhas FROM orgao UNION ALL SELECT 'deputado_orgao' AS tabela, COUNT(*) AS linhas FROM deputado_orgao UNION ALL SELECT 'evento' AS tabela, COUNT(*) AS linhas FROM evento UNION ALL SELECT 'pauta_item' AS tabela, COUNT(*) AS linhas FROM pauta_item UNION ALL SELECT 'noticia' AS tabela, COUNT(*) AS linhas FROM noticia UNION ALL SELECT 'noticia_fonte' AS tabela, COUNT(*) AS linhas FROM noticia_fonte UNION ALL SELECT 'noticia_revisao' AS tabela, COUNT(*) AS linhas FROM noticia_revisao UNION ALL SELECT 'administrador' AS tabela, COUNT(*) AS linhas FROM administrador UNION ALL SELECT 'visitante' AS tabela, COUNT(*) AS linhas FROM visitante UNION ALL SELECT 'visitante_tema' AS tabela, COUNT(*) AS linhas FROM visitante_tema UNION ALL SELECT 'trecho_rag' AS tabela, COUNT(*) AS linhas FROM trecho_rag UNION ALL SELECT 'geracao_ia' AS tabela, COUNT(*) AS linhas FROM geracao_ia UNION ALL SELECT 'geracao_trecho' AS tabela, COUNT(*) AS linhas FROM geracao_trecho UNION ALL SELECT 'coleta' AS tabela, COUNT(*) AS linhas FROM coleta UNION ALL SELECT 'log_sistema' AS tabela, COUNT(*) AS linhas FROM log_sistema ORDER BY linhas DESC"
         },
         "votacoes_secretas": {
           "title": "Votações secretas (todos os votos sem tipo)",
           "sql": "SELECT v.id, v.data, v.sigla_orgao, v.descricao, COUNT(*) AS presentes FROM votacao v JOIN voto x ON x.votacao_id = v.id GROUP BY v.id HAVING COUNT(x.tipo_voto) = 0"
+        },
+        "situacao_das_votacoes": {
+          "title": "Votações nominais, secretas, simbólicas e pendentes",
+          "sql": "SELECT CASE WHEN v.filhos_sincronizados_em IS NULL THEN 'pendente' WHEN (SELECT COUNT(*) FROM voto x WHERE x.votacao_id = v.id) = 0 THEN 'simbolica' WHEN (SELECT COUNT(tipo_voto) FROM voto x WHERE x.votacao_id = v.id) = 0 THEN 'secreta' ELSE 'nominal' END AS situacao, COUNT(*) AS votacoes FROM votacao v GROUP BY situacao ORDER BY votacoes DESC"
         },
         "placar_por_partido": {
           "title": "Placar de uma votação por partido",
           "sql": "SELECT sigla_partido, SUM(tipo_voto = 'Sim') AS sim, SUM(tipo_voto = 'Não') AS nao, SUM(tipo_voto = 'Abstenção') AS abstencao, SUM(tipo_voto IS NULL) AS sem_tipo FROM voto WHERE votacao_id = :votacao GROUP BY sigla_partido ORDER BY sim DESC"
         },
         "proposicao_completa": {
-          "title": "Uma proposição: autores, temas e últimas tramitações",
+          "title": "Uma proposição: autores, temas e tramitações",
           "sql": "SELECT 'autor' AS parte, ordem AS n, nome AS texto FROM proposicao_autor WHERE proposicao_id = :id UNION ALL SELECT 'tema', relevancia, (SELECT nome FROM tema t WHERE t.cod_tema = pt.cod_tema) FROM proposicao_tema pt WHERE proposicao_id = :id UNION ALL SELECT 'tramitacao', sequencia, data_hora || ' ' || sigla_orgao || ': ' || COALESCE(NULLIF(despacho, ''), descricao) FROM tramitacao WHERE proposicao_id = :id ORDER BY parte, n"
+        },
+        "votacoes_de_uma_proposicao": {
+          "title": "Votações de uma proposição",
+          "sql": "SELECT v.id, v.data, v.sigla_orgao, v.aprovacao, v.descricao FROM votacao v JOIN votacao_proposicao vp ON vp.votacao_id = v.id WHERE vp.proposicao_id = :id ORDER BY v.data DESC"
+        },
+        "votos_de_um_deputado": {
+          "title": "Votos de um deputado (procure pelo nome)",
+          "sql": "SELECT d.nome, x.tipo_voto, v.data, v.descricao FROM voto x JOIN deputado d ON d.id = x.deputado_id JOIN votacao v ON v.id = x.votacao_id WHERE d.nome LIKE '%' || :nome || '%' ORDER BY v.data DESC"
+        },
+        "proposicoes_por_tema": {
+          "title": "Proposições por tema",
+          "sql": "SELECT t.nome AS tema, COUNT(*) AS proposicoes FROM proposicao_tema pt JOIN tema t ON t.cod_tema = pt.cod_tema GROUP BY t.nome ORDER BY proposicoes DESC"
         },
         "nao_informado_pela_camara": {
           "title": "Campos que a Câmara não informou",
-          "sql": "SELECT 'proposicao.regime' AS campo, SUM(regime IS NULL OR TRIM(regime) IN ('', '.', '-')) AS linhas FROM proposicao UNION ALL SELECT 'proposicao.data_status', SUM(data_status IS NULL) FROM proposicao UNION ALL SELECT 'proposicao.url_inteiro_teor', SUM(url_inteiro_teor IS NULL) FROM proposicao UNION ALL SELECT 'tramitacao.regime', SUM(regime IS NULL OR TRIM(regime) IN ('', '.', '-')) FROM tramitacao UNION ALL SELECT 'voto.tipo_voto', SUM(tipo_voto IS NULL) FROM voto"
+          "sql": "SELECT 'proposicao.regime' AS campo, SUM(regime IS NULL OR TRIM(regime) IN ('', '.', '-')) AS linhas FROM proposicao UNION ALL SELECT 'proposicao.data_status', SUM(data_status IS NULL) FROM proposicao UNION ALL SELECT 'proposicao.url_inteiro_teor', SUM(url_inteiro_teor IS NULL) FROM proposicao UNION ALL SELECT 'tramitacao.regime', SUM(regime IS NULL OR TRIM(regime) IN ('', '.', '-')) FROM tramitacao UNION ALL SELECT 'tramitacao.despacho vazio', SUM(despacho = '') FROM tramitacao UNION ALL SELECT 'voto.tipo_voto', SUM(tipo_voto IS NULL) FROM voto"
         },
         "pendentes": {
           "title": "Proposições e votações pendentes",
@@ -191,7 +327,7 @@
           "sql": "SELECT id, recurso, tipo, status, iniciado_em, finalizado_em, total_itens, itens_novos, itens_atualizados, requisicoes, erros_http, mensagem_erro FROM coleta ORDER BY id DESC LIMIT 50"
         },
         "erros_no_log": {
-          "title": "Erros e avisos do log",
+          "title": "Erros e avisos do log, agrupados",
           "sql": "SELECT nivel, acao, entidade, COUNT(*) AS vezes, MAX(data_hora) AS ultima, MIN(descricao) AS exemplo FROM log_sistema WHERE nivel IN ('erro', 'aviso') GROUP BY nivel, acao, entidade ORDER BY vezes DESC"
         },
         "trechos_de_uma_proposicao": {
@@ -205,75 +341,167 @@
       }
     },
     "desperta-amostra": {
+      "description_html": "\n<style>\n.menu-desperta{font-size:1rem;line-height:1.5;max-width:70em}\n.menu-desperta h2{margin:1.2em 0 .4em;font-size:1.3rem}\n.menu-desperta h3{margin:.8em 0 .2em;font-size:1.05rem}\n.menu-desperta .grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(18em,1fr));gap:.8em 1.6em}\n.menu-desperta form{margin:.3em 0}\n.menu-desperta label{display:block;font-weight:bold}\n.menu-desperta input[type=text]{font-size:1rem;padding:.25em .4em;width:14em}\n.menu-desperta ul{margin:.2em 0 .6em 1.2em;padding:0}\n.menu-desperta li{margin:.15em 0}\n.menu-desperta .nota{color:#444;font-size:.95rem}\n</style>\n<div class=\"menu-desperta\"><p class=\"nota\">Só para olhar o banco durante o desenvolvimento, em <strong>modo somente leitura</strong>. Clique numa tabela para filtrar, ordenar e ver os registros; os ids ligados mostram o nome. Vazio, <code>''</code> ou <code>.</code> em campo da Câmara quer dizer que ela não informou.</p><h2>Busca rápida</h2><div class=\"grade\"><form action=\"/desperta-amostra/proposicao\" method=\"get\"><label for=\"proposicao-id__exact\">Proposição pelo id</label><input type=\"text\" id=\"proposicao-id__exact\" name=\"id__exact\" placeholder=\"ex.: 265999\"> <input type=\"submit\" value=\"Abrir\"></form><form action=\"/desperta-amostra/proposicao\" method=\"get\"><label for=\"proposicao-ementa__contains\">Palavra na ementa</label><input type=\"text\" id=\"proposicao-ementa__contains\" name=\"ementa__contains\" placeholder=\"ex.: indígenas\"> <input type=\"submit\" value=\"Buscar\"></form><form action=\"/desperta-amostra/votacao\" method=\"get\"><label for=\"votacao-id__exact\">Votação pelo id</label><input type=\"text\" id=\"votacao-id__exact\" name=\"id__exact\" placeholder=\"ex.: 2645346-18\"> <input type=\"submit\" value=\"Abrir\"></form><form action=\"/desperta-amostra/deputado\" method=\"get\"><label for=\"deputado-nome__contains\">Deputado pelo nome</label><input type=\"text\" id=\"deputado-nome__contains\" name=\"nome__contains\" placeholder=\"ex.: Marinho\"> <input type=\"submit\" value=\"Buscar\"></form><form action=\"/desperta-amostra/trecho_rag\" method=\"get\"><label for=\"trecho_rag-_search\">Palavras no que a Roberta lê</label><input type=\"text\" id=\"trecho_rag-_search\" name=\"_search\" placeholder=\"ex.: demarcação\"> <input type=\"submit\" value=\"Buscar\"></form><form action=\"/desperta-amostra/tramitacao\" method=\"get\"><label for=\"tramitacao-despacho__contains\">Palavra no despacho</label><input type=\"text\" id=\"tramitacao-despacho__contains\" name=\"despacho__contains\" placeholder=\"ex.: arquive-se\"> <input type=\"submit\" value=\"Buscar\"></form></div><h2>Tabelas</h2><div class=\"grade\"><div><h3>Proposições</h3><ul><li><a href=\"/desperta-amostra/proposicao\">proposicao</a>: Projetos de lei, PECs e outras propostas, com os mesmos ids da API da Câmara</li><li><a href=\"/desperta-amostra/tramitacao\">tramitacao</a>: Cada passo do andamento de uma proposição</li><li><a href=\"/desperta-amostra/proposicao_autor\">proposicao_autor</a>: Quem assina cada proposição, na ordem de assinatura</li><li><a href=\"/desperta-amostra/proposicao_tema\">proposicao_tema</a>: Temas oficiais de cada proposição</li><li><a href=\"/desperta-amostra/tema\">tema</a>: Os 32 temas oficiais da Câmara, usados como categorias do portal</li></ul></div><div><h3>Votações</h3><ul><li><a href=\"/desperta-amostra/votacao\">votacao</a>: Deliberações em Plenário ou comissão (id em texto, como 2645346-18)</li><li><a href=\"/desperta-amostra/voto\">voto</a>: Voto de cada deputado; vazio na votação secreta</li><li><a href=\"/desperta-amostra/orientacao\">orientacao</a>: Orientação de partidos e blocos nas votações do Plenário</li><li><a href=\"/desperta-amostra/votacao_proposicao\">votacao_proposicao</a>: Proposições afetadas por cada votação</li></ul></div><div><h3>Parlamentares</h3><ul><li><a href=\"/desperta-amostra/deputado\">deputado</a>: Deputados, com o partido e a legislatura mais recentes</li><li><a href=\"/desperta-amostra/partido\">partido</a>: Partidos (a sigla não é única; as ligações são pelo id)</li><li><a href=\"/desperta-amostra/legislatura\">legislatura</a>: Legislaturas e datas</li><li><a href=\"/desperta-amostra/lideranca\">lideranca</a>: Líderes e vice-líderes das bancadas</li><li><a href=\"/desperta-amostra/bloco\">bloco</a>: Blocos parlamentares</li><li><a href=\"/desperta-amostra/bloco_partido\">bloco_partido</a>: Partidos de cada bloco (composição atual)</li><li><a href=\"/desperta-amostra/frente\">frente</a>: Frentes parlamentares</li><li><a href=\"/desperta-amostra/frente_membro\">frente_membro</a>: Membros de cada frente</li></ul></div><div><h3>Órgãos e eventos</h3><ul><li><a href=\"/desperta-amostra/orgao\">orgao</a>: Plenário, comissões e Mesa Diretora</li><li><a href=\"/desperta-amostra/deputado_orgao\">deputado_orgao</a>: Cargos dos deputados nos órgãos (composição atual)</li><li><a href=\"/desperta-amostra/evento\">evento</a>: Sessões e reuniões</li><li><a href=\"/desperta-amostra/pauta_item\">pauta_item</a>: Itens da pauta de cada evento</li></ul></div><div><h3>Portal</h3><ul><li><a href=\"/desperta-amostra/noticia\">noticia</a>: Notícias e relatórios; os rascunhos entram aqui</li><li><a href=\"/desperta-amostra/noticia_fonte\">noticia_fonte</a>: Registros da API usados em cada notícia</li><li><a href=\"/desperta-amostra/noticia_revisao\">noticia_revisao</a>: Histórico de revisão das notícias</li><li><a href=\"/desperta-amostra/administrador\">administrador</a>: Equipe do portal (vazia até a Fase 4)</li><li><a href=\"/desperta-amostra/visitante\">visitante</a>: Visitantes anônimos (vazia até a Fase 5)</li><li><a href=\"/desperta-amostra/visitante_tema\">visitante_tema</a>: Temas mais lidos por visitante</li></ul></div><div><h3>IA e busca</h3><ul><li><a href=\"/desperta-amostra/trecho_rag\">trecho_rag</a>: O que a Roberta lê: trechos de texto com o vetor da RoBERTaLexPT (tem busca por palavras)</li><li><a href=\"/desperta-amostra/geracao_ia\">geracao_ia</a>: Cada execução da geração de rascunhos, mesmo com erro</li><li><a href=\"/desperta-amostra/geracao_trecho\">geracao_trecho</a>: Trechos usados em cada geração</li></ul></div><div><h3>Sistema</h3><ul><li><a href=\"/desperta-amostra/coleta\">coleta</a>: Cada coleta da API: período, itens, requisições e status</li><li><a href=\"/desperta-amostra/log_sistema\">log_sistema</a>: Log do coletor, da IA e da equipe</li><li><a href=\"/desperta-amostra/alembic_version\">alembic_version</a>: Versão do esquema (última migração aplicada)</li></ul></div></div><h2>Consultas prontas</h2><div class=\"grade\"><div><h3>Visão geral</h3><ul><li><a href=\"/desperta-amostra/contagem_das_tabelas\">Quantas linhas tem cada tabela</a></li><li><a href=\"/desperta-amostra/votacoes_secretas\">Votações secretas (todos os votos sem tipo)</a></li><li><a href=\"/desperta-amostra/situacao_das_votacoes\">Votações nominais, secretas, simbólicas e pendentes</a></li><li><a href=\"/desperta-amostra/proposicoes_por_tema\">Proposições por tema</a></li><li><a href=\"/desperta-amostra/nao_informado_pela_camara\">Campos que a Câmara não informou</a></li><li><a href=\"/desperta-amostra/pendentes\">Proposições e votações pendentes</a></li><li><a href=\"/desperta-amostra/ultimas_coletas\">Últimas coletas</a></li><li><a href=\"/desperta-amostra/erros_no_log\">Erros e avisos do log, agrupados</a></li></ul></div><div><h3>Com um valor</h3><form action=\"/desperta-amostra/placar_por_partido\" method=\"get\"><label for=\"placar_por_partido-votacao\">Placar de uma votação por partido (id da votação)</label><input type=\"text\" id=\"placar_por_partido-votacao\" name=\"votacao\" placeholder=\"ex.: 2480642-7\"> <input type=\"submit\" value=\"Ver\"></form><form action=\"/desperta-amostra/proposicao_completa\" method=\"get\"><label for=\"proposicao_completa-id\">Uma proposição: autores, temas e tramitações (id da proposição)</label><input type=\"text\" id=\"proposicao_completa-id\" name=\"id\" placeholder=\"ex.: 265999\"> <input type=\"submit\" value=\"Ver\"></form><form action=\"/desperta-amostra/votacoes_de_uma_proposicao\" method=\"get\"><label for=\"votacoes_de_uma_proposicao-id\">Votações de uma proposição (id da proposição)</label><input type=\"text\" id=\"votacoes_de_uma_proposicao-id\" name=\"id\" placeholder=\"ex.: 2459654\"> <input type=\"submit\" value=\"Ver\"></form><form action=\"/desperta-amostra/votos_de_um_deputado\" method=\"get\"><label for=\"votos_de_um_deputado-nome\">Votos de um deputado (procure pelo nome) (nome do deputado)</label><input type=\"text\" id=\"votos_de_um_deputado-nome\" name=\"nome\" placeholder=\"ex.: Aécio\"> <input type=\"submit\" value=\"Ver\"></form><form action=\"/desperta-amostra/trechos_de_uma_proposicao\" method=\"get\"><label for=\"trechos_de_uma_proposicao-id\">O que a Roberta lê sobre uma proposição (id da proposição)</label><input type=\"text\" id=\"trechos_de_uma_proposicao-id\" name=\"id\" placeholder=\"ex.: 265999\"> <input type=\"submit\" value=\"Ver\"></form></div></div><p class=\"nota\">Para escrever a sua própria consulta (só <code>SELECT</code>), use o campo de SQL na <a href=\"/desperta-amostra\">página do banco</a>.</p></div>",
       "tables": {
         "proposicao": {
-          "description": "Projetos de lei, PECs e outras propostas, com os mesmos ids da API da Câmara"
+          "description": "Projetos de lei, PECs e outras propostas, com os mesmos ids da API da Câmara",
+          "label_column": "ementa",
+          "facets": [
+            "sigla_tipo",
+            "ano",
+            "situacao",
+            "regime"
+          ],
+          "sort_desc": "data_apresentacao",
+          "columns": {
+            "regime": "Regime de tramitação. Vazio ou '.' quer dizer que a Câmara não informou",
+            "data_status": "Data da situação atual. Vazio quer dizer que a Câmara não informou",
+            "url_inteiro_teor": "Link do texto completo. Vazio quer dizer que a Câmara não informou",
+            "filhos_sincronizados_em": "Quando autores, temas e tramitações foram buscados. Vazio = pendente",
+            "hash_origem": "SHA-256 do conteúdo, para saber se mudou na API"
+          }
+        },
+        "tramitacao": {
+          "description": "Cada passo do andamento de uma proposição",
+          "facets": [
+            "sigla_orgao",
+            "situacao"
+          ],
+          "sort_desc": "data_hora",
+          "columns": {
+            "despacho": "Texto vazio quer dizer que a Câmara não mandou despacho"
+          }
         },
         "proposicao_autor": {
           "description": "Quem assina cada proposição, na ordem de assinatura"
         },
         "proposicao_tema": {
-          "description": "Temas oficiais de cada proposição"
+          "description": "Temas oficiais de cada proposição",
+          "facets": [
+            "cod_tema"
+          ]
         },
         "tema": {
-          "description": "Os 32 temas oficiais da Câmara, usados como categorias do portal"
-        },
-        "tramitacao": {
-          "description": "Cada passo do andamento de uma proposição"
+          "description": "Os 32 temas oficiais da Câmara, usados como categorias do portal",
+          "label_column": "nome"
         },
         "votacao": {
-          "description": "Deliberações em Plenário ou comissão (id em texto, ex.: 2645346-18)"
+          "description": "Deliberações em Plenário ou comissão (id em texto, como 2645346-18)",
+          "label_column": "descricao",
+          "facets": [
+            "sigla_orgao",
+            "aprovacao",
+            "data"
+          ],
+          "sort_desc": "data",
+          "columns": {
+            "aprovacao": "1 = aprovada, 0 = rejeitada, vazio = a Câmara não informou",
+            "filhos_sincronizados_em": "Quando votos e orientações foram buscados. Vazio = pendente",
+            "proposicao_id": "Proposição objeto da votação, quando a API informa"
+          }
         },
         "voto": {
-          "description": "Voto de cada deputado; vazio na votação secreta"
+          "description": "Voto de cada deputado; vazio na votação secreta",
+          "facets": [
+            "tipo_voto",
+            "sigla_partido"
+          ],
+          "columns": {
+            "tipo_voto": "Sim, Não, Abstenção, Obstrução ou Artigo 17 (presidente). Vazio = votação secreta",
+            "sigla_partido": "Partido do deputado no dia do voto"
+          }
         },
         "orientacao": {
-          "description": "Orientação de partidos e blocos nas votações do Plenário"
+          "description": "Orientação de partidos e blocos nas votações do Plenário",
+          "facets": [
+            "orientacao",
+            "tipo_lideranca"
+          ]
         },
         "votacao_proposicao": {
           "description": "Proposições afetadas por cada votação"
         },
         "deputado": {
-          "description": "Deputados, com partido e legislatura mais recentes"
+          "description": "Deputados, com o partido e a legislatura mais recentes",
+          "label_column": "nome",
+          "facets": [
+            "sigla_partido",
+            "sigla_uf",
+            "sexo",
+            "id_legislatura"
+          ]
         },
         "partido": {
-          "description": "Partidos (a sigla não é única: ligações sempre pelo id)"
+          "description": "Partidos (a sigla não é única; as ligações são pelo id)",
+          "label_column": "sigla"
         },
         "legislatura": {
           "description": "Legislaturas e datas"
         },
         "lideranca": {
-          "description": "Líderes e vice-líderes das bancadas"
+          "description": "Líderes e vice-líderes das bancadas",
+          "facets": [
+            "bancada_tipo",
+            "titulo"
+          ]
         },
         "bloco": {
-          "description": "Blocos parlamentares"
+          "description": "Blocos parlamentares",
+          "label_column": "nome"
         },
         "bloco_partido": {
           "description": "Partidos de cada bloco (composição atual)"
         },
         "frente": {
-          "description": "Frentes parlamentares"
+          "description": "Frentes parlamentares",
+          "label_column": "titulo"
         },
         "frente_membro": {
-          "description": "Membros de cada frente"
+          "description": "Membros de cada frente",
+          "facets": [
+            "titulo"
+          ]
         },
         "orgao": {
-          "description": "Plenário, comissões e Mesa Diretora"
+          "description": "Plenário, comissões e Mesa Diretora",
+          "label_column": "sigla",
+          "facets": [
+            "tipo_orgao"
+          ]
         },
         "deputado_orgao": {
-          "description": "Cargos dos deputados nos órgãos (composição atual)"
+          "description": "Cargos dos deputados nos órgãos (composição atual)",
+          "facets": [
+            "titulo"
+          ]
         },
         "evento": {
-          "description": "Sessões e reuniões"
+          "description": "Sessões e reuniões",
+          "label_column": "descricao",
+          "facets": [
+            "situacao",
+            "descricao_tipo"
+          ],
+          "sort_desc": "data_hora_inicio"
         },
         "pauta_item": {
-          "description": "Itens da pauta de cada evento"
-        },
-        "administrador": {
-          "description": "Equipe do portal (vazia até a Fase 4)"
+          "description": "Itens da pauta de cada evento",
+          "facets": [
+            "situacao_item",
+            "regime"
+          ]
         },
         "noticia": {
-          "description": "Notícias e relatórios (rascunhos entram aqui)"
+          "description": "Notícias e relatórios; os rascunhos entram aqui",
+          "label_column": "titulo",
+          "facets": [
+            "status",
+            "tipo",
+            "origem"
+          ],
+          "sort_desc": "criado_em",
+          "fts_table": "noticia_fts",
+          "fts_pk": "id"
         },
         "noticia_fonte": {
           "description": "Registros da API usados em cada notícia"
@@ -281,20 +509,9 @@
         "noticia_revisao": {
           "description": "Histórico de revisão das notícias"
         },
-        "geracao_ia": {
-          "description": "Cada execução da geração de rascunhos, mesmo com erro"
-        },
-        "trecho_rag": {
-          "description": "Trechos de texto com o vetor da RoBERTaLexPT (embedding em bytes)"
-        },
-        "geracao_trecho": {
-          "description": "Trechos usados em cada geração"
-        },
-        "log_sistema": {
-          "description": "Log do coletor, da IA e da equipe"
-        },
-        "coleta": {
-          "description": "Cada coleta da API: período, itens, requisições e status"
+        "administrador": {
+          "description": "Equipe do portal (vazia até a Fase 4)",
+          "label_column": "nome"
         },
         "visitante": {
           "description": "Visitantes anônimos (vazia até a Fase 5)"
@@ -302,17 +519,51 @@
         "visitante_tema": {
           "description": "Temas mais lidos por visitante"
         },
+        "trecho_rag": {
+          "description": "O que a Roberta lê: trechos de texto com o vetor da RoBERTaLexPT (tem busca por palavras)",
+          "facets": [
+            "tipo"
+          ],
+          "columns": {
+            "texto": "O texto que a RoBERTaLexPT lê (até 400 tokens)",
+            "embedding": "Vetor de 768 números (3.072 bytes)"
+          }
+        },
+        "geracao_ia": {
+          "description": "Cada execução da geração de rascunhos, mesmo com erro",
+          "facets": [
+            "status",
+            "modelo_geracao"
+          ],
+          "sort_desc": "id"
+        },
+        "geracao_trecho": {
+          "description": "Trechos usados em cada geração"
+        },
+        "coleta": {
+          "description": "Cada coleta da API: período, itens, requisições e status",
+          "label_column": "recurso",
+          "facets": [
+            "recurso",
+            "status",
+            "tipo"
+          ],
+          "sort_desc": "id",
+          "columns": {
+            "status": "ok, parcial (algum registro falhou) ou erro"
+          }
+        },
+        "log_sistema": {
+          "description": "Log do coletor, da IA e da equipe",
+          "facets": [
+            "nivel",
+            "modulo",
+            "acao"
+          ],
+          "sort_desc": "id"
+        },
         "alembic_version": {
           "description": "Versão do esquema (última migração aplicada)"
-        },
-        "vec_trecho": {
-          "hidden": true
-        },
-        "trecho_fts": {
-          "description": "Índice da busca por palavras dos trechos (FTS5)"
-        },
-        "noticia_fts": {
-          "description": "Índice da busca de texto das notícias (FTS5)"
         },
         "noticia_fts_config": {
           "hidden": true
@@ -324,9 +575,6 @@
           "hidden": true
         },
         "noticia_fts_idx": {
-          "hidden": true
-        },
-        "noticia_fts_content": {
           "hidden": true
         },
         "trecho_fts_config": {
@@ -341,7 +589,13 @@
         "trecho_fts_idx": {
           "hidden": true
         },
-        "trecho_fts_content": {
+        "noticia_fts": {
+          "hidden": true
+        },
+        "trecho_fts": {
+          "hidden": true
+        },
+        "sqlite_sequence": {
           "hidden": true
         },
         "vec_trecho_chunks": {
@@ -359,30 +613,46 @@
         "vec_trecho_auxiliary": {
           "hidden": true
         },
-        "sqlite_sequence": {
+        "vec_trecho": {
           "hidden": true
         }
       },
       "queries": {
         "contagem_das_tabelas": {
-          "title": "Quantas linhas tem cada tabela principal",
-          "sql": "SELECT 'proposicao' AS tabela, COUNT(*) AS linhas FROM proposicao UNION ALL SELECT 'proposicao_autor' AS tabela, COUNT(*) AS linhas FROM proposicao_autor UNION ALL SELECT 'proposicao_tema' AS tabela, COUNT(*) AS linhas FROM proposicao_tema UNION ALL SELECT 'tramitacao' AS tabela, COUNT(*) AS linhas FROM tramitacao UNION ALL SELECT 'votacao' AS tabela, COUNT(*) AS linhas FROM votacao UNION ALL SELECT 'voto' AS tabela, COUNT(*) AS linhas FROM voto UNION ALL SELECT 'orientacao' AS tabela, COUNT(*) AS linhas FROM orientacao UNION ALL SELECT 'deputado' AS tabela, COUNT(*) AS linhas FROM deputado UNION ALL SELECT 'partido' AS tabela, COUNT(*) AS linhas FROM partido UNION ALL SELECT 'orgao' AS tabela, COUNT(*) AS linhas FROM orgao UNION ALL SELECT 'evento' AS tabela, COUNT(*) AS linhas FROM evento UNION ALL SELECT 'pauta_item' AS tabela, COUNT(*) AS linhas FROM pauta_item UNION ALL SELECT 'frente' AS tabela, COUNT(*) AS linhas FROM frente UNION ALL SELECT 'frente_membro' AS tabela, COUNT(*) AS linhas FROM frente_membro UNION ALL SELECT 'lideranca' AS tabela, COUNT(*) AS linhas FROM lideranca UNION ALL SELECT 'trecho_rag' AS tabela, COUNT(*) AS linhas FROM trecho_rag UNION ALL SELECT 'noticia' AS tabela, COUNT(*) AS linhas FROM noticia UNION ALL SELECT 'coleta' AS tabela, COUNT(*) AS linhas FROM coleta UNION ALL SELECT 'log_sistema' AS tabela, COUNT(*) AS linhas FROM log_sistema ORDER BY linhas DESC"
+          "title": "Quantas linhas tem cada tabela",
+          "sql": "SELECT 'proposicao' AS tabela, COUNT(*) AS linhas FROM proposicao UNION ALL SELECT 'tramitacao' AS tabela, COUNT(*) AS linhas FROM tramitacao UNION ALL SELECT 'proposicao_autor' AS tabela, COUNT(*) AS linhas FROM proposicao_autor UNION ALL SELECT 'proposicao_tema' AS tabela, COUNT(*) AS linhas FROM proposicao_tema UNION ALL SELECT 'tema' AS tabela, COUNT(*) AS linhas FROM tema UNION ALL SELECT 'votacao' AS tabela, COUNT(*) AS linhas FROM votacao UNION ALL SELECT 'voto' AS tabela, COUNT(*) AS linhas FROM voto UNION ALL SELECT 'orientacao' AS tabela, COUNT(*) AS linhas FROM orientacao UNION ALL SELECT 'votacao_proposicao' AS tabela, COUNT(*) AS linhas FROM votacao_proposicao UNION ALL SELECT 'deputado' AS tabela, COUNT(*) AS linhas FROM deputado UNION ALL SELECT 'partido' AS tabela, COUNT(*) AS linhas FROM partido UNION ALL SELECT 'legislatura' AS tabela, COUNT(*) AS linhas FROM legislatura UNION ALL SELECT 'lideranca' AS tabela, COUNT(*) AS linhas FROM lideranca UNION ALL SELECT 'bloco' AS tabela, COUNT(*) AS linhas FROM bloco UNION ALL SELECT 'bloco_partido' AS tabela, COUNT(*) AS linhas FROM bloco_partido UNION ALL SELECT 'frente' AS tabela, COUNT(*) AS linhas FROM frente UNION ALL SELECT 'frente_membro' AS tabela, COUNT(*) AS linhas FROM frente_membro UNION ALL SELECT 'orgao' AS tabela, COUNT(*) AS linhas FROM orgao UNION ALL SELECT 'deputado_orgao' AS tabela, COUNT(*) AS linhas FROM deputado_orgao UNION ALL SELECT 'evento' AS tabela, COUNT(*) AS linhas FROM evento UNION ALL SELECT 'pauta_item' AS tabela, COUNT(*) AS linhas FROM pauta_item UNION ALL SELECT 'noticia' AS tabela, COUNT(*) AS linhas FROM noticia UNION ALL SELECT 'noticia_fonte' AS tabela, COUNT(*) AS linhas FROM noticia_fonte UNION ALL SELECT 'noticia_revisao' AS tabela, COUNT(*) AS linhas FROM noticia_revisao UNION ALL SELECT 'administrador' AS tabela, COUNT(*) AS linhas FROM administrador UNION ALL SELECT 'visitante' AS tabela, COUNT(*) AS linhas FROM visitante UNION ALL SELECT 'visitante_tema' AS tabela, COUNT(*) AS linhas FROM visitante_tema UNION ALL SELECT 'trecho_rag' AS tabela, COUNT(*) AS linhas FROM trecho_rag UNION ALL SELECT 'geracao_ia' AS tabela, COUNT(*) AS linhas FROM geracao_ia UNION ALL SELECT 'geracao_trecho' AS tabela, COUNT(*) AS linhas FROM geracao_trecho UNION ALL SELECT 'coleta' AS tabela, COUNT(*) AS linhas FROM coleta UNION ALL SELECT 'log_sistema' AS tabela, COUNT(*) AS linhas FROM log_sistema ORDER BY linhas DESC"
         },
         "votacoes_secretas": {
           "title": "Votações secretas (todos os votos sem tipo)",
           "sql": "SELECT v.id, v.data, v.sigla_orgao, v.descricao, COUNT(*) AS presentes FROM votacao v JOIN voto x ON x.votacao_id = v.id GROUP BY v.id HAVING COUNT(x.tipo_voto) = 0"
+        },
+        "situacao_das_votacoes": {
+          "title": "Votações nominais, secretas, simbólicas e pendentes",
+          "sql": "SELECT CASE WHEN v.filhos_sincronizados_em IS NULL THEN 'pendente' WHEN (SELECT COUNT(*) FROM voto x WHERE x.votacao_id = v.id) = 0 THEN 'simbolica' WHEN (SELECT COUNT(tipo_voto) FROM voto x WHERE x.votacao_id = v.id) = 0 THEN 'secreta' ELSE 'nominal' END AS situacao, COUNT(*) AS votacoes FROM votacao v GROUP BY situacao ORDER BY votacoes DESC"
         },
         "placar_por_partido": {
           "title": "Placar de uma votação por partido",
           "sql": "SELECT sigla_partido, SUM(tipo_voto = 'Sim') AS sim, SUM(tipo_voto = 'Não') AS nao, SUM(tipo_voto = 'Abstenção') AS abstencao, SUM(tipo_voto IS NULL) AS sem_tipo FROM voto WHERE votacao_id = :votacao GROUP BY sigla_partido ORDER BY sim DESC"
         },
         "proposicao_completa": {
-          "title": "Uma proposição: autores, temas e últimas tramitações",
+          "title": "Uma proposição: autores, temas e tramitações",
           "sql": "SELECT 'autor' AS parte, ordem AS n, nome AS texto FROM proposicao_autor WHERE proposicao_id = :id UNION ALL SELECT 'tema', relevancia, (SELECT nome FROM tema t WHERE t.cod_tema = pt.cod_tema) FROM proposicao_tema pt WHERE proposicao_id = :id UNION ALL SELECT 'tramitacao', sequencia, data_hora || ' ' || sigla_orgao || ': ' || COALESCE(NULLIF(despacho, ''), descricao) FROM tramitacao WHERE proposicao_id = :id ORDER BY parte, n"
+        },
+        "votacoes_de_uma_proposicao": {
+          "title": "Votações de uma proposição",
+          "sql": "SELECT v.id, v.data, v.sigla_orgao, v.aprovacao, v.descricao FROM votacao v JOIN votacao_proposicao vp ON vp.votacao_id = v.id WHERE vp.proposicao_id = :id ORDER BY v.data DESC"
+        },
+        "votos_de_um_deputado": {
+          "title": "Votos de um deputado (procure pelo nome)",
+          "sql": "SELECT d.nome, x.tipo_voto, v.data, v.descricao FROM voto x JOIN deputado d ON d.id = x.deputado_id JOIN votacao v ON v.id = x.votacao_id WHERE d.nome LIKE '%' || :nome || '%' ORDER BY v.data DESC"
+        },
+        "proposicoes_por_tema": {
+          "title": "Proposições por tema",
+          "sql": "SELECT t.nome AS tema, COUNT(*) AS proposicoes FROM proposicao_tema pt JOIN tema t ON t.cod_tema = pt.cod_tema GROUP BY t.nome ORDER BY proposicoes DESC"
         },
         "nao_informado_pela_camara": {
           "title": "Campos que a Câmara não informou",
-          "sql": "SELECT 'proposicao.regime' AS campo, SUM(regime IS NULL OR TRIM(regime) IN ('', '.', '-')) AS linhas FROM proposicao UNION ALL SELECT 'proposicao.data_status', SUM(data_status IS NULL) FROM proposicao UNION ALL SELECT 'proposicao.url_inteiro_teor', SUM(url_inteiro_teor IS NULL) FROM proposicao UNION ALL SELECT 'tramitacao.regime', SUM(regime IS NULL OR TRIM(regime) IN ('', '.', '-')) FROM tramitacao UNION ALL SELECT 'voto.tipo_voto', SUM(tipo_voto IS NULL) FROM voto"
+          "sql": "SELECT 'proposicao.regime' AS campo, SUM(regime IS NULL OR TRIM(regime) IN ('', '.', '-')) AS linhas FROM proposicao UNION ALL SELECT 'proposicao.data_status', SUM(data_status IS NULL) FROM proposicao UNION ALL SELECT 'proposicao.url_inteiro_teor', SUM(url_inteiro_teor IS NULL) FROM proposicao UNION ALL SELECT 'tramitacao.regime', SUM(regime IS NULL OR TRIM(regime) IN ('', '.', '-')) FROM tramitacao UNION ALL SELECT 'tramitacao.despacho vazio', SUM(despacho = '') FROM tramitacao UNION ALL SELECT 'voto.tipo_voto', SUM(tipo_voto IS NULL) FROM voto"
         },
         "pendentes": {
           "title": "Proposições e votações pendentes",
@@ -393,16 +663,12 @@
           "sql": "SELECT id, recurso, tipo, status, iniciado_em, finalizado_em, total_itens, itens_novos, itens_atualizados, requisicoes, erros_http, mensagem_erro FROM coleta ORDER BY id DESC LIMIT 50"
         },
         "erros_no_log": {
-          "title": "Erros e avisos do log",
+          "title": "Erros e avisos do log, agrupados",
           "sql": "SELECT nivel, acao, entidade, COUNT(*) AS vezes, MAX(data_hora) AS ultima, MIN(descricao) AS exemplo FROM log_sistema WHERE nivel IN ('erro', 'aviso') GROUP BY nivel, acao, entidade ORDER BY vezes DESC"
         },
         "trechos_de_uma_proposicao": {
           "title": "O que a Roberta lê sobre uma proposição",
           "sql": "SELECT tipo, ref_id, parte, tokens, texto FROM trecho_rag WHERE (tipo = 'proposicao' AND ref_id = :id) OR (tipo = 'tramitacao' AND ref_id LIKE :id || '/%') ORDER BY tipo, ref_id, parte"
-        },
-        "vetores_amostra": {
-          "title": "Índice vetorial: amostra (precisa da extensão sqlite-vec)",
-          "sql": "SELECT v.trecho_id, vec_length(v.embedding) AS dimensoes, t.tipo, t.ref_id, substr(t.texto, 1, 80) AS inicio FROM vec_trecho v JOIN trecho_rag t ON t.id = v.trecho_id LIMIT 50"
         }
       }
     }

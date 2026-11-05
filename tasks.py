@@ -85,9 +85,10 @@ def ver_banco(c, banco="instance/desperta.db", porta=8001):
         extensao = f'--load-extension="{sqlite_vec.loadable_path()}"'
     except ImportError:
         extensao = ""
+    c.run("python scripts/ver_banco/montar_metadata.py", hide=True)
     c.run(
         f"datasette {banco} -m scripts/ver_banco/metadata.json {extensao} -h 127.0.0.1 -p {porta} "
-        "--setting sql_time_limit_ms 5000 --open",
+        "--setting sql_time_limit_ms 5000 --setting facet_time_limit_ms 1500 --setting default_page_size 50 --open",
         pty=True,
     )
 

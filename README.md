@@ -124,7 +124,7 @@ invoke ver-banco                                          # abre http://127.0.0.
 invoke ver-banco --banco instance/desperta-amostra.db     # a amostra de 15 MB
 ```
 
-A configuração fica em `scripts/ver_banco/metadata.json`: descrição de cada tabela, tabelas internas das buscas escondidas e consultas prontas (contagem das tabelas, votações secretas, placar por partido, uma proposição completa, campos não informados pela Câmara, pendentes, últimas coletas, erros do log, o que a Roberta lê sobre uma proposição e uma amostra do índice vetorial). Com a parte de IA instalada, a extensão sqlite-vec é carregada sozinha, para o índice vetorial abrir também.
+A página do banco tem um menu com **busca rápida** (proposição e votação pelo id, deputado pelo nome, palavra na ementa ou no despacho e palavras no que a Roberta lê), as **tabelas agrupadas por assunto** e **15 consultas prontas** (contagem das tabelas, votações secretas, situação das votações, placar por partido, uma proposição completa, votações de uma proposição, votos de um deputado, proposições por tema, campos não informados pela Câmara, pendentes, últimas coletas, erros do log, o que a Roberta lê e uma amostra do índice vetorial). Nas tabelas, os ids ligados aparecem com o nome (deputado, partido, órgão, tema), há filtros rápidos no topo, a ordem padrão é do mais recente e as colunas principais têm explicação. A configuração é montada por `scripts/ver_banco/montar_metadata.py`, que o `invoke ver-banco` roda antes de abrir. Com a parte de IA instalada, a extensão sqlite-vec é carregada sozinha.
 
 ## Problema conhecido
 
