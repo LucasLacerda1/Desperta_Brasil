@@ -64,6 +64,18 @@ def indexar(c):
     c.run("flask --app app.py ia indexar", echo=True)
 
 
+@task(name="verificar-banco")
+def verificar_banco(c):
+    """Confere estrutura, integridade e coerencia do banco, sem gravar nada."""
+    c.run("flask --app app.py banco verificar --relatorio instance/verificacao-banco.md", echo=True)
+
+
+@task(name="testar-persistencia")
+def testar_persistencia(c):
+    """Grava, rele, atualiza e apaga dados de teste numa copia do banco."""
+    c.run("flask --app app.py banco testar-persistencia --relatorio instance/persistencia.md", echo=True)
+
+
 @task
 def run(c):
     """Executa a aplicacao Flask."""

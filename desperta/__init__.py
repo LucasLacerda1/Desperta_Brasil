@@ -24,6 +24,8 @@ def create_app(config_class=Config):
     app = Flask(__name__)
 
     app.config.from_object(config_class)
+    # Os testes de persistencia criam uma segunda app, ligada a copia do banco, com a mesma configuracao
+    app.config["CLASSE_DE_CONFIGURACAO"] = config_class
 
     # ----------------------------------------------------------
     # Inicializacao das extensoes
