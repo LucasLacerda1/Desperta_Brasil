@@ -2,7 +2,7 @@ import pytest
 import requests
 
 from api_falsa import URL_BASE, carregar, envelope
-from desperta.coletor.cliente import ClienteCamara, ErroAPI
+from desperta.coletor.cliente import ClienteCamara, ErroAPI, TempoEsgotado
 
 
 def test_obter_devolve_dados(api, cliente):
@@ -80,3 +80,34 @@ def test_url_base_com_barra_e_caminho_com_barra(api, esperas):
     cliente = ClienteCamara(f"{URL_BASE}/", sessao=api)
     api.responder("legislaturas", carregar("legislaturas"))
     assert cliente.obter("/legislaturas")[0]["id"] == 57
+
+
+def test_sem_orcamento_o_relogio_nao_limita(api, cliente):
+    api.responder("a", envelope([1]))
+    cliente.relogio = lambda: pytest.fail("sem orcamento, o relogio nao e lido")
+    assert cliente.obter("a") == [1]
+
+
+def test_orcamento_esgotado_nao_faz_a_chamada(api, cliente):
+    agora = [0]
+    cliente.relogio = lambda: agora[0]
+    cliente.definir_orcamento(10)
+    api.responder("a", envelope([1]))
+    assert cliente.obter("a") == [1]
+
+    agora[0] = 10
+    with pytest.raises(TempoEsgotado):
+        cliente.obter("a")
+    assert cliente.requisicoes == 1
+
+
+def test_orcamento_interrompe_as_novas_tentativas(api, cliente, esperas):
+    agora = [0]
+    cliente.relogio = lambda: agora[0]
+    cliente.definir_orcamento(10)
+    # A espera de 2 s depois do primeiro 504 acaba com o orcamento
+    cliente.dormir = lambda segundos: agora.__setitem__(0, 10)
+    api.responder("a", [504, envelope([1])])
+    with pytest.raises(TempoEsgotado):
+        cliente.obter("a")
+    assert cliente.requisicoes == 1

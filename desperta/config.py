@@ -12,6 +12,9 @@ class Config:
     CAMARA_API_URL = os.getenv("CAMARA_API_URL", "https://dadosabertos.camara.leg.br/api/v2")
     CAMARA_TIMEOUT = int(os.getenv("CAMARA_TIMEOUT", "30"))
     TIPOS_ACOMPANHADOS = os.getenv("TIPOS_ACOMPANHADOS", "PL,PLP,PEC,MPV,PDL").split(",")
+    # Decisoes 14.2 e 15.3: limites da rotina horaria
+    HORARIA_ORCAMENTO_MIN = int(os.getenv("HORARIA_ORCAMENTO_MIN", "20"))
+    HORARIA_RECONFERIR_HORAS = int(os.getenv("HORARIA_RECONFERIR_HORAS", "6"))
     EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "eduagarcia/RoBERTaLexPT-base")
     RAG_TOP_K = int(os.getenv("RAG_TOP_K", "8"))
     RAG_TRECHO_TOKENS = 400

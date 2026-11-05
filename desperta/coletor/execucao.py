@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError, StatementError
 from desperta.ext.db import db
 from desperta.sistema.models import Coleta, LogSistema
 
-from .cliente import ErroAPI
+from .cliente import ErroAPI, TempoEsgotado
 from .normalizacao import agora_utc, calcular_hash
 
 logger = logging.getLogger(__name__)
@@ -52,6 +52,11 @@ class Execucao:
             # A API caiu de vez: o que ja foi gravado fica, e o erro nao derruba as proximas coletas
             self.log("erro", "falha_api", str(erro))
             self.finalizar(status="erro", mensagem=str(erro))
+            return True
+        if isinstance(erro, TempoEsgotado):
+            # Decisao 14.2: o item em andamento foi desfeito e sera buscado de novo
+            self.log("aviso", "tempo_esgotado", str(erro))
+            self.finalizar(status="parcial", mensagem=str(erro))
             return True
         self.finalizar(status="erro", mensagem=f"{type(erro).__name__}: {erro}")
         return False
