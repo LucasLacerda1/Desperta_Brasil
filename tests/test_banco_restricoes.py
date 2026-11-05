@@ -77,6 +77,13 @@ def test_voto_sem_tipo_e_aceito_para_votacao_secreta(db):
     assert db.session.scalar(db.select(fabricas.Voto)).tipo_voto is None
 
 
+def test_proposicao_sem_regime_data_status_e_inteiro_teor_e_aceita(db):
+    """Fase 2b: a Camara nem sempre informa esses campos."""
+    db.session.add(fabricas.proposicao(regime=None, data_status=None, url_inteiro_teor=None))
+    db.session.commit()
+    assert db.session.scalar(db.select(fabricas.Proposicao)).regime is None
+
+
 def test_mesmo_cargo_em_outra_data_e_aceito(db):
     db.session.add_all([fabricas.legislatura(), fabricas.deputado(), fabricas.orgao()])
     db.session.flush()

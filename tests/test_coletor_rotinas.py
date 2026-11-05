@@ -659,7 +659,7 @@ def test_relatorio_separa_falhas_de_coluna_e_da_api(comandos, db, api, cliente):
     lista = carregar("proposicoes")
     _proposicao(api)
     corpo = carregar("proposicao")
-    corpo["dados"]["urlInteiroTeor"] = None
+    corpo["dados"]["ementa"] = None
     api.responder(f"proposicoes/{ID_PROPOSICAO}", corpo)
     proposicoes.coletar(cliente, HOJE, HOJE, limite_pendentes=0)
 
@@ -667,7 +667,7 @@ def test_relatorio_separa_falhas_de_coluna_e_da_api(comandos, db, api, cliente):
     api.responder(f"proposicoes/{ID_PROPOSICAO}", [504] * 5)
     proposicoes.coletar(cliente, HOJE, HOJE, limite_pendentes=0)
 
-    assert relatorio.falhas_por_coluna() == [("proposicao.url_inteiro_teor", 1)]
+    assert relatorio.falhas_por_coluna() == [("proposicao.ementa", 1)]
     assert relatorio.falhas_da_api() == [("/proposicoes: HTTP 504", 1)]
     saida = comandos.invoke(args=["coletar", "relatorio"]).output
     assert "falha da API | total" in saida

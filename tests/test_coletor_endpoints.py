@@ -380,6 +380,25 @@ def test_proposicao_grava_detalhe_autores_temas_e_tramitacoes(base, api, cliente
     assert proposicao.tramitacoes[0].orgao_id == 180
 
 
+def test_proposicao_sem_regime_data_status_e_inteiro_teor_e_gravada(base, api, cliente):
+    """Fase 2b: a API ja mandou esses campos vazios (PDL 995/2026, PL 3384/2026, PPP sem status)."""
+    _responder_proposicao(api)
+    corpo = carregar("proposicao")
+    corpo["dados"]["urlInteiroTeor"] = None
+    corpo["dados"]["statusProposicao"].update(dataHora=None, regime=None)
+    api.responder(f"proposicoes/{ID_PROPOSICAO}", corpo)
+    tramitacoes = carregar("proposicao_tramitacoes")
+    for passo in tramitacoes["dados"]:
+        passo["regime"] = None
+    api.responder(f"proposicoes/{ID_PROPOSICAO}/tramitacoes", tramitacoes)
+    proposicoes.coletar(cliente, INICIO, FIM, limite_pendentes=0)
+    proposicao = base.session.get(Proposicao, ID_PROPOSICAO)
+    assert (proposicao.regime, proposicao.data_status, proposicao.url_inteiro_teor) == (None, None, None)
+    assert [passo.regime for passo in proposicao.tramitacoes] == [None, None, None]
+    assert proposicao.filhos_sincronizados_em is not None
+    assert _ultima_coleta(base).status == "ok"
+
+
 def test_proposicao_so_e_gravada_depois_do_detalhe(base, api, cliente):
     _responder_proposicao(api)
     api.responder(f"proposicoes/{ID_PROPOSICAO}", [404])
@@ -444,19 +463,19 @@ def test_autor_e_orgao_de_fora_da_janela_sao_buscados_sob_demanda(base, api, cli
     assert base.session.get(Orgao, 180) is not None
 
 
-def test_url_inteiro_teor_vazia_vai_para_o_relatorio_sem_afrouxar_nullable(base, api, cliente):
+def test_ementa_vazia_vai_para_o_relatorio_sem_afrouxar_nullable(base, api, cliente):
     """Decisao 10.2 e carga de validacao: a coluna aparece na lista de falhas."""
     _responder_proposicao(api)
     corpo = carregar("proposicao")
-    corpo["dados"]["urlInteiroTeor"] = None
+    corpo["dados"]["ementa"] = None
     api.responder(f"proposicoes/{ID_PROPOSICAO}", corpo)
     proposicoes.coletar(cliente, INICIO, FIM, limite_pendentes=0)
 
     assert _ultima_coleta(base).status == "parcial"
     assert _total(base, Proposicao) == 0
     assert _total(base, ProposicaoAutor) == 0
-    assert relatorio.falhas_por_coluna() == [("proposicao.url_inteiro_teor", 1)]
-    assert _db.metadata.tables["proposicao"].c["url_inteiro_teor"].nullable is False
+    assert relatorio.falhas_por_coluna() == [("proposicao.ementa", 1)]
+    assert _db.metadata.tables["proposicao"].c["ementa"].nullable is False
 
 
 def test_filho_ruim_nao_apaga_os_outros_e_mantem_a_proposicao(base, api, cliente):
@@ -825,9 +844,9 @@ def test_comandos_existem(app, comando):
 def test_comando_relatorio_mostra_as_colunas(app, base, api, cliente):
     _responder_proposicao(api)
     corpo = carregar("proposicao")
-    corpo["dados"]["urlInteiroTeor"] = None
+    corpo["dados"]["ementa"] = None
     api.responder(f"proposicoes/{ID_PROPOSICAO}", corpo)
     proposicoes.coletar(cliente, INICIO, FIM, limite_pendentes=0)
     saida = app.test_cli_runner().invoke(args=["coletar", "relatorio"]).output
-    assert "proposicao.url_inteiro_teor | 1" in saida
+    assert "proposicao.ementa | 1" in saida
     assert "proposicoes |" in saida
