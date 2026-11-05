@@ -46,7 +46,7 @@ Complementares:
 | Código | Requisito |
 |---|---|
 | RF01 | Consumir a API v2 da Câmara: proposições (autores, temas, tramitações), votações (votos, orientações, proposições afetadas), deputados, partidos, legislaturas, órgãos (membros e Mesa), eventos (pauta), lideranças, blocos, frentes e a lista de temas. |
-| RF02 | Coleta agendada (revisto em 30/10/2026, ver 12.1): votações e eventos a cada hora; proposições dos tipos acompanhados a cada hora (janela curta) e numa revisão diária dos últimos dias; varredura de 30 dias uma vez por semana; cargos em órgãos e blocos semanalmente; frentes mensalmente. |
+| RF02 | Coleta agendada (revisto em 05/11/2026, ver 12.1, 13.1 a 13.3, 14.2 e 15.3), em quatro rotinas. **De hora em hora:** votações e eventos de ontem e de hoje e proposições do dia dos tipos acompanhados (PL, PLP, PEC, MPV e PDL); pula proposições conferidas há menos de 6 horas, para sozinha aos 20 minutos e busca votações e eventos primeiro. **Diária, de madrugada:** proposições dos últimos 3 dias e tudo o que ficou pendente (pautas, votos e proposições incompletas). **Semanal, no domingo de madrugada:** varredura de 30 dias das proposições, tabelas de apoio (legislaturas, partidos, deputados, órgãos e temas), membros de órgãos, Mesa, lideranças e blocos. **Mensal:** frentes. Só uma coleta roda por vez; outros tipos de proposição entram só quando citados por votação ou pauta; os limites de 20 minutos e 6 horas são configuráveis. |
 | RF03 | Guardar os dados num modelo relacional que espelha a API, com os mesmos ids, atualizando (upsert) em vez de duplicar. |
 | RF04 | Registrar cada coleta (endpoint, parâmetros, início, fim, total, novos, atualizados, status, erro) e guardar o link do inteiro teor. |
 | RF05 | Classificar proposições e notícias pelos temas oficiais da Câmara (proposições recebem os temas da API; cada notícia tem um tema principal). |
@@ -1316,7 +1316,7 @@ Aceito, com o limite de 200 pendentes por janela. O `relatorio` deve mostrar qua
 **Acréscimo:** ao encontrar `instance/coletor.lock`, o coletor confere se o PID gravado ainda está rodando (`os.kill(pid, 0)`: `ProcessLookupError` = processo morto). Se o processo não existe, a trava é abandonada: remover, gravar um aviso em `log_sistema` e seguir com a coleta. Se o processo existe, não rodar. O limite de 6 horas continua como segunda proteção, para o caso de o número do PID ter sido reaproveitado por outro programa. Com testes para os três casos: PID vivo, PID morto e trava com mais de 6 horas.
 
 ### 13.7 RF02 no documento do MVP
-Continua com o grupo: atualizar o RF02 com o calendário de 12.1 e 13.1 a 13.3.
+Continua com o grupo: atualizar o RF02 com o calendário de 12.1 e 13.1 a 13.3. **Atualizado em 05/11/2026:** o texto do RF02 na seção 1.2 foi reescrito com o calendário; o grupo copia o mesmo texto para o documento do MVP.
 
 ### 13.8 Primeira `diaria`
 A primeira execução pode passar de 3 horas (cerca de 7.200 chamadas). Isso é aceito uma vez: rodar a primeira `diaria` com `nohup`, logo depois da amostra. A meta de 3 horas vale a partir da segunda execução. Se a segunda também passar, avisar o grupo.
