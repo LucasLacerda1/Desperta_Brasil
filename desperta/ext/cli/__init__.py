@@ -8,6 +8,7 @@ from flask.cli import AppGroup
 
 from desperta.ext.db import db
 from desperta.ext.db.busca import criar_busca_texto, remover_busca_texto
+from desperta.ia import palavras, vetores
 
 banco = AppGroup("banco", help="Verificacao e testes de persistencia do banco.")
 
@@ -111,6 +112,9 @@ def init_app(app):
     @app.cli.command("drop-db")
     def drop_db():
         """Apaga todas as tabelas do banco de dados."""
+        vetores.remover_indice()
+        palavras.remover_indice()
+        db.session.commit()
         with db.engine.begin() as conexao:
             remover_busca_texto(conexao)
         db.drop_all()
