@@ -1,16 +1,17 @@
 # Desperta Brasil — guia do projeto para o Claude Code
 
 > Coloque este arquivo na **raiz do repositório** com o nome `CLAUDE.md`. O Claude Code lê esse arquivo sozinho no início de cada sessão.
-> Última atualização: 01/11/2026 (Fases 1, 1.5 e 2 concluídas; Fase 3 em andamento; decisões nas seções 10 a 21; ajuste físico do banco em `docs/AJUSTE_BANCO_SISTEMA.md`; treino da Roberta escritora em `docs/TREINAR_ROBERTA_ESCRITORA.md`).
+> Última atualização: 05/11/2026 (Fases 1, 1.5, 2 e 2b concluídas; Fase 3 em andamento; decisões nas seções 10 a 22; ajuste físico do banco em `docs/AJUSTE_BANCO_SISTEMA.md`; treino da Roberta escritora em `docs/TREINAR_ROBERTA_ESCRITORA.md`).
 
 ## 0. Como trabalhar neste projeto (leia primeiro)
 
 - **Idioma:** responda, comente o código e escreva mensagens de commit em **português do Brasil**.
 - **Padrão obrigatório:** o código segue a estrutura do projeto **TaskFlow**, usado como exemplo pelo professor da disciplina (Programação Web Avançada, UVV). A seção 3 descreve esse padrão. Não invente outra organização, não troque o Flask-SQLAlchemy por outro ORM e não use outro estilo de modelo.
-- **Ordem do trabalho:** o projeto é construído por fases (seção 7). **As Fases 1 (banco), 1.5 (ajuste físico do banco, `docs/AJUSTE_BANCO_SISTEMA.md`) e 2 (coletor) estão concluídas; a Fase 2b fechou sem migração (14.1). O ajuste da `horaria` (PR nº 2) espera a medição da terça, 03/11. A fase atual é a 3 (IA e RAG, branch `fase-3-rag`), seguindo a ordem de 16.6 e 19.4; depois vem a 3b (Roberta escritora, seção 17 e `docs/TREINAR_ROBERTA_ESCRITORA.md`).** Não comece as rotas da API ou o front-end antes da fase anterior estar pronta e testada, a não ser que o grupo peça. Antes de mudar código, leia as seções 10 a 21 (decisões tomadas depois de cada relatório).
+- **Ordem do trabalho:** o projeto é construído por fases (seção 7). **As Fases 1 (banco), 1.5 (ajuste físico do banco, `docs/AJUSTE_BANCO_SISTEMA.md`), 2 (coletor) e 2b (campos opcionais, com 2 migrações, 22.2) estão concluídas, e o banco tem a bateria de persistência (22.4). O ajuste da `horaria` (PR nº 2) espera as medições da terça, 10/11. A fase atual é a 3 (IA e RAG, branch `fase-3-rag`): antes da Roberta escritora (3b), vem a análise da PEC com a Roberta original (22.6). Siga a ordem de 22.10.** Princípio do portal: transparência total (22.5). Não comece as rotas da API ou o front-end antes da fase anterior estar pronta e testada, a não ser que o grupo peça. Antes de mudar código, leia as seções 10 a 21 (decisões tomadas depois de cada relatório).
 - **Git:** a `main` no GitHub é a versão estável. Cada fase é feita numa branch própria (`fase-2-coletor`, `fase-3-ia`…), com commits pequenos ao fim de cada passo e mensagem em português; ao terminar a fase, abrir um pull request para a `main`. Quem faz o merge é o Lucas, depois de revisar (Caio e Rhuan revisam quando puderem). Não fazer push direto na `main`. Nunca versione `.venv/`, `instance/`, `.env` nem arquivos `*.db`, `*.db-wal`, `*.db-shm`.
 - **O modelo do banco já foi decidido pelo grupo** (32 tabelas, seção 5). Não acrescente, remova nem renomeie tabelas ou colunas por conta própria. A única exceção são as colunas técnicas, índices e configurações listados em `docs/AJUSTE_BANCO_SISTEMA.md` (camada física: controle de sincronização, índices, FTS5, migrações), que não mudam o modelo lógico. Se achar um problema no modelo, aponte e pergunte antes de mudar.
 - **Ao terminar cada passo:** rode os testes (`invoke test`) e mostre o resultado.
+- **Coautoria (22.8):** todo commit de trabalho e todo merge leva `Co-authored-by` do Caio e do Rhuan.
 - **Tudo open source (seção 18):** só use bibliotecas, modelos e ferramentas de código aberto, e adapte no próprio código o máximo possível. Nada de API paga ou serviço fechado (OpenAI, Google, AWS etc.) no funcionamento do portal.
 
 ---
@@ -1098,7 +1099,7 @@ Ficam no código, não no banco. Respeite estas regras quando chegar a hora:
 - Índice: tabela virtual do sqlite-vec ligada a `trecho_rag.id`, por exemplo `CREATE VIRTUAL TABLE vec_trecho USING vec0(trecho_id INTEGER PRIMARY KEY, embedding float[768] distance_metric=cosine)`. Criada pelo módulo de IA (não pelo `create_all`) e reconstruível a partir de `trecho_rag`.
 - Busca: 8 trechos mais parecidos, com filtro por tipo e data quando preciso; gravar em `geracao_trecho` com `posicao` e `similaridade`.
 - Só registros novos ou com `hash_texto` diferente recebem embedding depois de cada coleta.
-- O que vira trecho: proposição (sigla, número/ano, ementa, ementa detalhada, keywords); tramitação (data, órgão, situação, despacho); votação (descrição, órgão, data, resultado); evento e item de pauta (descrição, tópico, texto do parecer).
+- O que vira trecho: proposição (sigla, número/ano, ementa, ementa detalhada, keywords); tramitação (data, órgão, situação, despacho); votação (descrição, órgão, data, resultado e a situação dos votos: nominal, secreta, simbólica ou pendente, 22.5); evento e item de pauta (descrição, tópico, texto do parecer).
 - Começar com o modelo original e medir a busca; fine-tuning com sentence-transformers só se precisar.
 - **Quem escreve (atualizado, seção 17):** `ia/gerador.py` tem a interface, o `GeradorFalso` (testes), o `GeradorFrases` (plano B, padrão do MVP) e, depois da Fase 3b, o `GeradorRoberta`.
 
@@ -1151,11 +1152,11 @@ Além da seção 6, a Fase 2 precisa:
 - **Pedidos do relatório da Fase 1.5:** seguir a decisão 11.4 (contadores HTTP, endpoints com 504, `nullable` testado numa cópia do banco).
 - **Decisões depois do relatório da Fase 2:** seguir a seção 12. O que falta para fechar a fase está em 12.7.
 
-### Fase 2b — Ajustes de `nullable` (FECHADA em 01/11/2026 sem migração, ver 14.1)
+### Fase 2b — Ajustes de `nullable` (CONCLUÍDA em 04/11/2026 com 2 migrações, ver 22.2; a 14.1 fechou só a parte dos textos vazios)
 O Flask-Migrate já foi iniciado na Fase 1.5. Quando o grupo decidir os ajustes de `nullable` da carga de validação, aplicá-los como uma nova migração (`flask db migrate` + revisão + `flask db upgrade`). Toda mudança no esquema é migração, não `create_all()`.
 
 ### Fase 3 — IA e RAG
-Trechos, embeddings, índice sqlite-vec, busca híbrida (16.1), geração de rascunhos com o `GeradorFrases` (17.2), registro em `geracao_ia`, `geracao_trecho` e `noticia_fonte`.
+Trechos, embeddings, índice sqlite-vec, busca híbrida (16.1), geração de rascunhos com o `GeradorFrases` (17.2), registro em `geracao_ia`, `geracao_trecho` e `noticia_fonte`, transparência dos dados (22.5) e análise da PEC com a Roberta original (22.6).
 
 ### Fase 3b — Roberta escritora
 Treinar a RoBERTaLexPT como encoder-decoder para escrever título e resumo (seção 17 e `docs/TREINAR_ROBERTA_ESCRITORA.md`). Só entra no portal se passar na avaliação.
@@ -1329,7 +1330,7 @@ Rodar `invoke test` e conferir o resultado **antes** de fazer o commit, em coman
 
 ### 14.1 Fase 2b: textos vazios em colunas obrigatórias
 A amostra não teve nenhuma falha de `NOT NULL`. Apareceram só textos vazios (`''`) que a própria API manda: `tramitacao.despacho` (7 linhas), `orgao.sigla` (2) e `orgao.apelido` (1).
-- **Decisão: nada muda no banco.** As três colunas continuam `NOT NULL` e guardam `''` como a API manda (regra da seção 9 do ajuste físico: em coluna obrigatória, texto vazio fica `''`). A Fase 2b fecha **sem migração**.
+- **Decisão: nada muda no banco.** As três colunas continuam `NOT NULL` e guardam `''` como a API manda (regra da seção 9 do ajuste físico: em coluna obrigatória, texto vazio fica `''`). A Fase 2b fecha **sem migração**. **Atualizado em 22.2:** a carga de 3 meses mostrou campos que a API manda nulos, e a Fase 2b ganhou 2 migrações.
 - Na API do portal e no front-end (Fases 4 e 5), texto vazio é tratado como "sem valor": não mostrar despacho vazio, e mostrar `orgao.nome` quando `sigla` estiver vazia.
 - O `flask coletar relatorio` passa a contar também textos vazios em colunas obrigatórias de texto, para isso aparecer sem consulta à parte.
 
@@ -1398,7 +1399,7 @@ A medida "contém a palavra" favorece a busca por palavras. Trocar por um **conj
 Levar para o PR nº 2 só a mudança do `migrations/env.py` que ignora `vec_trecho` (e já preparar para ignorar `trecho_fts`), para o `flask db check` passar antes do merge da Fase 3. Testes e coletas não são afetados.
 
 ### 16.5 Decisões do Claude Code
-Aceitas: PyTorch só para CPU; tipo e nome do evento juntos no trecho; sem geração real até o grupo escolher o modelo; testes de IA pulados sem as dependências. A do texto das tramitações foi trocada pela 16.3.
+Aceitas: PyTorch só para CPU (trocado pelo PyTorch com CUDA na 20.2); tipo e nome do evento juntos no trecho; sem geração real até o grupo escolher o modelo; testes de IA pulados sem as dependências. A do texto das tramitações foi trocada pela 16.3.
 
 ### 16.6 Ordem
 1. 16.4 no PR nº 2.
@@ -1541,3 +1542,73 @@ O plano para quando o portal sair do PC do Lucas (depois da Fase 6, ou antes se 
 
 ### 21.5 Ordem
 Fazer 21.2 e 21.3 junto com a 20.2, com `ROBERTA_DIR` no padrão (`instance/modelos/roberta-lexpt-base`). Quando o pendrive chegar, o Lucas avisa e o Claude Code roda `flask ia mover-roberta` e atualiza o `.env`.
+
+---
+
+## 22. Decisões e trabalho de 03 a 05/11/2026
+
+### 22.1 Carga de 3 meses (03 e 04/11)
+Rodou de 03/08 a 03/11/2026, em 1 h 26 min, a partir do código da `fase-3-rag` (o coletor era igual ao da `main`). As proposições foram de 3.489 para 9.937, e as votações de 24 para 1.068. Em seguida, a indexação na RTX 4050 levou 2 minutos. Backup antes da carga: `instance/desperta-antes-carga-3meses.db`. Log: `instance/carga-3meses.log`.
+
+### 22.2 Fase 2b: campos que a API manda nulos
+A carga mostrou campos obrigatórios que a Câmara manda nulos. Decisão do Lucas: "a Câmara vai continuar fazendo isso, então tem que ser null".
+- **Migração `535ba879b66f` (PR nº 4):** `voto.tipo_voto` opcional. Na votação secreta (02/09/2026, PDL 995/2026, indicação ao TCU), a API registra só a presença. Confirmado com a API e com notícias.
+- **Migração `f8a2f7162512` (PR nº 5):** `proposicao.regime`, `proposicao.data_status`, `proposicao.url_inteiro_teor` e `tramitacao.regime` opcionais. As 17 proposições que tinham falhado foram recuperadas.
+- **Coletor:** votação com voto que falhou fica pendente e volta na `diaria`, como a proposição na 13.5.
+- Cada migração foi testada numa cópia do banco antes, com backup (`instance/desperta-antes-fase-2b.db` e `instance/desperta-antes-campos-opcionais.db`).
+
+### 22.3 Deputados repetidos na listagem (PR nº 6)
+A listagem `/deputados?idLegislatura=` traz o mesmo deputado uma vez por partido em que ele esteve, e o coletor alternava o partido a cada coleta (cerca de 200 "atualizados" sem mudança real). Agora, quando as linhas diferem, vale o detalhe `/deputados/{id}`. Na API real, a segunda coleta seguida deu 0 atualizados.
+
+### 22.4 Bateria de persistência (PR nº 6)
+- `flask banco verificar` (só leitura): integridade, chaves estrangeiras, 32 tabelas, versão do esquema, WAL, votos contra o placar da Câmara, referências sem FK, índices de busca, embeddings, datas, hashes e coletas interrompidas.
+- `flask banco testar-persistencia`: numa cópia feita pelo backup do SQLite, testa ida e volta, upsert sem duplicar, atualização no lugar, erro isolado, restrições e cascata. A cópia é apagada no fim.
+- Os dois aceitam `--relatorio arquivo.md`. Também: `invoke verificar-banco` e `invoke testar-persistencia`.
+- No banco real: 20 aprovados, 0 falhas e 0 avisos; persistência 8 de 8.
+- **Amostra para mostrar:** `instance/desperta-amostra.db` (15 MB), criada pelas migrações com uma parte coerente dos dados, sem o índice vetorial.
+
+### 22.5 Princípio: transparência total no portal
+Decisão do Lucas (05/11): o portal deve ser o mais claro e transparente possível e informar tudo.
+- **O banco guarda exatamente o que a API mandou** (por exemplo, o `"."` no `regime`). O código classifica e explica; não apagar a diferença no banco.
+- `desperta/proposicoes/services.py`: `""`, `"."`, `"-"` e nulo são "não informado pela Câmara" (`informado()` e `ou_nao_informado()`).
+- `desperta/votacoes/services.py`: `situacao_dos_votos()` classifica a votação em pendente, erro na coleta, secreta (com o placar escrito pela Câmara), simbólica, nominal ou inconsistente, com a explicação em texto.
+- Os trechos de votação que a Roberta lê e o `GeradorFrases` usam essas explicações. O corpo do rascunho mostra situação, regime e apreciação, ou que não foram informados.
+- Na Fase 4 e 5, o portal deve mostrar também: data da última coleta e aviso de dados desatualizados, como cada notícia foi feita (gerador, revisão e fontes) e avisos de erro aparente nos dados da Câmara.
+- **Em aberto (grupo):** as proposições sem tema (109 dos tipos acompanhados) não geram notícia. Opções: um tema especial "Sem tema oficial", marcado como criado pelo portal, ou tema opcional na notícia.
+- Coleta nº 6 (30/10): marcada como `erro`, com o motivo, e mantida no histórico.
+
+### 22.6 Análise da PEC com a Roberta original
+- **A Roberta original vem primeiro; o treino fica para depois**, e só se as rodadas mostrarem que é necessário, com a confirmação do grupo.
+- **PEC:** a 319/2004 (id 265999), com o texto completo em `instance/analise_pec/PEC_319_2004.txt`, dividido em 12 trechos numerados (EMENTA, P1 a P4 e J1 a J7). A interpretação do grupo usa `instance/analise_pec/interpretacao_modelo.json`, uma por pessoa, preenchida antes de ver qualquer resultado.
+- **Leitura com contexto:** cada parágrafo é lido junto com o seu contexto, metade dos 512 tokens para cada parte, com o contexto antes do texto (`<s> contexto </s></s> parágrafo </s>`). O vetor sai só dos tokens do parágrafo, para o contexto comum não deixar os parágrafos parecidos demais. Parágrafo maior que a metade é cortado com sobreposição.
+- **Modelos de contexto:** o grupo escreve modelos com chaves do JSON da API, por exemplo `{titulo}`, `{tema}`, `{ementa}` (no lugar do resumo, porque só 11% das proposições acompanhadas têm `ementaDetalhada`), `{palavras_chave}` e `{paragrafo_anterior}`. Na PEC 319/2004, tudo isso soma cerca de 190 tokens e cabe no contexto. **Cuidado:** o tema no contexto entrega o teste D, e as palavras-chave entregam o teste E. Nesses testes, usar modelos sem essas chaves.
+- **Rodadas:** cada configuração ou modelo é uma rodada, registrada em `instance/analise_pec/rodadas/`. Primeiro a base (Roberta original, sem contexto). O grupo define antes a meta de "preciso" e escolhe as PECs de conferência, que não são usadas nos ajustes.
+- Código em `scripts/analise_pec/`, ainda não escrito: espera a interpretação e os modelos.
+- Estudo completo em `docs/ESTUDO_ROBERTA_X_GRUPO.md`.
+
+### 22.7 Pendrive
+- Kingston de 115 GB, em FAT32, com o nome `KINGSTON` (e não `DESPERTA`), montado em `/run/media/olam/KINGSTON`.
+- No PC, `ROBERTA_DIR` aponta para `/run/media/olam/KINGSTON/Desperta_Brasil/instance/modelos/roberta-lexpt-base`. Sem o pendrive, os comandos de IA param com aviso, e dá para usar a cópia do PC só numa execução (`ROBERTA_DIR=instance/modelos/roberta-lexpt-base`).
+- No pendrive: `Desperta_Brasil/` (cópia completa, com `.env` que vale para qualquer PC), `Desperta_Brasil_leve/` (com a amostra como banco e sem o modelo), `desperta-amostra.db`, `COMO_RODAR_O_BANCO.md` e `LEIA-ME.md`. As cópias são retratos e precisam ser atualizadas à mão.
+
+### 22.8 Coautoria nos commits
+O trabalho é feito no PC do Lucas, e o Caio e o Rhuan participam. Todo commit de trabalho e todo merge leva, no fim da mensagem, depois de uma linha em branco:
+```text
+Co-authored-by: Caio Henrique de Oliveira <caioheriqueolive@gmail.com>
+Co-authored-by: Rhuan Santos Wolfgramm <srhuan35@gmail.com>
+```
+Commit que já foi para o GitHub não é reescrito. Os commits `7cd1e90` e `c052cab`, na `main`, ficaram com um e-mail errado do Caio. No merge pelo site, usar "Create a merge commit", para manter a coautoria.
+
+### 22.9 Cuidados operacionais
+- `flask db upgrade` e `flask db check` precisam rodar **a partir da pasta da branch certa**, porque a pasta `migrations/` é a da pasta atual.
+- Para copiar o banco, usar o backup do SQLite. Os arquivos `-wal` e `-shm` fazem parte do banco enquanto ele está em uso.
+- Antes de qualquer mudança no banco real: backup em `instance/desperta-antes-*.db` e teste numa cópia.
+- Parar coletas com `kill -TERM <PID>`, nunca `pkill -f` com o texto do comando.
+
+### 22.10 Ordem a partir de agora
+1. Terça, 10/11: as duas medições da `horaria` que faltam (a primeira, em 04/11, bateu os 20 minutos) e o merge do PR nº 2.
+2. Grupo: interpretação da PEC, modelos de contexto, meta de "preciso" e PECs de conferência. Depois, o Claude Code escreve `scripts/analise_pec/` e roda as rodadas.
+3. Grupo: correção das 20 consultas da busca; depois, medir as 5 opções e decidir a busca (19.2).
+4. Claude Code: gerar rascunhos sozinho a partir de `itens_novos`, otimizar a `horaria` e agendar as rotinas, com o ok do Lucas.
+5. Merge da `fase-3-rag` na `main` e começo da Fase 4.
+6. Treino da Roberta (análise e escritora), só depois das rodadas e com a confirmação do grupo.
