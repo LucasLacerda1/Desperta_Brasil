@@ -134,3 +134,13 @@ def test_testar_persistencia_recusa_banco_em_memoria():
     resultado = app.test_cli_runner().invoke(args=["banco", "testar-persistencia"])
     assert resultado.exit_code != 0
     assert "banco em arquivo" in resultado.output
+
+
+def test_coleta_interrompida_e_explicada_vira_informacao(db, app, tmp_path):
+    """Transparencia: a coleta fica no historico, com o motivo, e nao e apagada."""
+    app.instance_path = str(tmp_path)
+    db.session.add(fabricas.coleta(status="erro", mensagem_erro="Interrompida em 30/10/2026, antes do registro de fim"))
+    db.session.commit()
+    resultado = _por_nome(verificar_banco())["Coletas sem horario de fim (interrompidas)"]
+    assert resultado.situacao == "info"
+    assert "explicada" in resultado.detalhe

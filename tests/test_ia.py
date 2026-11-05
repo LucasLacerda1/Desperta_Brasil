@@ -95,7 +95,11 @@ def test_textos_de_origem_tem_os_campos_da_secao_6_1(origem):
         "PL 1234/2024 — Reforma tributaria dos municipios 14/05/2024 PLEN. "
         "Aguardando parecer Encaminhe-se a comissao de saude"
     )
-    assert textos[("votacao", "2310837-8")] == "Aprovado o projeto de merenda PLEN, 14/05/2024. Resultado: aprovada."
+    # Transparencia: a votacao de exemplo ainda nao tem os votos completos
+    assert textos[("votacao", "2310837-8")] == (
+        "Aprovado o projeto de merenda PLEN, 14/05/2024. Resultado: aprovada. "
+        "Os votos desta votação ainda estão sendo coletados."
+    )
     assert textos[("evento", "70001")] == "Sessao Deliberativa. Sessao sobre orcamento"
 
 

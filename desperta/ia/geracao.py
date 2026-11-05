@@ -9,7 +9,8 @@ from desperta.noticias.services import criar_rascunho
 from desperta.orgaos.models import Orgao
 from desperta.proposicoes.models import Proposicao, ProposicaoAutor, ProposicaoTema, Tramitacao
 from desperta.sistema.models import LogSistema
-from desperta.votacoes.models import Votacao, VotacaoProposicao, Voto
+from desperta.votacoes.models import Votacao, VotacaoProposicao
+from desperta.votacoes.services import situacao_dos_votos
 
 from . import services
 from .gerador import (
@@ -52,6 +53,8 @@ def _dados_da_proposicao(proposicao):
         autor=autores[0].nome if autores else None,
         mais_autores=len(autores) > 1,
         situacao=proposicao.situacao,
+        regime=proposicao.regime,
+        apreciacao=proposicao.apreciacao,
     )
 
 
@@ -87,11 +90,8 @@ def _proposicao_da_votacao(votacao):
 
 
 def _dados_da_votacao(votacao):
-    contagem = dict(
-        db.session.execute(
-            db.select(Voto.tipo_voto, db.func.count()).filter_by(votacao_id=votacao.id).group_by(Voto.tipo_voto)
-        ).all()
-    )
+    situacao = situacao_dos_votos(votacao)
+    contagem = situacao.votos
     return DadosVotacao(
         descricao=votacao.descricao,
         data=votacao.data,
@@ -101,6 +101,8 @@ def _dados_da_votacao(votacao):
         sim=contagem.get("Sim", 0),
         nao=contagem.get("Não", 0),
         abstencao=contagem.get("Abstenção", 0),
+        situacao=situacao.codigo,
+        explicacao=situacao.explicacao,
     )
 
 

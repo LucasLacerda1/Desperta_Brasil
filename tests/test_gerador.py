@@ -179,6 +179,37 @@ def test_requerimento_nunca_e_votacao_de_merito():
     assert _escrever(CASO_VOTACAO, proposicao=proposicao, votacao=_votacao()).titulo.startswith("REQ 1234/2024: ")
 
 
+@pytest.mark.parametrize(
+    "situacao,explicacao",
+    [
+        ("secreta", "Votação secreta: a Câmara divulgou só o placar total (404 a favor, 61 contra e 1 abstenção)."),
+        ("simbolica", "Votação simbólica: a Câmara não registra o voto de cada deputado."),
+        ("pendente", "Os votos desta votação ainda estão sendo coletados."),
+    ],
+)
+def test_votacao_explica_quando_nao_ha_o_voto_de_cada_deputado(situacao, explicacao):
+    """Transparencia (05/11/2026): o texto diz por que nao ha placar por deputado."""
+    votacao = _votacao(sim=0, nao=0, situacao=situacao, explicacao=explicacao)
+    texto = _escrever(CASO_VOTACAO, votacao=votacao)
+    assert texto.resumo.endswith(explicacao)
+    assert explicacao in texto.corpo
+
+
+def test_corpo_mostra_o_que_a_camara_nao_informou():
+    proposicao = _proposicao(situacao=None, regime=".", apreciacao=None)
+    corpo = _escrever(CASO_NOVA, proposicao=proposicao).corpo
+    assert "Situação atual: não informada pela Câmara." in corpo
+    assert "Regime de tramitação: não informado pela Câmara. Apreciação: não informada pela Câmara." in corpo
+
+
+def test_corpo_mostra_regime_e_apreciacao_informados():
+    proposicao = _proposicao(
+        regime="Urgência (Art. 155, RICD)", apreciacao="Proposição Sujeita à Apreciação do Plenário"
+    )
+    corpo = _escrever(CASO_NOVA, proposicao=proposicao).corpo
+    assert "Regime de tramitação: Urgência (Art. 155, RICD). Apreciação: Proposição Sujeita" in corpo
+
+
 def test_votacao_sem_resultado_informado_e_neutra():
     assert "aprova" not in _escrever(CASO_VOTACAO, votacao=_votacao(aprovacao=None)).titulo.split(":")[0]
 
@@ -370,6 +401,7 @@ def test_gerar_grava_rascunho_geracao_trechos_e_fontes(banco):
 
 def test_gerar_votacao_tem_a_votacao_como_fonte_principal(banco):
     banco.session.add_all([fabricas.legislatura(), fabricas.deputado(), fabricas.voto()])
+    banco.session.get(fabricas.Votacao, "2310837-8").filhos_sincronizados_em = datetime(2024, 5, 15)
     banco.session.commit()
     geracao, _ = _gerar("votacao", "2310837-8")
     assert geracao.noticia.titulo.startswith("Câmara aprova projeto de lei que institui")
@@ -474,3 +506,15 @@ def test_comando_gerar_avisa_duplicata_e_erro(app, banco, tmp_path):
     assert "nada foi gerado" in executor.invoke(args=["ia", "gerar", "nova", "2310837"]).output
     erro = executor.invoke(args=["ia", "gerar", "nova", "999"])
     assert erro.exit_code != 0 and "nao encontrada" in erro.output
+
+
+def test_gerar_votacao_secreta_usa_o_placar_da_camara(banco):
+    banco.session.add_all([fabricas.legislatura(), fabricas.deputado()])
+    votacao = banco.session.get(fabricas.Votacao, "2310837-8")
+    votacao.descricao = "Aprovado o Projeto de Lei nº 1.234. Sim: 1; Não: 0; Total: 1."
+    votacao.filhos_sincronizados_em = datetime(2024, 5, 15)
+    banco.session.flush()
+    banco.session.add(fabricas.voto(tipo_voto=None))
+    banco.session.commit()
+    geracao, _ = _gerar("votacao", "2310837-8")
+    assert "Votação secreta: a Câmara divulgou só o placar total (1 a favor e 0 contra)." in geracao.noticia.resumo

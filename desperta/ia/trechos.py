@@ -6,6 +6,7 @@ from desperta.ext.db import db
 from desperta.orgaos.models import Evento, PautaItem
 from desperta.proposicoes.models import Proposicao, Tramitacao
 from desperta.votacoes.models import Votacao
+from desperta.votacoes.services import situacao_dos_votos
 
 TAMANHO_EMENTA_TRAMITACAO = 200
 
@@ -72,10 +73,15 @@ def _tramitacoes():
 
 
 def _votacoes():
-    colunas = (Votacao.id, Votacao.descricao, Votacao.sigla_orgao, Votacao.data, Votacao.aprovacao)
-    for id_, descricao, orgao, data, aprovacao in db.session.execute(db.select(*colunas)).all():
-        resultado = {True: "Resultado: aprovada.", False: "Resultado: rejeitada.", None: ""}[aprovacao]
-        yield id_, _juntar(descricao, f"{orgao}, {data:%d/%m/%Y}.", resultado)
+    """Transparencia: o trecho diz se a votacao foi nominal, secreta, simbolica ou se os votos estao pendentes."""
+    for votacao in db.session.scalars(db.select(Votacao)).all():
+        resultado = {True: "Resultado: aprovada.", False: "Resultado: rejeitada.", None: ""}[votacao.aprovacao]
+        yield votacao.id, _juntar(
+            votacao.descricao,
+            f"{votacao.sigla_orgao}, {votacao.data:%d/%m/%Y}.",
+            resultado,
+            situacao_dos_votos(votacao).explicacao,
+        )
 
 
 def _eventos():

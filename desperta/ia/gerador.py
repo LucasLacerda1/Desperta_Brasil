@@ -3,6 +3,8 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import List, Optional
 
+from desperta.proposicoes.services import ou_nao_informado
+
 # Decisao 17.2: GeradorFrases e o plano B e o padrao do MVP; GeradorRoberta so entra depois da Fase 3b.
 
 CASO_NOVA = "nova"
@@ -127,6 +129,9 @@ class DadosVotacao:
     sim: int = 0
     nao: int = 0
     abstencao: int = 0
+    # Transparencia: nominal, secreta, simbolica, pendente, erro_na_coleta ou inconsistente
+    situacao: str = "nominal"
+    explicacao: str = ""
 
 
 @dataclass
@@ -140,6 +145,8 @@ class DadosProposicao:
     autor: Optional[str] = None
     mais_autores: bool = False
     situacao: Optional[str] = None
+    regime: Optional[str] = None
+    apreciacao: Optional[str] = None
 
 
 @dataclass
@@ -247,6 +254,9 @@ def _titulo_da_votacao(votacao):
 
 
 def _placar(votacao):
+    # Secreta, simbolica, pendente: a explicacao diz por que nao ha o voto de cada deputado
+    if votacao.situacao != "nominal":
+        return _frase(votacao.explicacao) if votacao.explicacao else ""
     if not (votacao.sim or votacao.nao or votacao.abstencao):
         return ""
     votos = "1 voto" if votacao.sim == 1 else f"{votacao.sim} votos"
@@ -366,8 +376,12 @@ class GeradorFrases(Gerador):
                 f"Votação em {votacao.data:%d/%m/%Y}, em {votacao.orgao}: "
                 f"{_frase(_descricao_da_votacao(votacao))} {_placar(votacao)}".strip()
             )
-        if proposicao.situacao:
-            partes.append(f"Situação atual: {_frase(proposicao.situacao.strip())}")
+        # Transparencia: o que a Camara nao informou aparece como nao informado
+        partes.append(f"Situação atual: {_frase(ou_nao_informado(proposicao.situacao, feminino=True))}")
+        partes.append(
+            f"Regime de tramitação: {ou_nao_informado(proposicao.regime)}. "
+            f"Apreciação: {ou_nao_informado(proposicao.apreciacao, feminino=True)}."
+        )
         recentes = dados.tramitacoes[-TRAMITACOES_NO_CORPO:]
         if recentes:
             partes.append("Últimos passos:\n" + "\n".join(_tramitacao_em_frase(passo) for passo in recentes))
