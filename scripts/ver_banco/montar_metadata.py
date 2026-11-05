@@ -248,11 +248,16 @@ ESTILO = """
 .menu-desperta h3{margin:.8em 0 .2em;font-size:1.05rem}
 .menu-desperta .grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(18em,1fr));gap:.8em 1.6em}
 .menu-desperta form{margin:.3em 0}
-.menu-desperta label{display:block;font-weight:bold}
+.menu-desperta label{display:block;font-weight:bold;width:auto}
 .menu-desperta input[type=text]{font-size:1rem;padding:.25em .4em;width:14em}
 .menu-desperta ul{margin:.2em 0 .6em 1.2em;padding:0}
 .menu-desperta li{margin:.15em 0}
 .menu-desperta .nota{color:#444;font-size:.95rem}
+/* Na pagina de resultado de uma consulta, o Datasette repete a descricao do banco:
+   esconde o menu e mostra so o link de volta, para o resultado aparecer logo */
+body.query .menu-desperta{display:none}
+.so-na-consulta{display:none}
+body.query .so-na-consulta{display:block;margin:.4em 0 1em}
 </style>
 """
 
@@ -268,7 +273,12 @@ def _busca(banco, acao, campo, rotulo, exemplo, botao):
 
 
 def menu(banco):
-    partes = [ESTILO, '<div class="menu-desperta">']
+    partes = [
+        ESTILO,
+        f'<p class="so-na-consulta"><a href="/{banco}">&larr; Voltar ao menu do banco</a> · '
+        f'<a href="/visao-geral?banco={banco}">Visão geral</a></p>',
+        '<div class="menu-desperta">',
+    ]
     partes.append(
         '<p class="nota">Só para olhar o banco durante o desenvolvimento, em <strong>modo somente leitura</strong>. '
         "Clique numa tabela para filtrar, ordenar e ver os registros; os ids ligados mostram o nome. "
@@ -305,8 +315,11 @@ def menu(banco):
         partes.append(_busca(banco, nome, campo, f"{CONSULTAS[nome][0]} ({rotulo.lower()})", exemplo, "Ver"))
     partes.append("</div></div>")
     partes.append(
-        f'<p class="nota">Para escrever a sua própria consulta (só <code>SELECT</code>), use o campo de SQL '
-        f'na <a href="/{banco}">página do banco</a>.</p></div>'
+        '<h2>Consulta livre</h2><p class="nota">Escreva a sua consulta no campo <strong>Custom SQL query</strong>, '
+        "logo abaixo deste menu, e clique em <strong>Run SQL</strong> (ou Shift+Enter). Só <code>SELECT</code>: "
+        "o banco está em modo somente leitura. O resultado mostra até 1.000 linhas, e a consulta para "
+        "depois de 5 segundos. O campo começa com <code>select * from administrador</code>, que fica vazio "
+        "até a Fase 4. Exemplo: <code>select sigla_tipo, count(*) from proposicao group by 1</code>.</p></div>"
     )
     return "".join(partes)
 
