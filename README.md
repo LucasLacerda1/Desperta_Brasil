@@ -56,6 +56,19 @@ Só roda uma coleta por vez: a trava fica em `instance/coletor.lock`. Quem encon
 
 Cada coleta grava uma linha em `coleta` e os erros em `log_sistema`. Um registro com problema não derruba a coleta: ela termina como `parcial`.
 
+## Verificação e testes de persistência do banco
+
+```bash
+flask banco verificar --relatorio instance/verificacao-banco.md            # só lê: estrutura, integridade e coerência
+flask banco testar-persistencia --relatorio instance/persistencia.md       # grava e relê numa cópia; o banco original não muda
+invoke verificar-banco                                                     # o mesmo pelo Invoke
+invoke testar-persistencia
+```
+
+A verificação confere integridade do arquivo, chaves estrangeiras, as 32 tabelas, a versão do esquema, o modo WAL, os votos gravados contra o placar escrito pela Câmara, as referências sem FK (`trecho_rag`, `noticia_fonte`), os índices de busca, os embeddings, as datas de início e fim, os hashes e as coletas interrompidas.
+
+Os testes de persistência rodam numa cópia, feita pelo backup do SQLite: ida e volta (gravar, fechar, reabrir e ler igual), upsert sem duplicar com dados reais, atualização no lugar, erro num registro sem derrubar os outros, restrições e cascata. A cópia é apagada no fim, a não ser com `--manter-copia`.
+
 ## Problema conhecido
 
 `pytest --cov=desperta.coletor` falha dentro do SQLAlchemy (`TypeError` em `_cache_key_cy`). Use o comando oficial, `invoke test`, que mede com `--cov=desperta`.

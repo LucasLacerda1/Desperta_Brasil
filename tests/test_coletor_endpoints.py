@@ -150,6 +150,41 @@ def test_deputado_liga_ao_partido_existente(base, api, cliente):
     assert base.session.get(Deputado, 160592).partido_id == 36844
 
 
+def _deputado_em_dois_partidos(api):
+    """Como na API real: na legislatura 57, quem trocou de partido vem uma vez por partido."""
+    corpo = carregar("deputados")
+    outra_linha = {**corpo["dados"][0], "siglaPartido": "PSOL", "uriPartido": None}
+    corpo["dados"].append(outra_linha)
+    api.responder("deputados", lambda params: corpo if params["siglaSexo"] == "M" else envelope([]))
+
+
+def test_deputado_repetido_com_outro_partido_usa_o_detalhe(base, api, cliente):
+    _deputado_em_dois_partidos(api)
+    deputados.coletar(cliente, 57)
+    # O detalhe (fixture deputado.json) traz o partido atual
+    assert base.session.get(Deputado, 160592).sigla_partido == "PSC"
+    assert "deputados/160592" in api.caminhos_chamados()
+    assert _ultima_coleta(base).status == "ok"
+
+
+def test_deputado_repetido_nao_e_atualizado_a_cada_coleta(base, api, cliente):
+    """Antes, o partido trocava a cada coleta e o deputado contava como atualizado sem ter mudado."""
+    _deputado_em_dois_partidos(api)
+    deputados.coletar(cliente, 57)
+    deputados.coletar(cliente, 57)
+    coleta = _ultima_coleta(base)
+    assert (coleta.itens_novos, coleta.itens_atualizados) == (0, 0)
+
+
+def test_linha_repetida_igual_nao_busca_o_detalhe(base, api, cliente):
+    corpo = carregar("deputados")
+    corpo["dados"].append(dict(corpo["dados"][0]))
+    api.responder("deputados", lambda params: corpo if params["siglaSexo"] == "M" else envelope([]))
+    deputados.coletar(cliente, 57)
+    assert "deputados/160592" not in api.caminhos_chamados()
+    assert base.session.get(Deputado, 160592).sigla_partido == "PT"
+
+
 def test_legislatura_mais_antiga_nao_troca_a_mais_nova(base, api, cliente):
     base.session.add(Legislatura(id=56, data_inicio=date(2019, 2, 1), data_fim=date(2023, 1, 31), hash_origem="a" * 64))
     base.session.commit()
