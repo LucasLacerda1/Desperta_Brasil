@@ -74,7 +74,16 @@ def _tramitacoes():
 
 def _votacoes():
     """Transparencia: o trecho diz se a votacao foi nominal, secreta, simbolica ou se os votos estao pendentes."""
-    for votacao in db.session.scalars(db.select(Votacao)).all():
+    # Linhas, e nao objetos: a indexacao limpa a sessao a cada lote, e um objeto ficaria solto
+    colunas = (
+        Votacao.id,
+        Votacao.descricao,
+        Votacao.sigla_orgao,
+        Votacao.data,
+        Votacao.aprovacao,
+        Votacao.filhos_sincronizados_em,
+    )
+    for votacao in db.session.execute(db.select(*colunas)).all():
         resultado = {True: "Resultado: aprovada.", False: "Resultado: rejeitada.", None: ""}[votacao.aprovacao]
         yield votacao.id, _juntar(
             votacao.descricao,

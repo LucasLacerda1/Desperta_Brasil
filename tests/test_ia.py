@@ -144,6 +144,15 @@ def test_indexar_grava_trecho_embedding_e_indice(origem, modelo):
     assert vetores.buscar(trecho.embedding, 1)[0][0] == trecho.id
 
 
+def test_indexar_em_varios_lotes_com_varias_votacoes(origem, modelo, monkeypatch):
+    """A indexacao limpa a sessao a cada lote: o texto das votacoes nao pode depender de objetos soltos."""
+    monkeypatch.setattr(services, "LOTE_INDEXACAO", 1)
+    origem.session.add_all([fabricas.votacao(id=f"2310837-{numero}") for numero in range(10, 15)])
+    origem.session.commit()
+    resumo = services.indexar(modelo)
+    assert resumo["indexados"] == 10
+
+
 def test_indexar_de_novo_nao_gera_embedding(origem, modelo):
     services.indexar(modelo)
     modelo.embutidos.clear()
