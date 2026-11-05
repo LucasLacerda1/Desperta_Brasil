@@ -403,6 +403,15 @@ def test_gerar_de_novo_nao_duplica_e_mudanca_de_status_gera(banco):
     assert _gerar("situacao")[1] is True
 
 
+def test_proposicao_sem_data_da_situacao_tambem_gera(banco):
+    """Fase 2b: data_status pode vir vazio da Camara."""
+    banco.session.get(fabricas.Proposicao, 2310837).data_status = None
+    banco.session.commit()
+    geracao, nova = _gerar()
+    assert (geracao.status, nova) == ("ok", True)
+    assert json.loads(geracao.entrada)["data_status"] is None
+
+
 def test_noticia_rejeitada_pode_ser_refeita(banco):
     primeira, _ = _gerar()
     primeira.noticia.status = "rejeitada"

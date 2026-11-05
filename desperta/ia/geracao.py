@@ -137,7 +137,8 @@ def _entrada(caso, proposicao, votacao):
             "caso": caso,
             "proposicao_id": proposicao.id,
             "votacao_id": votacao.id if votacao else None,
-            "data_status": proposicao.data_status.isoformat(),
+            # Fase 2b: a Camara pode nao informar a data da situacao
+            "data_status": proposicao.data_status.isoformat() if proposicao.data_status else None,
         },
         sort_keys=True,
     )
