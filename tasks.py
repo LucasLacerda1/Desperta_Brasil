@@ -76,6 +76,22 @@ def testar_persistencia(c):
     c.run("flask --app app.py banco testar-persistencia --relatorio instance/persistencia.md", echo=True)
 
 
+@task(name="ver-banco")
+def ver_banco(c, banco="instance/desperta.db", porta=8001):
+    """Abre o banco no navegador (Datasette, so leitura), em http://127.0.0.1:8001. So para desenvolvimento."""
+    try:
+        import sqlite_vec
+
+        extensao = f'--load-extension="{sqlite_vec.loadable_path()}"'
+    except ImportError:
+        extensao = ""
+    c.run(
+        f"datasette {banco} -m scripts/ver_banco/metadata.json {extensao} -h 127.0.0.1 -p {porta} "
+        "--setting sql_time_limit_ms 5000 --open",
+        pty=True,
+    )
+
+
 @task
 def run(c):
     """Executa a aplicacao Flask."""

@@ -22,6 +22,8 @@ dev = ["ipython", "flask-shell-ipython", "Flask-DebugToolbar", "invoke", "black"
 test = ["pytest >= 8.3", "pytest-cov >= 5.0", "pytest-flask"]
 ia = ["torch", "transformers", "sqlite-vec", "numpy"]
 voz = ["faster-whisper", "piper-tts"]
+# So para ver o banco no navegador durante o desenvolvimento; nao faz parte do portal
+ver = ["datasette"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

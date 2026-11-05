@@ -114,6 +114,18 @@ A verificação confere integridade do arquivo, chaves estrangeiras, as 32 tabel
 
 Os testes de persistência rodam numa cópia, feita pelo backup do SQLite: ida e volta (gravar, fechar, reabrir e ler igual), upsert sem duplicar com dados reais, atualização no lugar, erro num registro sem derrubar os outros, restrições e cascata. A cópia é apagada no fim, a não ser com `--manter-copia`.
 
+## Ver o banco no navegador (só desenvolvimento)
+
+O Datasette (licença Apache 2.0) abre o banco no navegador, em **modo só leitura**: dá para navegar por todas as tabelas, filtrar, ordenar e rodar consultas `SELECT`. Não faz parte do portal.
+
+```bash
+pip install -e ".[ver]"                                   # uma vez
+invoke ver-banco                                          # abre http://127.0.0.1:8001 com instance/desperta.db
+invoke ver-banco --banco instance/desperta-amostra.db     # a amostra de 15 MB
+```
+
+A configuração fica em `scripts/ver_banco/metadata.json`: descrição de cada tabela, tabelas internas das buscas escondidas e consultas prontas (contagem das tabelas, votações secretas, placar por partido, uma proposição completa, campos não informados pela Câmara, pendentes, últimas coletas, erros do log, o que a Roberta lê sobre uma proposição e uma amostra do índice vetorial). Com a parte de IA instalada, a extensão sqlite-vec é carregada sozinha, para o índice vetorial abrir também.
+
 ## Problema conhecido
 
 `pytest --cov=desperta.coletor` falha dentro do SQLAlchemy (`TypeError` em `_cache_key_cy`). Use o comando oficial, `invoke test`, que mede com `--cov=desperta`.
