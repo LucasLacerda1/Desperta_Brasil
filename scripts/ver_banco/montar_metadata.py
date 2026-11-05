@@ -274,6 +274,10 @@ def menu(banco):
         "Clique numa tabela para filtrar, ordenar e ver os registros; os ids ligados mostram o nome. "
         "Vazio, <code>''</code> ou <code>.</code> em campo da Câmara quer dizer que ela não informou.</p>"
     )
+    partes.append(
+        f'<p style="font-size:1.15rem"><strong><a href="/visao-geral?banco={banco}">Visão geral do banco</a></strong>: '
+        "números, período dos dados, votações, o que a Câmara não informou, coletas e erros, numa página só.</p>"
+    )
     partes.append('<h2>Busca rápida</h2><div class="grade">')
     partes.append(_busca(banco, "proposicao", "id__exact", "Proposição pelo id", "265999", "Abrir"))
     partes.append(_busca(banco, "proposicao", "ementa__contains", "Palavra na ementa", "indígenas", "Buscar"))
@@ -333,8 +337,11 @@ def montar():
     metadata = {
         "title": "Desperta Brasil — banco de dados (desenvolvimento)",
         "description_html": ESTILO
-        + '<div class="menu-desperta"><p>Escolha o banco abaixo. A página dele tem o menu com a busca rápida, '
-        "as tabelas por assunto e as consultas prontas. Modo somente leitura; não faz parte do portal.</p></div>",
+        + '<div class="menu-desperta"><p style="font-size:1.15rem"><strong>Visão geral:</strong> '
+        '<a href="/visao-geral?banco=desperta">banco completo</a> · '
+        '<a href="/visao-geral?banco=desperta-amostra">amostra</a> (se estiver aberta)</p>'
+        "<p>Ou escolha o banco abaixo: a página dele tem o menu com a busca rápida, as tabelas por assunto "
+        "e as consultas prontas. Modo somente leitura; não faz parte do portal.</p></div>",
         "databases": {},
     }
     for banco in BANCOS:

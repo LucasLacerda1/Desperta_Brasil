@@ -78,7 +78,7 @@ def testar_persistencia(c):
 
 @task(name="ver-banco")
 def ver_banco(c, banco="instance/desperta.db", porta=8001):
-    """Abre o banco no navegador (Datasette, so leitura), em http://127.0.0.1:8001. So para desenvolvimento."""
+    """Abre o banco no navegador (Datasette, so leitura), em http://127.0.0.1:8001, com a visao geral em /visao-geral."""
     try:
         import sqlite_vec
 
@@ -87,7 +87,8 @@ def ver_banco(c, banco="instance/desperta.db", porta=8001):
         extensao = ""
     c.run("python scripts/ver_banco/montar_metadata.py", hide=True)
     c.run(
-        f"datasette {banco} -m scripts/ver_banco/metadata.json {extensao} -h 127.0.0.1 -p {porta} "
+        f"datasette {banco} -m scripts/ver_banco/metadata.json --template-dir scripts/ver_banco/templates {extensao} "
+        f"-h 127.0.0.1 -p {porta} "
         "--setting sql_time_limit_ms 5000 --setting facet_time_limit_ms 1500 --setting default_page_size 50 --open",
         pty=True,
     )

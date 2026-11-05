@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{#
+  Painel de visao geral do banco (so desenvolvimento). Abre em /visao-geral?banco=desperta.
+  Cada numero vem de uma consulta feita na hora, pelo complemento datasette-template-sql.
+#}
+{% block title %}Visão geral do banco{% endblock %}
+
+{% block extra_head %}
+<style>
+.painel{font-size:1rem;line-height:1.5;max-width:75em}
+.painel h1{font-size:1.6rem;margin-bottom:.2em}
+.painel h2{font-size:1.25rem;margin:1.4em 0 .5em;border-bottom:2px solid #ddd;padding-bottom:.2em}
+.painel .cartoes{display:grid;grid-template-columns:repeat(auto-fit,minmax(11em,1fr));gap:.7em}
+.painel .cartao{border:1px solid #ccc;border-radius:6px;padding:.6em .8em;background:#fafafa}
+.painel .cartao .numero{font-size:1.6rem;font-weight:bold;display:block}
+.painel .cartao a{text-decoration:none}
+.painel .colunas{display:grid;grid-template-columns:repeat(auto-fit,minmax(22em,1fr));gap:1em 2em}
+.painel table{border-collapse:collapse;width:100%}
+.painel th,.painel td{text-align:left;padding:.25em .5em;border-bottom:1px solid #e5e5e5;vertical-align:top}
+.painel td.n,.painel th.n{text-align:right;white-space:nowrap}
+.painel caption{text-align:left;font-weight:bold;padding:.3em 0}
+.painel .nota{color:#444;font-size:.95rem}
+.painel .ok{color:#1a6b2a;font-weight:bold}
+.painel .alerta{color:#a33b00;font-weight:bold}
+</style>
+{% endblock %}
+
+{% block content %}
+{% set bancos = ["desperta", "desperta-amostra"] %}
+{% set banco = request.args.get("banco") or "desperta" %}
+{% if banco not in bancos %}{% set banco = "desperta" %}{% endif %}
+{% macro n(valor) %}{{ "{:,}".format(valor or 0).replace(",", ".") }}{% endmacro %}
+{% macro um(consulta) %}{% for linha in sql(consulta, database=banco) %}{{ linha[0] if linha[0] is not none else "" }}{% endfor %}{% endmacro %}
+
+<div class="painel">
+<h1>Visão geral do banco: {{ banco }}</h1>
+<p class="nota">
+  Somente leitura, só para o desenvolvimento.
+  Versão do esquema: <code>{{ um("SELECT version_num FROM alembic_version") }}</code>.
+  Tamanho: {{ um("SELECT CAST(ROUND(page_count * page_size / 1000000.0) AS INTEGER) FROM pragma_page_count(), pragma_page_size()") }} MB.
+  Outro banco:
+  {% for outro in bancos %}{% if outro != banco %}<a href="/visao-geral?banco={{ outro }}">{{ outro }}</a>{% endif %}{% endfor %}
+  · <a href="/{{ banco }}">menu do banco</a>
+</p>
+
+{# ---------------------------------------------------- #}
+<h2>Números principais</h2>
+<div class="cartoes">
+{% for tabela, rotulo in [
+  ("proposicao", "proposições"), ("tramitacao", "tramitações"), ("votacao", "votações"), ("voto", "votos"),
+  ("deputado", "deputados"), ("partido", "partidos"), ("orgao", "órgãos"), ("evento", "eventos"),
+  ("pauta_item", "itens de pauta"), ("frente", "frentes"), ("frente_membro", "membros de frentes"),
+  ("lideranca", "lideranças"), ("trecho_rag", "trechos que a Roberta lê"), ("noticia", "notícias"),
+  ("coleta", "coletas"), ("log_sistema", "registros de log")] %}
+  {% for linha in sql("SELECT COUNT(*) AS total FROM " ~ tabela, database=banco) %}
+  <div class="cartao"><a href="/{{ banco }}/{{ tabela }}"><span class="numero">{{ n(linha.total) }}</span>{{ rotulo }}</a></div>
+  {% endfor %}
+{% endfor %}
+</div>
+
+{# ---------------------------------------------------- #}
+<h2>Período dos dados e atualização</h2>
+<table>
+<thead><tr><th>Item</th><th>Mais antigo</th><th>Mais recente</th></tr></thead>
+<tbody>
+{% for linha in sql("SELECT MIN(data_apresentacao) AS a, MAX(data_apresentacao) AS b FROM proposicao", database=banco) %}
+<tr><td>Apresentação das proposições</td><td>{{ (linha.a or "")[:10] }}</td><td>{{ (linha.b or "")[:10] }}</td></tr>{% endfor %}
+{% for linha in sql("SELECT MIN(data) AS a, MAX(data) AS b FROM votacao", database=banco) %}
+<tr><td>Votações</td><td>{{ linha.a or "" }}</td><td>{{ linha.b or "" }}</td></tr>{% endfor %}
+{% for linha in sql("SELECT MIN(data_hora_inicio) AS a, MAX(data_hora_inicio) AS b FROM evento", database=banco) %}
+<tr><td>Eventos</td><td>{{ (linha.a or "")[:10] }}</td><td>{{ (linha.b or "")[:10] }}</td></tr>{% endfor %}
+{% for linha in sql("SELECT MAX(data_hora) AS b FROM tramitacao", database=banco) %}
+<tr><td>Última tramitação registrada</td><td></td><td>{{ (linha.b or "")[:16] }}</td></tr>{% endfor %}
+{% for linha in sql("SELECT MAX(finalizado_em) AS b FROM coleta WHERE status = 'ok'", database=banco) %}
+<tr><td>Última coleta concluída (UTC)</td><td></td><td>{{ (linha.b or "nenhuma")[:16] }}</td></tr>{% endfor %}
+</tbody></table>
+
+{# ---------------------------------------------------- #}
+<h2>Proposições</h2>
+<div class="colunas">
+<table>
+<caption>Tipos acompanhados</caption>
+<thead><tr><th>Tipo</th><th class="n">Total</th><th class="n">Sem tema</th><th class="n">Pendentes</th></tr></thead>
+<tbody>
+{% for linha in sql("SELECT p.sigla_tipo AS sigla, COUNT(*) AS total,
+    SUM(NOT EXISTS (SELECT 1 FROM proposicao_tema t WHERE t.proposicao_id = p.id)) AS sem_tema,
+    SUM(p.filhos_sincronizados_em IS NULL) AS pendentes
+  FROM proposicao p WHERE p.sigla_tipo IN ('PL', 'PLP', 'PEC', 'MPV', 'PDL') GROUP BY p.sigla_tipo ORDER BY total DESC", database=banco) %}
+<tr><td><a href="/{{ banco }}/proposicao?sigla_tipo={{ linha.sigla }}">{{ linha.sigla }}</a></td>
+<td class="n">{{ n(linha.total) }}</td><td class="n">{{ n(linha.sem_tema) }}</td><td class="n">{{ n(linha.pendentes) }}</td></tr>
+{% endfor %}
+{% for linha in sql("SELECT COUNT(*) AS total FROM proposicao WHERE sigla_tipo NOT IN ('PL', 'PLP', 'PEC', 'MPV', 'PDL')", database=banco) %}
+<tr><td>Outros tipos (citados por votação ou pauta)</td><td class="n">{{ n(linha.total) }}</td><td></td><td></td></tr>{% endfor %}
+</tbody></table>
+
+<table>
+<caption>Situação mais comum</caption>
+<thead><tr><th>Situação</th><th class="n">Proposições</th></tr></thead>
+<tbody>
+{% for linha in sql("SELECT COALESCE(situacao, '(não informada pela Câmara)') AS situacao, COUNT(*) AS total FROM proposicao
+  WHERE sigla_tipo IN ('PL', 'PLP', 'PEC', 'MPV', 'PDL') GROUP BY 1 ORDER BY total DESC LIMIT 8", database=banco) %}
+<tr><td>{{ linha.situacao }}</td><td class="n">{{ n(linha.total) }}</td></tr>{% endfor %}
+</tbody></table>
+
+<table>
+<caption>Temas mais comuns</caption>
+<thead><tr><th>Tema</th><th class="n">Proposições</th></tr></thead>
+<tbody>
+{% for linha in sql("SELECT t.nome AS tema, COUNT(*) AS total FROM proposicao_tema pt JOIN tema t ON t.cod_tema = pt.cod_tema
+  GROUP BY t.nome ORDER BY total DESC LIMIT 8", database=banco) %}
+<tr><td>{{ linha.tema }}</td><td class="n">{{ n(linha.total) }}</td></tr>{% endfor %}
+</tbody></table>
+</div>
+
+{# ---------------------------------------------------- #}
+<h2>Votações</h2>
+<div class="colunas">
+<table>
+<caption>Situação dos votos</caption>
+<thead><tr><th>Situação</th><th class="n">Votações</th></tr></thead>
+<tbody>
+{% for linha in sql("SELECT CASE WHEN v.filhos_sincronizados_em IS NULL THEN 'Pendente (votos ainda em coleta)'
+    WHEN (SELECT COUNT(*) FROM voto x WHERE x.votacao_id = v.id) = 0 THEN 'Simbólica (sem voto de cada deputado)'
+    WHEN (SELECT COUNT(tipo_voto) FROM voto x WHERE x.votacao_id = v.id) = 0 THEN 'Secreta (só o placar total)'
+    ELSE 'Nominal (com o voto de cada deputado)' END AS situacao, COUNT(*) AS total
+  FROM votacao v GROUP BY situacao ORDER BY total DESC", database=banco) %}
+<tr><td>{{ linha.situacao }}</td><td class="n">{{ n(linha.total) }}</td></tr>{% endfor %}
+</tbody></table>
+
+<table>
+<caption>Votos por tipo</caption>
+<thead><tr><th>Tipo</th><th class="n">Votos</th></tr></thead>
+<tbody>
+{% for linha in sql("SELECT COALESCE(tipo_voto, '(vazio: votação secreta)') AS tipo, COUNT(*) AS total FROM voto GROUP BY 1 ORDER BY total DESC", database=banco) %}
+<tr><td>{{ linha.tipo }}</td><td class="n">{{ n(linha.total) }}</td></tr>{% endfor %}
+</tbody></table>
+
+<table>
+<caption>Onde as votações aconteceram</caption>
+<thead><tr><th>Órgão</th><th class="n">Votações</th><th class="n">Aprovadas</th></tr></thead>
+<tbody>
+{% for linha in sql("SELECT sigla_orgao AS orgao, COUNT(*) AS total, SUM(aprovacao = 1) AS aprovadas FROM votacao GROUP BY sigla_orgao ORDER BY total DESC LIMIT 8", database=banco) %}
+<tr><td><a href="/{{ banco }}/votacao?sigla_orgao={{ linha.orgao }}">{{ linha.orgao }}</a></td><td class="n">{{ n(linha.total) }}</td><td class="n">{{ n(linha.aprovadas) }}</td></tr>{% endfor %}
+</tbody></table>
+</div>
+
+{# ---------------------------------------------------- #}
+<h2>Transparência: o que a Câmara não informou</h2>
+<table>
+<thead><tr><th>Campo</th><th class="n">Linhas</th><th>O que quer dizer</th></tr></thead>
+<tbody>
+{% for linha in sql("SELECT 'proposicao.regime' AS campo, SUM(regime IS NULL OR TRIM(regime) IN ('', '.', '-')) AS total, 'Vazio ou \".\": regime de tramitação não informado' AS nota FROM proposicao
+  UNION ALL SELECT 'proposicao.data_status', SUM(data_status IS NULL), 'Data da situação não informada' FROM proposicao
+  UNION ALL SELECT 'proposicao.url_inteiro_teor', SUM(url_inteiro_teor IS NULL), 'Sem link para o texto completo' FROM proposicao
+  UNION ALL SELECT 'tramitacao.regime', SUM(regime IS NULL OR TRIM(regime) IN ('', '.', '-')), 'Regime não informado no passo' FROM tramitacao
+  UNION ALL SELECT 'tramitacao.despacho', SUM(despacho = ''), 'Passo sem despacho' FROM tramitacao
+  UNION ALL SELECT 'voto.tipo_voto', SUM(tipo_voto IS NULL), 'Votação secreta: só a presença é registrada' FROM voto", database=banco) %}
+<tr><td><code>{{ linha.campo }}</code></td><td class="n">{{ n(linha.total) }}</td><td>{{ linha.nota }}</td></tr>{% endfor %}
+</tbody></table>
+
+{# ---------------------------------------------------- #}
+<h2>Coletas</h2>
+<div class="colunas">
+<table>
+<caption>Por status</caption>
+<thead><tr><th>Status</th><th class="n">Coletas</th><th class="n">Requisições</th><th class="n">Erros HTTP</th></tr></thead>
+<tbody>
+{% for linha in sql("SELECT status, COUNT(*) AS total, SUM(requisicoes) AS req, SUM(erros_http) AS erros FROM coleta GROUP BY status ORDER BY total DESC", database=banco) %}
+<tr><td><a href="/{{ banco }}/coleta?status={{ linha.status }}">{{ linha.status }}</a></td><td class="n">{{ n(linha.total) }}</td><td class="n">{{ n(linha.req) }}</td><td class="n">{{ n(linha.erros) }}</td></tr>{% endfor %}
+</tbody></table>
+
+<table>
+<caption>Últimas 6 coletas (horário UTC)</caption>
+<thead><tr><th>Id</th><th>Recurso</th><th>Status</th><th>Início</th><th class="n">Itens</th></tr></thead>
+<tbody>
+{% for linha in sql("SELECT id, recurso, status, iniciado_em, total_itens FROM coleta ORDER BY id DESC LIMIT 6", database=banco) %}
+<tr><td><a href="/{{ banco }}/coleta/{{ linha.id }}">{{ linha.id }}</a></td><td>{{ linha.recurso }}</td>
+<td class="{{ 'ok' if linha.status == 'ok' else 'alerta' }}">{{ linha.status }}</td><td>{{ (linha.iniciado_em or "")[:16] }}</td><td class="n">{{ n(linha.total_itens) }}</td></tr>{% endfor %}
+</tbody></table>
+</div>
+
+{# ---------------------------------------------------- #}
+<h2>Erros e avisos do log</h2>
+<table>
+<thead><tr><th>Nível</th><th>Ação</th><th>Tabela</th><th class="n">Vezes</th><th>Último</th><th>Exemplo</th></tr></thead>
+<tbody>
+{% for linha in sql("SELECT nivel, acao, COALESCE(entidade, '') AS entidade, COUNT(*) AS total, MAX(data_hora) AS ultimo, MIN(descricao) AS exemplo
+  FROM log_sistema WHERE nivel IN ('erro', 'aviso') GROUP BY nivel, acao, entidade ORDER BY total DESC LIMIT 10", database=banco) %}
+<tr><td class="{{ 'alerta' if linha.nivel == 'erro' else '' }}">{{ linha.nivel }}</td><td>{{ linha.acao }}</td><td>{{ linha.entidade }}</td>
+<td class="n">{{ n(linha.total) }}</td><td>{{ (linha.ultimo or "")[:16] }}</td><td>{{ (linha.exemplo or "")[:90] }}</td></tr>{% endfor %}
+</tbody></table>
+
+{# ---------------------------------------------------- #}
+<h2>IA e notícias</h2>
+<div class="colunas">
+<table>
+<caption>Trechos que a Roberta lê</caption>
+<thead><tr><th>Tipo</th><th class="n">Trechos</th><th class="n">Tokens em média</th></tr></thead>
+<tbody>
+{% for linha in sql("SELECT tipo, COUNT(*) AS total, ROUND(AVG(tokens)) AS media FROM trecho_rag GROUP BY tipo ORDER BY total DESC", database=banco) %}
+<tr><td><a href="/{{ banco }}/trecho_rag?tipo={{ linha.tipo }}">{{ linha.tipo }}</a></td><td class="n">{{ n(linha.total) }}</td><td class="n">{{ n(linha.media|int) }}</td></tr>{% endfor %}
+</tbody></table>
+
+<table>
+<caption>Notícias e gerações</caption>
+<thead><tr><th>Item</th><th class="n">Total</th></tr></thead>
+<tbody>
+{% for linha in sql("SELECT 'Notícias: ' || status AS item, COUNT(*) AS total FROM noticia GROUP BY status
+  UNION ALL SELECT 'Gerações com status ' || status, COUNT(*) FROM geracao_ia GROUP BY status", database=banco) %}
+<tr><td>{{ linha.item }}</td><td class="n">{{ n(linha.total) }}</td></tr>
+{% else %}
+<tr><td colspan="2">Nenhuma notícia nem geração ainda: o portal não gerou rascunhos neste banco.</td></tr>
+{% endfor %}
+</tbody></table>
+</div>
+
+<p class="nota">Para conferir a integridade e os testes de persistência, use <code>flask banco verificar</code>
+e <code>flask banco testar-persistencia</code> no terminal.</p>
+</div>
+{% endblock %}
