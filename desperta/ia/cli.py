@@ -7,7 +7,7 @@ import click
 from flask import current_app
 from flask.cli import AppGroup
 
-from . import centralizacao, embeddings, geracao, services
+from . import automatico, centralizacao, embeddings, geracao, services
 from .gerador import CASOS
 from .models import TRECHO_RAG_TIPOS
 
@@ -118,20 +118,23 @@ def medir_busca(arquivo):
             click.echo(f"  {certas}/{esperadas} {consulta}")
 
 
+def _modelo_ou_palavras():
+    try:
+        return services.carregar_modelo()
+    except embeddings.RobertaAusente as erro:
+        # Decisao 21.3: sem o pendrive, busca so por palavras; o aviso ja foi para o log
+        click.echo(f"{erro} Usando só a busca por palavras.")
+        return None
+    except embeddings.DispositivoIndisponivel as erro:
+        raise click.ClickException(str(erro))
+
+
 @ia.command("gerar")
 @click.argument("caso", type=click.Choice(CASOS))
 @click.argument("ref")
 def gerar(caso, ref):
     """Escreve um rascunho: nova ou situacao recebem o id da proposicao; votacao, o id da votacao."""
-    try:
-        modelo = services.carregar_modelo()
-    except embeddings.RobertaAusente as erro:
-        # Decisao 21.3: sem o pendrive, busca so por palavras; o aviso ja foi para o log
-        click.echo(f"{erro} Usando só a busca por palavras.")
-        modelo = None
-    except embeddings.DispositivoIndisponivel as erro:
-        raise click.ClickException(str(erro))
-    registro, nova = geracao.gerar_noticia(modelo, caso, ref)
+    registro, nova = geracao.gerar_noticia(_modelo_ou_palavras(), caso, ref)
     if registro.status == "erro":
         raise click.ClickException(f"Geracao {registro.id} com erro: {registro.erro}")
     if not nova:
@@ -141,6 +144,22 @@ def gerar(caso, ref):
     click.echo(registro.noticia.titulo)
     click.echo(registro.noticia.resumo)
     click.echo(registro.noticia.corpo)
+
+
+@ia.command("gerar-novos")
+@click.option("--dias", type=int, help="Quantos dias para tras olhar (padrao: GERACAO_JANELA_DIAS).")
+@click.option("--limite", type=int, help="No maximo este numero de rascunhos nesta execucao.")
+@click.option("--simular", is_flag=True, help="So mostra o que seria gerado, sem gravar nada.")
+@click.option("--refazer-erros", is_flag=True, help="Tenta de novo os fatos cuja geracao deu erro.")
+def gerar_novos(dias, limite, simular, refazer_erros):
+    """Rascunho de cada votacao, mudanca de situacao e proposicao nova dos ultimos dias."""
+    modelo = None if simular else _modelo_ou_palavras()
+    resumo = automatico.gerar_novos(modelo, dias, limite, simular, refazer_erros)
+    if simular:
+        for caso, ref in resumo.simulados:
+            click.echo(f"  {caso} {ref}")
+        click.echo("Simulação: nada foi gravado.")
+    click.echo(resumo.em_texto())
 
 
 @ia.command("centralizar")

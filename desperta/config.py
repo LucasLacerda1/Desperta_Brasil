@@ -23,6 +23,8 @@ class Config:
     IA_DISPOSITIVO = os.getenv("IA_DISPOSITIVO", "auto")
     # Decisao 17.2: falso, frases ou roberta
     GERADOR = os.getenv("GERADOR", "frases")
+    # Item 4 da 22.10: flask ia gerar-novos olha os fatos destes ultimos dias
+    GERACAO_JANELA_DIAS = int(os.getenv("GERACAO_JANELA_DIAS", "3"))
     RAG_TOP_K = int(os.getenv("RAG_TOP_K", "8"))
     # Decisao 16.1: busca hibrida com RRF e experimento de centralizacao (descartado na 19.1)
     RAG_CANDIDATOS = int(os.getenv("RAG_CANDIDATOS", "50"))

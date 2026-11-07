@@ -64,6 +64,12 @@ def indexar(c):
     c.run("flask --app app.py ia indexar", echo=True)
 
 
+@task(name="gerar-novos")
+def gerar_novos(c, simular=False):
+    """Escreve os rascunhos dos fatos novos dos ultimos dias (votacoes, situacoes e proposicoes)."""
+    c.run(f"flask --app app.py ia gerar-novos{' --simular' if simular else ''}", echo=True)
+
+
 @task(name="verificar-banco")
 def verificar_banco(c):
     """Confere estrutura, integridade e coerencia do banco, sem gravar nada."""

@@ -207,8 +207,8 @@ def gerar_noticia(modelo, caso, ref, gerador=None):
     nome = config["GERADOR"]
     versao = "desconhecida"
     try:
-        gerador = gerador or criar_gerador(config["GERADOR"])
-        nome, versao = gerador.nome, gerador.versao_prompt
+        # Primeiro os dados: assim todo erro seguinte grava a entrada completa, e a geracao
+        # automatica reconhece o fato que ja deu erro (desperta/ia/automatico.py)
         proposicao, votacao = _ler_origem(caso, ref)
         consulta = f"{proposicao.sigla_tipo} {proposicao.numero}/{proposicao.ano} {proposicao.ementa}"[
             :TAMANHO_CONSULTA
@@ -217,6 +217,8 @@ def gerar_noticia(modelo, caso, ref, gerador=None):
         existente = _geracao_existente(entrada)
         if existente:
             return existente, False
+        gerador = gerador or criar_gerador(config["GERADOR"])
+        nome, versao = gerador.nome, gerador.versao_prompt
 
         cod_tema = _tema_principal(proposicao)
         dados = DadosNoticia(

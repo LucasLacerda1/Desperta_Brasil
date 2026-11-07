@@ -78,6 +78,8 @@ flask ia buscar "reforma tributária" --tipo proposicao --inicio 2025-01-01 --fi
 flask ia medir-busca               # acertos de cada modo nas consultas de tests/dados/consultas_busca.json
 flask ia reconstruir               # refaz os índices a partir de trecho_rag
 flask ia gerar nova 2459654        # rascunho de uma proposição nova; também: situacao <id> e votacao <id>
+flask ia gerar-novos --simular     # o que seria gerado com os fatos dos últimos dias, sem gravar nada
+flask ia gerar-novos               # um rascunho para cada fato novo; --dias 7, --limite 50, --refazer-erros
 ```
 
 Depois do download, use `HF_HUB_OFFLINE=1` no `.env`: o modelo roda sem internet. Sem as dependências de IA, os testes de `tests/test_ia.py` são pulados. Depois de cada coleta, rode `flask ia indexar`.
@@ -91,6 +93,8 @@ A busca é híbrida: junta o índice vetorial (`vec_trecho`) e o de palavras (`t
 Em `tests/dados/consultas_busca.json`, cada consulta pode ter a lista `fora_do_assunto`, com as proposições marcadas à mão, e o `medir-busca` conta quantas aparecem nos 8 primeiros.
 
 As notícias são escritas pelo `GERADOR` (padrão: `frases`). O `GeradorFrases` usa frases prontas, sem IA: todo número, nome e data vem dos registros do banco. Votação de requerimento ou de redação final não vira "Câmara aprova projeto". Toda notícia entra como `rascunho`, e cada execução grava `geracao_ia`, mesmo com erro. Proposição sem tema não gera notícia, porque `noticia.cod_tema` é obrigatório.
+
+O `gerar-novos` (item 4 da 22.10) procura os fatos dos últimos `GERACAO_JANELA_DIAS` dias (padrão: 3) e escreve um rascunho para cada: toda votação, no Plenário ou em comissão, que afeta um tipo acompanhado; toda mudança de situação depois do dia da apresentação; e toda proposição nova dos tipos acompanhados. Votações vêm primeiro. Ele pula o que já tem geração (inclusive notícia rejeitada pela equipe e geração com erro, que só volta com `--refazer-erros`), a proposição sem tema e o que ainda está pendente na coleta, que entra na próxima execução. Rodar de novo não duplica nada, e cada execução deixa um resumo em `log_sistema` (`acao = gerar_novos`). Rode depois da coleta e do `flask ia indexar`; `invoke gerar-novos` faz o mesmo.
 
 Para medir a centralização dos embeddings:
 
