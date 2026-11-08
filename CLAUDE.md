@@ -1,13 +1,13 @@
 # Desperta Brasil — guia do projeto para o Claude Code
 
 > Coloque este arquivo na **raiz do repositório** com o nome `CLAUDE.md`. O Claude Code lê esse arquivo sozinho no início de cada sessão.
-> Última atualização: 05/11/2026 (Fases 1, 1.5, 2 e 2b concluídas; Fase 3 em andamento; decisões nas seções 10 a 22; ajuste físico do banco em `docs/AJUSTE_BANCO_SISTEMA.md`; treino da Roberta escritora em `docs/TREINAR_ROBERTA_ESCRITORA.md`).
+> Última atualização: 08/11/2026 (Fases 1, 1.5, 2 e 2b concluídas; Fase 3 em andamento; decisões nas seções 10 a 23; ajuste físico do banco em `docs/AJUSTE_BANCO_SISTEMA.md`; treino da Roberta escritora em `docs/TREINAR_ROBERTA_ESCRITORA.md`; leitura encadeada da PEC em `docs/LEITURA_ENCADEADA.md`).
 
 ## 0. Como trabalhar neste projeto (leia primeiro)
 
 - **Idioma:** responda, comente o código e escreva mensagens de commit em **português do Brasil**.
 - **Padrão obrigatório:** o código segue a estrutura do projeto **TaskFlow**, usado como exemplo pelo professor da disciplina (Programação Web Avançada, UVV). A seção 3 descreve esse padrão. Não invente outra organização, não troque o Flask-SQLAlchemy por outro ORM e não use outro estilo de modelo.
-- **Ordem do trabalho:** o projeto é construído por fases (seção 7). **As Fases 1 (banco), 1.5 (ajuste físico do banco, `docs/AJUSTE_BANCO_SISTEMA.md`), 2 (coletor) e 2b (campos opcionais, com 2 migrações, 22.2) estão concluídas, e o banco tem a bateria de persistência (22.4). O ajuste da `horaria` (PR nº 2) espera as medições da terça, 10/11. A fase atual é a 3 (IA e RAG, branch `fase-3-rag`): antes da Roberta escritora (3b), vem a análise da PEC com a Roberta original (22.6). Siga a ordem de 22.10.** Princípio do portal: transparência total (22.5). Não comece as rotas da API ou o front-end antes da fase anterior estar pronta e testada, a não ser que o grupo peça. Antes de mudar código, leia as seções 10 a 21 (decisões tomadas depois de cada relatório).
+- **Ordem do trabalho:** o projeto é construído por fases (seção 7). **As Fases 1 (banco), 1.5 (ajuste físico do banco, `docs/AJUSTE_BANCO_SISTEMA.md`), 2 (coletor) e 2b (campos opcionais, com 2 migrações, 22.2) estão concluídas, e o banco tem a bateria de persistência (22.4). O ajuste da `horaria` (PR nº 2) espera as medições da terça, 10/11. A fase atual é a 3 (IA e RAG, branch `fase-3-rag`): antes da Roberta escritora (3b), vem a análise da PEC com a Roberta original (22.6). Siga a ordem de 23.8.** Princípio do portal: transparência total (22.5). Não comece as rotas da API ou o front-end antes da fase anterior estar pronta e testada, a não ser que o grupo peça. Antes de mudar código, leia as seções 10 a 23 (decisões tomadas depois de cada relatório).
 - **Git:** a `main` no GitHub é a versão estável. Cada fase é feita numa branch própria (`fase-2-coletor`, `fase-3-ia`…), com commits pequenos ao fim de cada passo e mensagem em português; ao terminar a fase, abrir um pull request para a `main`. Quem faz o merge é o Lucas, depois de revisar (Caio e Rhuan revisam quando puderem). Não fazer push direto na `main`. Nunca versione `.venv/`, `instance/`, `.env` nem arquivos `*.db`, `*.db-wal`, `*.db-shm`.
 - **O modelo do banco já foi decidido pelo grupo** (32 tabelas, seção 5). Não acrescente, remova nem renomeie tabelas ou colunas por conta própria. A única exceção são as colunas técnicas, índices e configurações listados em `docs/AJUSTE_BANCO_SISTEMA.md` (camada física: controle de sincronização, índices, FTS5, migrações), que não mudam o modelo lógico. Se achar um problema no modelo, aponte e pergunte antes de mudar.
 - **Ao terminar cada passo:** rode os testes (`invoke test`) e mostre o resultado.
@@ -1605,10 +1605,67 @@ Commit que já foi para o GitHub não é reescrito. Os commits `7cd1e90` e `c052
 - Antes de qualquer mudança no banco real: backup em `instance/desperta-antes-*.db` e teste numa cópia.
 - Parar coletas com `kill -TERM <PID>`, nunca `pkill -f` com o texto do comando.
 
-### 22.10 Ordem a partir de agora
+### 22.10 Ordem a partir de agora (substituída pela 23.8)
 1. Terça, 10/11: as duas medições da `horaria` que faltam (a primeira, em 04/11, bateu os 20 minutos) e o merge do PR nº 2.
 2. Grupo: interpretação da PEC, modelos de contexto, meta de "preciso" e PECs de conferência. Depois, o Claude Code escreve `scripts/analise_pec/` e roda as rodadas.
 3. Grupo: correção das 20 consultas da busca; depois, medir as 5 opções e decidir a busca (19.2).
 4. Claude Code: gerar rascunhos sozinho a partir de `itens_novos`, otimizar a `horaria` e agendar as rotinas, com o ok do Lucas.
 5. Merge da `fase-3-rag` na `main` e começo da Fase 4.
 6. Treino da Roberta (análise e escritora), só depois das rodadas e com a confirmação do grupo.
+
+---
+
+## 23. Decisões e trabalho de 05 a 08/11/2026
+
+### 23.1 Visualizador do banco (só desenvolvimento)
+- `invoke ver-banco` abre o banco no navegador com o **Datasette** (Apache 2.0), em modo só leitura, em `http://127.0.0.1:8001`; `--banco instance/desperta-amostra.db` abre a amostra. Dependência opcional `[ver]` (`datasette` e `datasette-template-sql`, ambos Apache 2.0). Não faz parte do portal.
+- Configuração gerada por `scripts/ver_banco/montar_metadata.py`: menu com busca rápida, tabelas por assunto, nomes no lugar dos ids, filtros e 15 consultas prontas.
+- **Visão geral** em `/visao-geral` (`scripts/ver_banco/templates/pages/visao-geral.html`): números principais, período, proposições, votações, o que a Câmara não informou, coletas, erros do log, IA e notícias.
+- Na página de resultado de uma consulta livre, o menu fica escondido, para o resultado aparecer no topo.
+
+### 23.2 Rascunhos automáticos (`flask ia gerar-novos`)
+- Item 4 da 22.10. Escolha do Lucas (07/11): viram rascunho **todas** as votações (Plenário e comissões) que afetam um tipo acompanhado, **todas** as mudanças de situação depois do dia da apresentação e **todas** as proposições novas dos tipos acompanhados. Votações primeiro.
+- Janela: `GERACAO_JANELA_DIAS` (padrão 3). Pula fato que já tem geração (inclusive notícia rejeitada e geração com erro, que só volta com `--refazer-erros`), proposição sem tema e fato pendente na coleta. Opções `--simular`, `--limite` e `--dias`; resumo em `log_sistema` (`acao = gerar_novos`). Código em `desperta/ia/automatico.py`; `invoke gerar-novos`.
+- A geração passou a ler a proposição antes de criar o gerador, para todo erro gravar a entrada completa.
+- **Achado:** a Câmara demora para dar tema às proposições novas (27 de 40 da semana de 31/10 sem tema). Como proposição sem tema não gera notícia, a maioria das novas passa da janela antes de ganhar tema. Isso deixa mais urgente a decisão em aberto da 22.5.
+
+### 23.3 Leitura encadeada da PEC (`docs/LEITURA_ENCADEADA.md`)
+Plano do grupo (07/11): a Roberta lê a PEC em pedaços e leva adiante, em texto, o que ela mesma escolheu (frase e palavras), sem treino. Decisões, registradas no documento:
+1. **Metade e metade:** 254 tokens de contexto e 254 de pedaço.
+2. **Frases:** o texto vira uma lista fixa e numerada de frases; o grupo cita sempre pelo código. Na PEC 319/2004 são 22 (F1 a F22).
+3. **Textos menores primeiro;** PECs maiores só quando a Roberta estiver precisa nas menores.
+4. **Corte no meio do texto é aceito:** o resto vai para a leitura seguinte.
+5. **Três camadas, nesta ordem:** a **planta padrão** (a estrutura que toda PEC tem), entendida por uma **leitura prévia** (cada bloco vira um vetor e cada frase é ligada ao bloco mais parecido; só o nome do bloco escolhido pela Roberta entra no contexto, nunca o do script); o **contexto inicial** (`{sigla}, de {autor}. Ementa: {ementa}`); e as **interpretações** da Roberta. A planta **não** é o contexto inicial.
+6. **Tudo o que é modelo é geral, para toda PEC** (planta, contexto inicial e formulário de interpretação); o que é de uma PEC só fica em arquivos com o nome dela.
+7. **Planta base do grupo:** parte normativa com 6 blocos (epígrafe, autoria, ementa, preâmbulo, artigo e nova redação) e justificação por função (objetivo, problemas, citação, solução e fecho), sem número de parágrafo; 274 tokens.
+8. **Teste D com duas notas:** `temas` (até 3) e `temas_tambem_aceitos`; nota exata e nota ampla.
+9. **Interpretações da PEC 319/2004:** a do Lucas (resumo e palavras-chave adotados da do Claude, depois de ler e concordar, então não contam como leitura independente; 5 frases e temas são escolha dele) e a do Claude (documento do claude.ai, completado pelo Claude Code em 08/11). A do Claude é um leitor a mais; a base é a interpretação humana.
+
+### 23.4 Arquivos da análise (`instance/analise_pec/`, fora do git)
+- Gerais: `modelos_contexto.json` (planta padrão, contexto inicial, rodadas), `interpretacao_modelo.json` (formulário).
+- Da PEC 319/2004: `PEC_319_2004.txt` (com códigos antigos EMENTA, P1 a P4, J1 a J7), `PEC_319_2004_pedacos.txt` (8 pedaços), `PEC_319_2004_frases.json` (F1 a F22, com `bloco_certo`), `PEC_319_2004_dados.txt`, `PEC_319_2004_interpretacao_e_planta.md` (documento do claude.ai), `interpretacao_PEC_319_2004.json` (para preencher), `interpretacao_PEC_319_2004_lucas.json` e `interpretacao_PEC_319_2004_claude.json`.
+- Tokenizador conferido: `<mask>` é o 50264; " demarcação" e " indígenas" são um token cada.
+
+### 23.5 Rodadas e o que é "Roberta perfeita"
+- **"Perfeita" não é 100%:** é concordar com o grupo tanto quanto as pessoas do grupo concordam entre si, e continuar assim em PECs que ela nunca viu. Lucas e Claude, por exemplo, não coincidem em nenhuma das 5 frases.
+- **Primeiras 5 rodadas na PEC 319** (cada uma pontuada contra todas as interpretações): (1) base, cada frase sozinha; (2) encadeada só com as interpretações; (3) + contexto inicial; (4) + planta; (5) controle com frases sorteadas no lugar das interpretações, com 5 sorteios. Opcional: de trás para frente.
+- **Regras dos ajustes:** combinar a meta antes; limite de ajustes (por exemplo, 10 rodadas); depois, a melhor configuração roda uma vez só nas PECs de conferência, sem mexer em nada.
+- **Falta para chegar lá:** interpretações do Caio e do Rhuan (teto e consenso); meta por teste (sugestão: A 3 de 5, B 70%, C entre as 3 primeiras de 30, D 2 de 3 na nota ampla, E 5 de 10, blocos 70% contra 36% do acaso); 2 ou 3 PECs de conferência curtas, com texto, frases e interpretações; decidir o teste C (comparar só ementas ou baixar o texto inteiro das outras PECs); treinos 1 e 2 do estudo só se as rodadas não chegarem na meta e com a confirmação do grupo; depois, PECs maiores e decidir para que a leitura da Roberta vai servir no portal.
+
+### 23.6 GPU e kernel
+O kernel 7.0.0-43 foi instalado sem o módulo da NVIDIA (`linux-modules-nvidia-595-open-7.0.0-43-generic` ainda não saiu). Até sair, para usar a RTX 4050: `sudo grub-reboot "Advanced options for Ubuntu>Ubuntu, with Linux 7.0.0-42-generic"` antes de reiniciar (vale um boot). Sem a placa, a IA roda no processador (`IA_DISPOSITIVO=auto`). Continua valendo a 20.1: o Claude Code não mexe no driver.
+
+### 23.7 Coleta e primeiros rascunhos reais (08/11)
+- Backups antes: `instance/desperta-antes-coleta-08-11.db` e `instance/desperta-antes-rascunhos-08-11.db`. Log: `instance/coleta-diaria-08-11.log`.
+- `diaria` em 6 min (2.400 requisições, 0 erro HTTP). A `diaria` não traz votações nem eventos novos, que são da `horaria` (ontem e hoje): depois de dias sem coleta, rodar também `flask coletar votacoes` e `eventos` na janela que faltou (aqui, 05 a 08/11: 12 votações, 11 no Plenário, todas de 05/11).
+- `flask ia indexar` em 17 s na RTX 4050: 1.720 trechos novos ou alterados e 269 removidos (tramitações com mais de 90 dias).
+- `flask ia gerar-novos` (janela desde 05/11) em 1 min 34 s: **626 rascunhos** (9 votações, 606 mudanças de situação e 11 proposições novas), 0 erro, 8 puladas sem tema. Rodar de novo não gera nada (626 já feitos). Verificação do banco: 20 aprovados, 0 falhas.
+- Proposições 10.512, tramitações 175.788, votações 1.218, trechos 30.410.
+
+### 23.8 Ordem a partir de agora
+1. As 5 primeiras rodadas da PEC 319 (23.5), com relatório.
+2. Terça, 10/11: as duas medições da `horaria` que faltam e o merge do PR nº 2; depois, otimizar a `horaria` e agendar as rotinas.
+3. Grupo: meta de "preciso", PECs de conferência, ok na planta e no contexto inicial, interpretações do Caio e do Rhuan, tema das proposições sem tema (22.5) e as 20 consultas da busca (19.2).
+4. Revisão dos 626 rascunhos pela equipe (na Fase 4, pela área administrativa).
+5. Merge da `fase-3-rag` na `main` e começo da Fase 4.
+6. Treino da Roberta, só depois das rodadas e com a confirmação do grupo.
