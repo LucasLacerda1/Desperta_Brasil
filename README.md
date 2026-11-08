@@ -114,6 +114,7 @@ python scripts/analise_pec/rodar.py --rodada contexto    # + contexto inicial
 python scripts/analise_pec/rodar.py --rodada planta      # + bloco da planta (leitura prévia)
 python scripts/analise_pec/rodar.py --rodada controle --camadas nada --sementes 5
 invoke analise-pec --rodada base                         # o mesmo pelo Invoke
+python scripts/analise_pec/experimentos.py               # grade: camadas x leituras x centralização x métodos, com correlações
 ```
 
 Lê `instance/analise_pec/` (frases, planta e as interpretações `interpretacao_<PEC>_<nome>.json`), usa a RoBERTaLexPT de `ROBERTA_DIR` e grava `resultado.json` e `relatorio.md` em `instance/analise_pec/rodadas/<data>_<rodada>/`. Não treina nada e não grava no banco. As notas dos testes ficam em `scripts/analise_pec/avaliacao.py`, testadas sem o modelo em `tests/test_analise_pec.py`.

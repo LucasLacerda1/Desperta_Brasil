@@ -179,3 +179,13 @@ def test_frases_soltas_dao_um_vetor_por_frase(modo):
     )
     assert set(lida.vetor_frase) == {"F1", "F2"} and lida.contexto_da_frase == {"F1": [], "F2": []}
     assert abs(numpy.linalg.norm(lida.vetor_pec) - 1) < 1e-9
+
+
+def test_notas_continuas():
+    assert avaliacao.auc({"F1": 3, "F2": 2, "F3": 1}, {"F1"}) == 1.0
+    assert avaliacao.auc({"F1": 1, "F2": 2, "F3": 3}, {"F1"}) == 0.0
+    assert avaliacao.auc({"F1": 2, "F2": 2}, {"F1"}) == 0.5
+    assert avaliacao.auc({"F1": 1}, {"F1"}) is None
+    assert (avaliacao.nota_da_posicao(1, 31), avaliacao.nota_da_posicao(31, 31)) == (1.0, 0.0)
+    assert avaliacao.spearman([1, 2, 3, 4], [10, 20, 30, 40]) == pytest.approx(1.0)
+    assert avaliacao.spearman([1, 2, 3, 4], [4, 3, 2, 1]) == pytest.approx(-1.0)

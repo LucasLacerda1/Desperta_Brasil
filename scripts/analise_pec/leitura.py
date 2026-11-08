@@ -70,6 +70,8 @@ class Leitor:
         self.modelo = AutoModelForMaskedLM.from_pretrained(pasta, local_files_only=True).to(dispositivo).eval()
         self.dispositivo = dispositivo
         self.leituras = 0
+        # Camadas de onde sai o vetor: None = so a ultima; senao, a media das camadas pedidas (1 a 12)
+        self.camadas = None
 
     # --------------------------------------------------
     # TOKENS
@@ -111,9 +113,15 @@ class Leitor:
                 ids[linha, : len(sequencia)] = torch.tensor(sequencia)
                 mascara[linha, : len(sequencia)] = 1
             with torch.no_grad():
-                estados = self.modelo.roberta(
-                    input_ids=ids.to(self.dispositivo), attention_mask=mascara.to(self.dispositivo)
-                ).last_hidden_state
+                saida = self.modelo.roberta(
+                    input_ids=ids.to(self.dispositivo),
+                    attention_mask=mascara.to(self.dispositivo),
+                    output_hidden_states=self.camadas is not None,
+                )
+            if self.camadas is None:
+                estados = saida.last_hidden_state
+            else:
+                estados = torch.stack([saida.hidden_states[c] for c in self.camadas]).mean(dim=0)
             estados = estados.float().cpu().numpy()
             for linha, ((_, texto), (_, comeco)) in enumerate(zip(lote, montadas)):
                 ultimo = comeco + len(texto)
@@ -136,6 +144,58 @@ class Leitor:
             notas = self.modelo.lm_head(estados[0, comeco + posicao])
         self.leituras += 1
         return notas.topk(quantos).indices.tolist()
+
+    def surpresas(self, contexto, texto):
+        """
+        Quao dificil e adivinhar cada palavra escondida: -log da probabilidade de cada token da palavra,
+        escondendo um token de cada vez, com o mesmo contexto (media dos tokens; maior valor entre as
+        ocorrencias). Usa a cabeca de lacunas sobre a ultima camada.
+        """
+        torch = self.torch
+        codificado = self.tokenizador(texto, return_offsets_mapping=True, add_special_tokens=False)
+        ids, posicoes = codificado["input_ids"][:METADE], codificado["offset_mapping"][:METADE]
+        ocorrencias = []
+        for palavra, inicio, fim in palavras_de(texto):
+            tokens = [i for i, (a, b) in enumerate(posicoes) if a < fim and b > inicio]
+            if tokens:
+                ocorrencias.append((palavra, tokens))
+        pedidos = [(o, t) for o, (_, tokens) in enumerate(ocorrencias) for t in tokens]
+        notas = [0.0] * len(pedidos)
+        mascara_id = self.tokenizador.mask_token_id
+        for inicio in range(0, len(pedidos), TAMANHO_LOTE):
+            fim = inicio + TAMANHO_LOTE
+            lote = pedidos[inicio:fim]
+            montadas = []
+            for _, token in lote:
+                variante = list(ids)
+                variante[token] = mascara_id
+                montadas.append(self._entrada(contexto, variante))
+            maior = max(len(seq) for seq, _ in montadas)
+            entrada = torch.full((len(lote), maior), self.tokenizador.pad_token_id, dtype=torch.long)
+            atencao = torch.zeros_like(entrada)
+            for linha, (seq, _) in enumerate(montadas):
+                entrada[linha, : len(seq)] = torch.tensor(seq)
+                atencao[linha, : len(seq)] = 1
+            with torch.no_grad():
+                estados = self.modelo.roberta(
+                    input_ids=entrada.to(self.dispositivo), attention_mask=atencao.to(self.dispositivo)
+                ).last_hidden_state
+                linhas = torch.arange(len(lote))
+                colunas = torch.tensor([comeco + token for (_, token), (_, comeco) in zip(lote, montadas)])
+                logp = torch.log_softmax(self.modelo.lm_head(estados[linhas, colunas]), dim=-1)
+                originais = torch.tensor([ids[token] for _, token in lote], device=logp.device)
+                valores = (-logp[linhas, originais]).float().cpu().tolist()
+            for posicao, valor in enumerate(valores):
+                notas[inicio + posicao] = valor
+            self.leituras += len(lote)
+        por_ocorrencia = {}
+        for (ocorrencia, _), valor in zip(pedidos, notas):
+            por_ocorrencia.setdefault(ocorrencia, []).append(valor)
+        resultado = {}
+        for ocorrencia, valores in por_ocorrencia.items():
+            palavra = ocorrencias[ocorrencia][0]
+            resultado[palavra] = max(resultado.get(palavra, 0.0), sum(valores) / len(valores))
+        return resultado
 
     def pesos_das_palavras(self, contexto, texto, vetor_original):
         """

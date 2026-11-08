@@ -133,3 +133,50 @@ def teste_blocos(escolhidos, certos):
         "sempre_o_maior_bloco": maior,
         "erradas": {c: escolhidos[c] for c in certos if not bloco_bate(escolhidos[c], certos[c])},
     }
+
+
+# ======================================================
+# NOTAS CONTINUAS (para comparar variacoes; 0,5 = acaso)
+# ======================================================
+def auc(notas, positivos):
+    """
+    Chance de um item escolhido pelo leitor ficar acima de um nao escolhido no ranking da Roberta
+    (empate conta meio). 0,5 = acaso, 1 = perfeito. None se nao ha escolhidos ou nao escolhidos.
+    """
+    sim = [notas[c] for c in notas if c in positivos]
+    nao = [notas[c] for c in notas if c not in positivos]
+    if not sim or not nao:
+        return None
+    ganhos = sum(1.0 if a > b else 0.5 if a == b else 0.0 for a in sim for b in nao)
+    return ganhos / (len(sim) * len(nao))
+
+
+def nota_da_posicao(posicao, total):
+    """1 = primeiro lugar, 0 = ultimo; o acaso fica em 0,5 na media."""
+    return 1.0 if total <= 1 else (total - posicao) / (total - 1)
+
+
+def spearman(x, y):
+    """Correlacao de postos entre duas listas do mesmo tamanho (sem empates tratados a parte)."""
+    if len(x) < 3:
+        return None
+
+    def postos(valores):
+        ordem = sorted(range(len(valores)), key=lambda i: valores[i])
+        resultado = [0.0] * len(valores)
+        i = 0
+        while i < len(ordem):
+            j = i
+            while j + 1 < len(ordem) and valores[ordem[j + 1]] == valores[ordem[i]]:
+                j += 1
+            for k in range(i, j + 1):
+                resultado[ordem[k]] = (i + j) / 2
+            i = j + 1
+        return resultado
+
+    px, py = postos(x), postos(y)
+    mx, my = sum(px) / len(px), sum(py) / len(py)
+    cov = sum((a - mx) * (b - my) for a, b in zip(px, py))
+    vx = sum((a - mx) ** 2 for a in px) ** 0.5
+    vy = sum((b - my) ** 2 for b in py) ** 0.5
+    return None if not vx or not vy else cov / (vx * vy)
