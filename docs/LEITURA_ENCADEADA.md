@@ -60,6 +60,12 @@ Se a encadeada empatar com a de memória sorteada, o ganho vem do texto extra, n
 - **Relatório:** uma tabela por pedaço (memória que entrou, frase escolhida, 3 palavras) e os cinco testes nos três modos.
 - **Não treinar nada.** A ordem do estudo continua valendo.
 
+## Decisões do grupo (07/11/2026)
+
+1. **Metade e metade.** Dos 512 tokens, 4 são especiais (`<s>`, `</s></s>`, `</s>`): ficam **254 para o contexto e 254 para o pedaço** (em vez de 100 e 400). O contexto começa com o **contexto inicial**, montado pelo modelo de contexto do grupo (22.6 do `CLAUDE.md`: título, ementa etc.), que fica fixo. O resto do contexto recebe as **interpretações da própria Roberta** (frase escolhida e linha `Palavras: …`). Quando faltar espaço, sai a interpretação mais longe do vetor acumulado; o contexto inicial não sai. Título e ementa ocupam cerca de 40 tokens, o que deixa cerca de 210 para as interpretações (3 ou 4 frases da PEC 319/2004, que têm de 29 a 67 tokens). Tema e palavras-chave no contexto inicial entregam os testes D e E.
+2. **Teste A por frases:** o texto é dividido numa lista fixa e numerada de frases (F1, F2…; cerca de 25 na PEC 319/2004), e todos do grupo marcam as 5 mais importantes sobre essa mesma lista. Em discussão: a lista e o campo novo no `interpretacao_modelo.json`.
+3. **Textos menores primeiro:** começar pela PEC 319/2004 (8 pedaços, todos com menos de 254 tokens). Na linha de base ("trechos soltos"), cada frase é lida sozinha, para os três modos serem comparados pelas mesmas frases. Textos maiores, em que o corte de 400 tokens com 50 de sobreposição faz diferença, ficam para a etapa seguinte.
+
 ## Nota da instalação no projeto (07/11/2026)
 
 - No projeto, `instance/analise_pec/PEC_319_2004.txt` continua sendo a versão com códigos (EMENTA, P1 a P4, J1 a J7), que o `interpretacao_modelo.json` usa para citar trechos. Os 8 pedaços deste plano ficam em `instance/analise_pec/PEC_319_2004_pedacos.txt`. O texto é o mesmo: pedaço 1 = EMENTA + P1 a P4; pedaços 2 a 8 = J1 a J7.
