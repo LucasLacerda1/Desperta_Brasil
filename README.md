@@ -105,6 +105,19 @@ RAG_CENTRALIZAR=1 flask ia medir-busca
 flask ia reconstruir               # volta ao índice sem centralização
 ```
 
+## Análise da PEC com a Roberta original (estudo, fora do portal)
+
+```bash
+python scripts/analise_pec/rodar.py --rodada base        # cada frase lida sozinha
+python scripts/analise_pec/rodar.py --rodada encadeada   # leitura encadeada (docs/LEITURA_ENCADEADA.md)
+python scripts/analise_pec/rodar.py --rodada contexto    # + contexto inicial
+python scripts/analise_pec/rodar.py --rodada planta      # + bloco da planta (leitura prévia)
+python scripts/analise_pec/rodar.py --rodada controle --camadas nada --sementes 5
+invoke analise-pec --rodada base                         # o mesmo pelo Invoke
+```
+
+Lê `instance/analise_pec/` (frases, planta e as interpretações `interpretacao_<PEC>_<nome>.json`), usa a RoBERTaLexPT de `ROBERTA_DIR` e grava `resultado.json` e `relatorio.md` em `instance/analise_pec/rodadas/<data>_<rodada>/`. Não treina nada e não grava no banco. As notas dos testes ficam em `scripts/analise_pec/avaliacao.py`, testadas sem o modelo em `tests/test_analise_pec.py`.
+
 ## Verificação e testes de persistência do banco
 
 ```bash

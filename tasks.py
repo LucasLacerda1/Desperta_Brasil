@@ -70,6 +70,12 @@ def gerar_novos(c, simular=False):
     c.run(f"flask --app app.py ia gerar-novos{' --simular' if simular else ''}", echo=True)
 
 
+@task(name="analise-pec")
+def analise_pec(c, rodada="base"):
+    """Uma rodada da analise da PEC (docs/LEITURA_ENCADEADA.md): base, encadeada, contexto, planta ou controle."""
+    c.run(f"python scripts/analise_pec/rodar.py --rodada {rodada}", echo=True)
+
+
 @task(name="verificar-banco")
 def verificar_banco(c):
     """Confere estrutura, integridade e coerencia do banco, sem gravar nada."""
