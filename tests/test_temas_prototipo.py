@@ -100,3 +100,12 @@ def test_minimo_de_exemplos_e_fusao():
     assert padrao[0, 1] > padrao[0, 0] and padrao[0, 2] == -numpy.inf
     juntas = prototipos.fundir(filtradas, filtradas)
     assert numpy.argmax(juntas[0]) == 1
+
+
+def test_vizinhos_externos_respeitam_quem_nao_pode_votar():
+    base = prototipos.normalizar_linhas(numpy.array([[1.0, 0], [0.9, 0.1], [0, 1.0], [0.1, 0.9]]))
+    rotulos = numpy.array([[1, 0], [1, 0], [0, 1], [0, 1]])
+    consultas = prototipos.normalizar_linhas(numpy.array([[1.0, 0.05], [1.0, 0.05]]))
+    livres = prototipos.notas_vizinhos_externos(consultas, base, rotulos, 2, [[], [0, 1]])
+    assert numpy.argmax(livres[0]) == 0  # as duas mais parecidas sao do tema 0
+    assert numpy.argmax(livres[1]) == 1  # sem as linhas 0 e 1, sobram as do tema 1

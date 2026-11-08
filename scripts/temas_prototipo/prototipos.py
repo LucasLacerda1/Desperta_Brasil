@@ -184,3 +184,26 @@ def padronizar(notas):
 def fundir(*listas_de_notas):
     """Soma das notas padronizadas (como a busca hibrida junta vetores e palavras)."""
     return sum(padronizar(n) for n in listas_de_notas)
+
+
+def notas_vizinhos_externos(consultas, base, rotulos_base, k, excluir, bloco=1000):
+    """
+    Vizinhos numa outra colecao (por exemplo, os trechos do RAG): as k linhas de `base` mais parecidas com
+    cada consulta votam com os rotulos delas. `excluir[i]` = linhas de `base` que nao podem votar na
+    consulta i (os trechos da propria proposicao, para ela nao votar em si mesma).
+    """
+    consultas = numpy.asarray(consultas, dtype=numpy.float32)
+    base = numpy.asarray(base, dtype=numpy.float32)
+    rotulos_base = numpy.asarray(rotulos_base, dtype=numpy.float32)
+    notas = numpy.zeros((len(consultas), rotulos_base.shape[1]))
+    for inicio in range(0, len(consultas), bloco):
+        fim = min(inicio + bloco, len(consultas))
+        semelhancas = consultas[inicio:fim] @ base.T
+        for linha in range(inicio, fim):
+            fora = excluir[linha]
+            if len(fora):
+                semelhancas[linha - inicio, fora] = -numpy.inf
+        vizinhas = numpy.argpartition(-semelhancas, k, axis=1)[:, :k]
+        pesos = numpy.take_along_axis(semelhancas, vizinhas, axis=1).clip(min=0)
+        notas[inicio:fim] = numpy.einsum("ik,ikt->it", pesos, rotulos_base[vizinhas])
+    return notas

@@ -126,6 +126,7 @@ Lê `instance/analise_pec/` (frases, planta e as interpretações `interpretacao
 
 ```bash
 python scripts/temas_prototipo/avaliar.py
+python scripts/temas_prototipo/aprofundado.py   # bateria: intervalos de confiança, validação no tempo, robustez e confiança
 ```
 
 Avalia, nas proposições com tema oficial, se o tema sai certo comparando a ementa com o protótipo de cada tema (a média das ementas do tema), montado sem a proposição avaliada. Compara a RoBERTaLexPT original, centralizada e com whitening (Su et al., 2021), a busca por palavras (TF-IDF com pares de palavras), os vizinhos mais parecidos (kNN, 25 vizinhos) e a junção dessas leituras, contra o acaso e os temas mais comuns. A melhor forma (vizinhos e protótipos, com a Roberta e as palavras) acerta o tema em 87,9% das proposições no 1º lugar e em 96,9% entre os 3 primeiros. Também lista temas sugeridos para as proposições acompanhadas sem tema, sem gravar nada no banco. Resultado em `instance/analise_temas/<data>/`. As contas ficam em `scripts/temas_prototipo/prototipos.py`, testadas em `tests/test_temas_prototipo.py`.
