@@ -11,6 +11,9 @@ de um jeito um pouco diferente. Nao treina nada e nao grava no banco.
 - Votacao: um conjunto de leituras com dropout e lido uma vez, e cada repeticao e a media de 1.000
   leituras sorteadas dele (bootstrap).
 
+Com --consenso lucas caio rhuan, tambem da nota (AUC) contra as frases escolhidas por pelo menos --minimo
+desses leitores.
+
 Cada repeticao e gravada assim que termina em instance/analise_pec/rodadas/<data>_repeticoes/repeticoes.jsonl;
 o resumo (media e intervalo de 95%) vai para resumo.json. Com --continuar, retoma de onde parou.
 """
@@ -49,6 +52,8 @@ def medir(vetor_frase, ajuste, fixos):
     ordem_temas = sorted(temas, key=lambda t: -leitura.cosseno(temas[t], pec))
     notas = {"tema_oficial": min(ordem_temas.index(t) + 1 for t in fixos["oficiais"] if t in ordem_temas)}
     contra_pec = {k: leitura.cosseno(v, pec) for k, v in vetores.items()}
+    if fixos.get("consenso"):
+        notas["A_consenso"] = avaliacao.auc(contra_pec, fixos["consenso"])
     for nome, (escolhidas, resumo) in fixos["leitores"].items():
         notas[f"A_{nome}"] = avaliacao.auc(contra_pec, escolhidas)
         acertos = 0
@@ -76,6 +81,8 @@ def main():
     parser.add_argument("--rodadas", nargs="*", default=list(RODADAS), choices=RODADAS)
     parser.add_argument("--continuar", help="Pasta de uma execucao anterior para retomar.")
     parser.add_argument("--pec", default="PEC_319_2004")
+    parser.add_argument("--consenso", nargs="*", default=[], help="Leitores que formam o consenso.")
+    parser.add_argument("--minimo", type=int, default=2, help="Votos para uma frase entrar no consenso.")
     argumentos = parser.parse_args()
 
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -120,6 +127,16 @@ def main():
                     "normal": [(v, c) for v, (_, c) in zip(normais, certas)],
                     "whitening": [(branco(v), c) for v, (_, c) in zip(normais, certas)],
                 },
+            )
+        if argumentos.consenso:
+            faltando = set(argumentos.consenso) - set(leitores)
+            if faltando:
+                sys.exit(f"Leitores do consenso sem interpretacao: {', '.join(sorted(faltando))}")
+            fixos["consenso"] = avaliacao.consenso(
+                {n: fixos["leitores"][n][0] for n in argumentos.consenso}, argumentos.minimo
+            )
+            print(
+                f"Consenso ({argumentos.minimo} de {len(argumentos.consenso)}): {sorted(fixos['consenso'])}", flush=True
             )
         constantes = {}
         for sufixo, ajuste in (("normal", None), ("whitening", branco)):
@@ -225,7 +242,13 @@ def main():
                         )
         leitor.modo_dropout(False)
 
-        resumo = {"vezes": argumentos.vezes, "constantes": constantes, "rodadas": {}}
+        resumo = {
+            "vezes": argumentos.vezes,
+            "leitores": sorted(leitores),
+            "consenso": sorted(fixos.get("consenso", [])),
+            "constantes": constantes,
+            "rodadas": {},
+        }
         for nome in argumentos.rodadas:
             itens = [i for (r, _), i in feitas.items() if r == nome]
             if not itens:

@@ -217,3 +217,10 @@ def test_whitening_iguala_as_direcoes_e_ajusta_a_leitura():
     ajustada = leitura.ajustar_leitura(lida, lambda v: leitura.normalizar(v[::-1].copy()))
     assert ajustada.vetor_frase["F1"] == pytest.approx(lida.vetor_frase["F1"][::-1])
     assert numpy.linalg.norm(ajustada.vetor_pec) == pytest.approx(1.0)
+
+
+def test_consenso_fica_com_as_frases_de_pelo_menos_n_leitores():
+    escolhas = {"a": {"F1", "F2", "F3"}, "b": {"F2", "F3", "F4"}, "c": {"F3", "F5"}}
+    assert avaliacao.consenso(escolhas, 2) == {"F2", "F3"}
+    assert avaliacao.consenso(escolhas, 3) == {"F3"}
+    assert avaliacao.consenso(escolhas, 1) == {"F1", "F2", "F3", "F4", "F5"}

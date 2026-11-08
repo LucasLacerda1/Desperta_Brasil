@@ -117,6 +117,7 @@ python scripts/analise_pec/rodar.py --rodada votacao --leituras 1000   # média 
 python scripts/analise_pec/rodar.py --rodada rag        # contexto = trechos de outras proposições achados pela busca híbrida
 python scripts/analise_pec/rodar.py --rodada rag --whitening   # qualquer rodada pode comparar os vetores depois do whitening (calculado sobre os trechos do RAG)
 python scripts/analise_pec/repeticoes.py --vezes 1000          # as rodadas repetidas com dropout: média e intervalo de 95% (cerca de 6 h na RTX 4050; --continuar retoma)
+python scripts/analise_pec/repeticoes.py --vezes 1000 --consenso lucas caio rhuan   # idem, com nota também contra as frases de pelo menos 2 dos 3 (--minimo)
 invoke analise-pec --rodada base                         # o mesmo pelo Invoke
 python scripts/analise_pec/experimentos.py               # grade: camadas x leituras x centralização x métodos, com correlações
 ```

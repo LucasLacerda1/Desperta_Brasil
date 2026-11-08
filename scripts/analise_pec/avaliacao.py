@@ -151,6 +151,15 @@ def auc(notas, positivos):
     return ganhos / (len(sim) * len(nao))
 
 
+def consenso(escolhas, minimo):
+    """Itens escolhidos por pelo menos `minimo` leitores. escolhas: {leitor: conjunto de codigos}."""
+    votos = {}
+    for codigos in escolhas.values():
+        for codigo in codigos:
+            votos[codigo] = votos.get(codigo, 0) + 1
+    return {codigo for codigo, n in votos.items() if n >= minimo}
+
+
 def nota_da_posicao(posicao, total):
     """1 = primeiro lugar, 0 = ultimo; o acaso fica em 0,5 na media."""
     return 1.0 if total <= 1 else (total - posicao) / (total - 1)
