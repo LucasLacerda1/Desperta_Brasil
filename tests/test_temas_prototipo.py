@@ -47,10 +47,18 @@ def test_tema_com_uma_so_proposicao_fica_vazio_sem_ela():
     assert notas[0, 0] == -numpy.inf and numpy.isfinite(notas[0, 1])
 
 
-def test_palavras_esparsas_iguais_a_densas():
+def test_vizinhos_igual_a_conta_lenta():
     vetores, rotulos = _exemplo()
-    documentos = [(numpy.arange(5), v) for v in vetores]
-    assert prototipos.notas_esparsas(documentos, rotulos, 5) == pytest.approx(prototipos.notas_densas(vetores, rotulos))
+    rotulos = numpy.vstack([rotulos, numpy.zeros((2, 4))])  # duas sem tema: so recebem nota, nao votam
+    vetores = numpy.vstack([vetores, prototipos.normalizar_linhas(numpy.ones((2, 5)))])
+    k = 3
+    lenta = numpy.zeros(rotulos.shape)
+    votantes = [j for j in range(len(vetores)) if rotulos[j].any()]
+    for i in range(len(vetores)):
+        outras = sorted((j for j in votantes if j != i), key=lambda j: -(vetores[i] @ vetores[j]))[:k]
+        for j in outras:
+            lenta[i] += max(vetores[i] @ vetores[j], 0) * rotulos[j]
+    assert prototipos.notas_vizinhos(vetores, rotulos, k, bloco=4) == pytest.approx(lenta, abs=1e-5)
 
 
 def test_medidas_e_adversarios():
@@ -75,12 +83,12 @@ def test_whitening_iguala_as_direcoes():
     assert prototipos.whitening(vetores, dimensoes=2).shape == (500, 2)
 
 
-def test_tfidf_ignora_acento_e_palavras_vazias():
-    documentos, tamanho = prototipos.tfidf(
-        ["Demarcação de terras indígenas", "demarcacao das terras", "saúde da mulher", "saude publica"], {"de", "da"}
-    )
-    assert tamanho == 3  # demarcacao, terras, saude: as que aparecem em pelo menos 2 textos
-    assert all(abs(numpy.linalg.norm(p) - 1) < 1e-9 for _, p in documentos if len(p))
+def test_tfidf_ignora_acento_e_palavras_vazias_e_faz_pares():
+    textos = ["Demarcação de terras indígenas", "demarcacao das terras", "saúde da mulher", "saude publica"]
+    matriz = prototipos.tfidf(textos, {"de", "da", "das"}, minimo=2)
+    assert matriz.shape == (4, 3)  # demarcacao, saude, terras: as que aparecem em pelo menos 2 textos
+    assert numpy.linalg.norm(matriz, axis=1) == pytest.approx(numpy.ones(4), abs=1e-6)
+    assert prototipos.tfidf(textos, {"de", "da", "das"}, minimo=2, pares=True).shape == (4, 4)  # + demarcacao_terras
 
 
 def test_minimo_de_exemplos_e_fusao():

@@ -27,6 +27,8 @@ PALAVRAS_VAZIAS = set(
 SUGESTOES_NO_RELATORIO = 15
 # Tema com menos proposicoes que isso no banco nao entra nas formas "com minimo" (prototipo de poucas ementas e ruido)
 MINIMO_POR_TEMA = 20
+# Quantas proposicoes mais parecidas votam no tema (10, 25 e 50 deram 87,8% a 88,1%; fica o do meio)
+VIZINHOS = 25
 
 
 def carregar(app):
@@ -115,13 +117,22 @@ def main():
             "Roberta com whitening (256 dimensões)": prototipos.whitening(vetores, dimensoes=256),
         }
         notas = {nome: prototipos.notas_densas(v, rotulos) for nome, v in formas.items()}
-        documentos, tamanho = prototipos.tfidf([p["ementa"] for p in todas], PALAVRAS_VAZIAS)
-        notas["Só palavras (TF-IDF)"] = prototipos.notas_esparsas(documentos, rotulos, tamanho)
+        palavras = prototipos.tfidf([p["ementa"] for p in todas], PALAVRAS_VAZIAS, pares=True)
+        notas["Só palavras (TF-IDF)"] = prototipos.notas_densas(palavras, rotulos)
         minimo = lambda x: prototipos.com_minimo(x, rotulos, MINIMO_POR_TEMA)  # noqa: E731
         notas[f"Whitening, temas com {MINIMO_POR_TEMA}+ exemplos"] = minimo(notas["Roberta com whitening"])
         notas[f"Palavras, temas com {MINIMO_POR_TEMA}+ exemplos"] = minimo(notas["Só palavras (TF-IDF)"])
         notas[f"Whitening + palavras, temas com {MINIMO_POR_TEMA}+ exemplos"] = prototipos.fundir(
             minimo(notas["Roberta com whitening"]), minimo(notas["Só palavras (TF-IDF)"])
+        )
+        vizinhos_roberta = minimo(prototipos.notas_vizinhos(formas["Roberta com whitening"], rotulos, VIZINHOS))
+        vizinhos_palavras = minimo(prototipos.notas_vizinhos(palavras, rotulos, VIZINHOS))
+        notas[f"Vizinhos (k={VIZINHOS}): whitening + palavras"] = prototipos.fundir(vizinhos_roberta, vizinhos_palavras)
+        notas[f"Vizinhos (k={VIZINHOS}) + protótipos: 4 leituras"] = prototipos.fundir(
+            vizinhos_roberta,
+            vizinhos_palavras,
+            minimo(notas["Roberta com whitening"]),
+            minimo(notas["Só palavras (TF-IDF)"]),
         )
 
         medidas = {nome: prototipos.medir(x[:n], rotulos_avaliados) for nome, x in notas.items()}

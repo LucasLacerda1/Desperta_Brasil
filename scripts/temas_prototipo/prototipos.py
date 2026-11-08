@@ -36,19 +36,6 @@ def notas_densas(vetores, rotulos):
     return _cossenos(produtos, quadrados, normas_somas, rotulos)
 
 
-def notas_esparsas(documentos, rotulos, tamanho_vocabulario):
-    """O mesmo para palavras: documentos = lista de (indices, pesos), cada um ja normalizado."""
-    rotulos = numpy.asarray(rotulos, dtype=numpy.float64)
-    somas = numpy.zeros((rotulos.shape[1], tamanho_vocabulario))
-    for (indices, pesos), linha in zip(documentos, rotulos):
-        for tema in numpy.flatnonzero(linha):
-            somas[tema, indices] += pesos
-    produtos = numpy.array([somas[:, indices] @ pesos for indices, pesos in documentos]).reshape(len(documentos), -1)
-    quadrados = numpy.array([float(pesos @ pesos) for _, pesos in documentos])[:, None]
-    normas_somas = (somas**2).sum(axis=1)[None, :]
-    return _cossenos(produtos, quadrados, normas_somas, rotulos)
-
-
 def _cossenos(produtos, quadrados, normas_somas, rotulos):
     contagens = rotulos.sum(axis=0)[None, :] - rotulos
     numerador = produtos - rotulos * quadrados
@@ -92,21 +79,54 @@ def _sem_acento(texto):
     return "".join(c for c in unicodedata.normalize("NFD", texto.lower()) if unicodedata.category(c) != "Mn")
 
 
-def tfidf(textos, vazias, minimo=2):
-    """(documentos, tamanho do vocabulario): cada documento = (indices, pesos) com norma 1."""
+def tfidf(textos, vazias, minimo=3, pares=False):
+    """
+    Matriz textos x palavras (float32, cada linha com norma 1): peso (1 + log n) x log(N / df), sem acento,
+    so palavras de 3+ letras fora das vazias e presentes em pelo menos `minimo` textos; com pares, tambem
+    os pares de palavras seguidas ("codigo_penal").
+    """
     vazias = {_sem_acento(p) for p in vazias}
-    palavras = [[p for p in PALAVRA.findall(_sem_acento(t)) if len(p) >= 3 and p not in vazias] for t in textos]
-    frequencia = Counter(p for lista in palavras for p in set(lista))
+    listas = []
+    for texto in textos:
+        palavras = [p for p in PALAVRA.findall(_sem_acento(texto)) if len(p) >= 3 and p not in vazias]
+        if pares:
+            palavras += [f"{a}_{b}" for a, b in zip(palavras, palavras[1:])]
+        listas.append(palavras)
+    frequencia = Counter(p for lista in listas for p in set(lista))
     vocabulario = {p: i for i, p in enumerate(sorted(p for p, n in frequencia.items() if n >= minimo))}
+    matriz = numpy.zeros((len(textos), len(vocabulario)), dtype=numpy.float32)
     total = len(textos)
-    documentos = []
-    for lista in palavras:
-        contagem = Counter(p for p in lista if p in vocabulario)
-        indices = numpy.array([vocabulario[p] for p in contagem], dtype=numpy.int64)
-        pesos = numpy.array([n * math.log(total / frequencia[p]) for p, n in contagem.items()])
-        norma = numpy.linalg.norm(pesos)
-        documentos.append((indices, pesos / norma if norma else pesos))
-    return documentos, len(vocabulario)
+    for linha, lista in enumerate(listas):
+        for palavra, n in Counter(p for p in lista if p in vocabulario).items():
+            matriz[linha, vocabulario[palavra]] = (1 + math.log(n)) * math.log(total / frequencia[palavra])
+    return normalizar_linhas(matriz)
+
+
+# ======================================================
+# VIZINHOS MAIS PARECIDOS (kNN)
+# ======================================================
+def notas_vizinhos(vetores, rotulos, k, bloco=2000):
+    """
+    Para cada proposicao, as k mais parecidas entre as que tem tema (sem ela mesma) votam: a nota de um
+    tema e a soma das semelhancas das vizinhas que tem esse tema. Diferente do prototipo, um tema com
+    assuntos muito diferentes ("guarda-chuva") e bem representado pelas vizinhas certas.
+    """
+    vetores = numpy.asarray(vetores, dtype=numpy.float32)
+    rotulos = numpy.asarray(rotulos, dtype=numpy.float32)
+    votantes = numpy.flatnonzero(rotulos.sum(axis=1) > 0)
+    posicao_votante = {int(v): i for i, v in enumerate(votantes)}
+    base, rotulos_votantes = vetores[votantes], rotulos[votantes]
+    notas = numpy.zeros((len(vetores), rotulos.shape[1]))
+    for inicio in range(0, len(vetores), bloco):
+        fim = min(inicio + bloco, len(vetores))
+        semelhancas = vetores[inicio:fim] @ base.T
+        for linha in range(inicio, fim):
+            if linha in posicao_votante:
+                semelhancas[linha - inicio, posicao_votante[linha]] = -numpy.inf  # sem ela mesma
+        vizinhas = numpy.argpartition(-semelhancas, k, axis=1)[:, :k]
+        pesos = numpy.take_along_axis(semelhancas, vizinhas, axis=1).clip(min=0)
+        notas[inicio:fim] = numpy.einsum("ik,ikt->it", pesos, rotulos_votantes[vizinhas])
+    return notas
 
 
 # ======================================================
