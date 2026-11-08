@@ -23,6 +23,9 @@ class LeitorFalso(leitura.Leitor):
     def ids(self, texto, espaco_antes=False):
         return [zlib.crc32(p.encode()) % 1000 + 10 for p in texto.split()]
 
+    def modo_dropout(self, ligado):
+        self.dropout = ligado
+
     def ler(self, entradas):
         self.leituras += len(entradas)
         saida = []
@@ -189,3 +192,14 @@ def test_notas_continuas():
     assert (avaliacao.nota_da_posicao(1, 31), avaliacao.nota_da_posicao(31, 31)) == (1.0, 0.0)
     assert avaliacao.spearman([1, 2, 3, 4], [10, 20, 30, 40]) == pytest.approx(1.0)
     assert avaliacao.spearman([1, 2, 3, 4], [4, 3, 2, 1]) == pytest.approx(-1.0)
+
+
+def test_votacao_com_dropout_tira_a_media_e_desliga_no_fim():
+    leitor = LeitorFalso()
+    frases = [("F1", "uma frase de teste."), ("F2", "outra frase bem diferente."), ("F3", "e mais uma.")]
+    normal = leitura.ler_frases_soltas(leitor, frases)
+    votada = leitura.ler_frases_votacao(leitor, frases, leituras=7, por_vez=3)
+    # O leitor falso e deterministico: a media de 7 leituras iguais e a propria leitura
+    for codigo in normal.vetor_frase:
+        assert votada.vetor_frase[codigo] == pytest.approx(normal.vetor_frase[codigo])
+    assert leitor.dropout is False

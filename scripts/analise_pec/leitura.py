@@ -73,6 +73,10 @@ class Leitor:
         # Camadas de onde sai o vetor: None = so a ultima; senao, a media das camadas pedidas (1 a 12)
         self.camadas = None
 
+    def modo_dropout(self, ligado):
+        """Dropout ligado: cada leitura desliga ao acaso 10% das ligacoes (o mesmo texto da vetores diferentes)."""
+        self.modelo.train() if ligado else self.modelo.eval()
+
     # --------------------------------------------------
     # TOKENS
     # --------------------------------------------------
@@ -234,6 +238,35 @@ def ler_frases_soltas(leitor, frases):
         vetor_pec=media(list(vetor_frase.values())),
         pesos_palavras=pesos,
         contexto_da_frase=contexto_da_frase,
+    )
+
+
+def ler_frases_votacao(leitor, frases, leituras, por_vez=50):
+    """
+    A PEC lida `leituras` vezes com o dropout ligado (frase por frase): o vetor de cada frase e a media dos
+    seus vetores nas leituras. Sem treino: os pesos nao mudam; a votacao so tira a media das duvidas da rede.
+    Os pesos das palavras e as lacunas (teste E) vem da leitura normal, sem dropout.
+    """
+    normal = ler_frases_soltas(leitor, frases)
+    ids = [leitor.ids(texto)[: 2 * METADE] for _, texto in frases]
+    somas = numpy.zeros((len(frases), len(next(iter(normal.vetor_frase.values())))))
+    leitor.modo_dropout(True)
+    try:
+        feitas = 0
+        while feitas < leituras:
+            vezes = min(por_vez, leituras - feitas)
+            estados = leitor.ler([([], i) for _ in range(vezes) for i in ids])
+            for posicao, estado in enumerate(estados):
+                somas[posicao % len(frases)] += media(estado)
+            feitas += vezes
+    finally:
+        leitor.modo_dropout(False)
+    vetor_frase = {codigo: normalizar(soma) for (codigo, _), soma in zip(frases, somas)}
+    return Leitura(
+        vetor_frase=vetor_frase,
+        vetor_pec=media(list(vetor_frase.values())),
+        pesos_palavras=normal.pesos_palavras,
+        contexto_da_frase=normal.contexto_da_frase,
     )
 
 

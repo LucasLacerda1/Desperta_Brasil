@@ -6,6 +6,8 @@ Roda uma rodada da analise da PEC com a RoBERTaLexPT original (docs/LEITURA_ENCA
     python scripts/analise_pec/rodar.py --rodada contexto         # + contexto inicial
     python scripts/analise_pec/rodar.py --rodada planta           # + bloco da planta (leitura previa)
     python scripts/analise_pec/rodar.py --rodada controle --camadas planta --sementes 5
+    python scripts/analise_pec/rodar.py --rodada votacao --leituras 1000   # media de 1.000 leituras com dropout
+    python scripts/analise_pec/rodar.py --rodada rag      # contexto = trechos de outras proposicoes achados pelo RAG
 
 O resultado vai para instance/analise_pec/rodadas/<data>_<rodada>/ (resultado.json e relatorio.md).
 Nao treina nada e nao grava nada no banco.
@@ -25,7 +27,7 @@ from datetime import datetime
 import avaliacao
 import leitura
 
-RODADAS = ("base", "encadeada", "contexto", "planta", "controle")
+RODADAS = ("base", "encadeada", "contexto", "planta", "controle", "votacao", "rag")
 CAMADAS = ("nada", "contexto", "planta")
 CONTEXTO_INICIAL = "{sigla}, de {autor}. Ementa: {ementa}"
 OUTRAS_PECS = 30
@@ -101,6 +103,28 @@ def blocos_das_frases(leitor, modelos, vetores_soltos):
         codigo: max(vetor_bloco, key=lambda nome: leitura.cosseno(vetor_bloco[nome], vetor))
         for codigo, vetor in vetores_soltos.items()
     }
+
+
+# ======================================================
+# CONTEXTO VINDO DO RAG
+# ======================================================
+def contextos_do_rag(app, pasta_modelo, dispositivo, pedacos, pec_id, quantos):
+    """
+    Para cada pedaco, os trechos mais parecidos de OUTRAS proposicoes (busca hibrida do portal), em ordem,
+    viram o contexto da leitura. A propria PEC sai dos resultados, para ela nao ler a si mesma. O modelo
+    da busca e criado aqui (sem services.carregar_modelo, que grava no log): nada vai para o banco.
+    """
+    from desperta.ia import embeddings, services
+
+    modelo = embeddings.ModeloEmbedding(app.config["EMBEDDING_MODEL"], pasta=pasta_modelo, dispositivo=dispositivo)
+    contextos, usados = [], []
+    for frases in pedacos:
+        consulta = " ".join(t for _, t in frases)[:300]
+        achados = services.buscar(modelo, consulta, top_k=quantos + 5, modo="hibrida")
+        outros = [a.trecho for a in achados if a.trecho.ref_id != str(pec_id)][:quantos]
+        contextos.append(" ".join(t.texto for t in outros))
+        usados.append([f"{t.tipo} {t.ref_id}" for t in outros])
+    return contextos, usados
 
 
 # ======================================================
@@ -304,6 +328,8 @@ def main():
     parser.add_argument("--sementes", type=int, default=5, help="Para o controle: quantos sorteios.")
     parser.add_argument("--inversa", action="store_true", help="Lê os pedaços de trás para frente.")
     parser.add_argument("--pec", default="PEC_319_2004")
+    parser.add_argument("--leituras", type=int, default=1000, help="Para a votacao: quantas leituras com dropout.")
+    parser.add_argument("--trechos-rag", type=int, default=8, help="Para o rag: quantos trechos procurar por pedaco.")
     argumentos = parser.parse_args()
 
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -369,7 +395,19 @@ def main():
                 "leitores": list(leitores),
             },
         }
-        if argumentos.rodada == "base":
+        if argumentos.rodada == "votacao":
+            resultado["configuracao"]["leituras_com_dropout"] = argumentos.leituras
+            lida = leitura.ler_frases_votacao(leitor, frases, argumentos.leituras)
+            resultado["notas"] = avaliar(leitor, lida, dados, {c: t for c, t in frases})
+        elif argumentos.rodada == "rag":
+            contextos, usados = contextos_do_rag(
+                app, pasta_modelo, dispositivo, pedacos, pec_id, argumentos.trechos_rag
+            )
+            resultado["configuracao"]["trechos_do_rag"] = usados
+            lida = leitura.ler_encadeada(leitor, pedacos, lambda numero: contextos[numero])
+            resultado["notas"] = avaliar(leitor, lida, dados, texto_do_pedaco)
+            resultado["por_pedaco"] = lida.por_pedaco
+        elif argumentos.rodada == "base":
             resultado["notas"] = avaliar(leitor, soltas, dados, {c: t for c, t in frases})
         elif argumentos.rodada == "controle":
             lista = []
