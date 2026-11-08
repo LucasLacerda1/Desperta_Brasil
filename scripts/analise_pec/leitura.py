@@ -72,6 +72,8 @@ class Leitor:
         self.leituras = 0
         # Camadas de onde sai o vetor: None = so a ultima; senao, a media das camadas pedidas (1 a 12)
         self.camadas = None
+        # Ajuste aplicado aos vetores na hora de comparar (por exemplo, o Whitening); None = nenhum
+        self.transformar = None
 
     def modo_dropout(self, ligado):
         """Dropout ligado: cada leitura desliga ao acaso 10% das ligacoes (o mesmo texto da vetores diferentes)."""
@@ -135,7 +137,12 @@ class Leitor:
 
     def vetores(self, textos):
         """Cada texto lido sozinho: um vetor por texto."""
-        return [media(estados) for estados in self.ler([([], self.ids(texto)[: 2 * METADE]) for texto in textos])]
+        vetores = [media(estados) for estados in self.ler([([], self.ids(texto)[: 2 * METADE]) for texto in textos])]
+        return [self.ajustar(v) for v in vetores]
+
+    def ajustar(self, vetor):
+        """Aplica o ajuste das comparacoes (whitening), se houver; sem ajuste, devolve o vetor como esta."""
+        return self.transformar(vetor) if self.transformar else vetor
 
     def palpites(self, contexto, texto_ids, posicao, quantos=5):
         """Os tokens mais provaveis para a lacuna em texto_ids[posicao]."""
@@ -267,6 +274,35 @@ def ler_frases_votacao(leitor, frases, leituras, por_vez=50):
         vetor_pec=media(list(vetor_frase.values())),
         pesos_palavras=normal.pesos_palavras,
         contexto_da_frase=normal.contexto_da_frase,
+    )
+
+
+# === Whitening (ajuste dos vetores, sem treino) ===
+class Whitening:
+    """
+    Su et al. (2021): tira a media e iguala o peso de todas as direcoes dos vetores, calculado uma vez sobre
+    muitos textos do mesmo tipo (aqui, os trechos do RAG). Nao muda a Roberta: so os numeros que saem dela.
+    """
+
+    def __init__(self, amostra):
+        amostra = numpy.asarray(amostra, dtype=numpy.float64)
+        self.media = amostra.mean(axis=0)
+        direcoes, variancias, _ = numpy.linalg.svd(numpy.cov((amostra - self.media).T))
+        self.matriz = direcoes / numpy.sqrt(numpy.maximum(variancias, 1e-12))
+
+    def __call__(self, vetor):
+        return normalizar((numpy.asarray(vetor, dtype=numpy.float64) - self.media) @ self.matriz)
+
+
+def ajustar_leitura(lida, transformar):
+    """A mesma leitura com os vetores das frases ajustados; o vetor da PEC e refeito com eles."""
+    vetor_frase = {codigo: transformar(v) for codigo, v in lida.vetor_frase.items()}
+    return Leitura(
+        vetor_frase=vetor_frase,
+        vetor_pec=media(list(vetor_frase.values())),
+        pesos_palavras=lida.pesos_palavras,
+        contexto_da_frase=lida.contexto_da_frase,
+        por_pedaco=lida.por_pedaco,
     )
 
 

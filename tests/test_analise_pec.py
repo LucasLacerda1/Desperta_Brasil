@@ -18,6 +18,7 @@ import leitura  # noqa: E402
 class LeitorFalso(leitura.Leitor):
     def __init__(self):
         self.leituras = 0
+        self.transformar = None
         self.tokenizador = type("Tok", (), {"decode": staticmethod(lambda ids: " ".join(map(str, ids)))})()
 
     def ids(self, texto, espaco_antes=False):
@@ -203,3 +204,16 @@ def test_votacao_com_dropout_tira_a_media_e_desliga_no_fim():
     for codigo in normal.vetor_frase:
         assert votada.vetor_frase[codigo] == pytest.approx(normal.vetor_frase[codigo])
     assert leitor.dropout is False
+
+
+def test_whitening_iguala_as_direcoes_e_ajusta_a_leitura():
+    gerador = numpy.random.default_rng(3)
+    amostra = gerador.normal(size=(400, 4)) * numpy.array([10, 1, 0.1, 0.01]) + 2
+    branco = leitura.Whitening(amostra)
+    ajustados = numpy.array([(v - branco.media) @ branco.matriz for v in amostra])
+    assert numpy.std(ajustados, axis=0) == pytest.approx(numpy.ones(4), rel=0.01)
+    assert numpy.linalg.norm(branco(amostra[0])) == pytest.approx(1.0)
+    lida = leitura.ler_frases_soltas(LeitorFalso(), [("F1", "uma frase."), ("F2", "outra frase.")])
+    ajustada = leitura.ajustar_leitura(lida, lambda v: leitura.normalizar(v[::-1].copy()))
+    assert ajustada.vetor_frase["F1"] == pytest.approx(lida.vetor_frase["F1"][::-1])
+    assert numpy.linalg.norm(ajustada.vetor_pec) == pytest.approx(1.0)

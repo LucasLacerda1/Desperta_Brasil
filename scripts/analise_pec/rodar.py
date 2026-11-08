@@ -98,11 +98,28 @@ def blocos_das_frases(leitor, modelos, vetores_soltos):
     blocos = [(nome, f"{nome}: {texto}") for nome, texto in modelos["planta_padrao"]["blocos"].items()]
     ids, intervalos = leitor.tokenizar_frases(blocos)
     estados = leitor.ler([([], ids[: 2 * leitura.METADE])])[0]
-    vetor_bloco = {nome: leitura.media(estados[inicio:fim]) for nome, inicio, fim in intervalos}
+    vetor_bloco = {nome: leitor.ajustar(leitura.media(estados[inicio:fim])) for nome, inicio, fim in intervalos}
     return {
         codigo: max(vetor_bloco, key=lambda nome: leitura.cosseno(vetor_bloco[nome], vetor))
         for codigo, vetor in vetores_soltos.items()
     }
+
+
+# ======================================================
+# WHITENING (calculado sobre os vetores do RAG)
+# ======================================================
+def whitening_dos_trechos(modelo_embedding):
+    """Os vetores dos trechos do RAG ja estao no banco (mesma Roberta, mesmo jeito): so leitura, nada e gravado."""
+    import numpy
+
+    from desperta.ext.db import db
+    from desperta.ia.models import TrechoRAG
+
+    vetores = [
+        numpy.frombuffer(b, dtype=numpy.float32)
+        for b in db.session.scalars(db.select(TrechoRAG.embedding).filter_by(modelo_embedding=modelo_embedding))
+    ]
+    return leitura.Whitening(vetores)
 
 
 # ======================================================
@@ -167,10 +184,17 @@ def avaliar(leitor, leitura_pec, dados, unidade_da_frase):
     ordem = avaliacao.ordenar(leitura_pec.vetor_pec, leitura_pec.vetor_frase, leitura.cosseno)
     ordem_palavras = avaliacao.centralidade_por_palavras(frases, leitura.PALAVRAS_VAZIAS)
     vetores_tema = dict(zip(temas_todos, leitor.vetores(temas_todos)))
-    top3 = avaliacao.ordenar(leitura_pec.vetor_pec, vetores_tema, leitura.cosseno)[:3]
+    ordem_temas = avaliacao.ordenar(leitura_pec.vetor_pec, vetores_tema, leitura.cosseno)
+    top3 = ordem_temas[:3]
+    posicao_oficial = min((ordem_temas.index(t) + 1 for t in oficiais if t in ordem_temas), default=None)
+    notas_contra_pec = {k: leitura.cosseno(v, leitura_pec.vetor_pec) for k, v in leitura_pec.vetor_frase.items()}
     vetores_ementa = dict(zip(ementas, leitor.vetores(list(ementas.values()))))
 
-    notas = {"blocos": avaliacao.teste_blocos(escolhidos_blocos, certos_blocos), "leitores": {}}
+    notas = {
+        "blocos": avaliacao.teste_blocos(escolhidos_blocos, certos_blocos),
+        "tema_oficial_posicao": posicao_oficial,
+        "leitores": {},
+    }
     for nome, interpretacao in leitores.items():
         escolhidas = _codigos(interpretacao.get("frases_importantes", []))
         certas = avaliacao.certas_do_resumo(interpretacao.get("resumo", []))
@@ -186,6 +210,7 @@ def avaliar(leitor, leitura_pec, dados, unidade_da_frase):
         palavras = [p for p in interpretacao.get("palavras_chave", []) if not p.startswith("<")]
         notas["leitores"][nome] = {
             "A": avaliacao.teste_a(ordem, escolhidas, total) if escolhidas else None,
+            "A_auc": avaliacao.auc(notas_contra_pec, set(escolhidas)) if escolhidas else None,
             "A_palavras": avaliacao.teste_a(ordem_palavras, escolhidas, total) if escolhidas else None,
             "B": avaliacao.teste_b(achadas, certas, total),
             "B_palavras": avaliacao.teste_b(achadas_palavras, certas, total),
@@ -247,6 +272,7 @@ def relatorio(resultado):
         "A. 5 frases centrais (Roberta)",
         lambda n: _linha("", n, "A") + (f" (acaso {n['A']['acaso']})" if n["A"] else ""),
     )
+    linha("A. AUC das frases (0,5 = acaso)", lambda n: f"{n['A_auc']:.2f}" if n.get("A_auc") is not None else "-")
     linha("A. adversário: palavras repetidas", lambda n: _linha("", n, "A_palavras"))
     linha("B. resumo → frase certa (Roberta)", lambda n: _linha("", n, "B") + f" (acaso {n['B']['acaso']})")
     linha("B. adversário: palavras em comum", lambda n: _linha("", n, "B_palavras"))
@@ -259,6 +285,7 @@ def relatorio(resultado):
     linhas += [
         "",
         f"- **Top 5 da Roberta (A):** {', '.join(primeiro['A']['top5']) if primeiro['A'] else '-'}",
+        f"- **Tema oficial (D):** {notas.get('tema_oficial_posicao') or '-'}º lugar entre os temas, pelo nome",
         f"- **Temas da Roberta (D):** {', '.join(primeiro['D']['top3'])}; "
         f"oficiais em comum: {primeiro['D']['oficiais']}",
         f"- **Palavras de maior peso (E):** {', '.join(primeiro['E_pesos']['top10'])}",
@@ -330,6 +357,11 @@ def main():
     parser.add_argument("--pec", default="PEC_319_2004")
     parser.add_argument("--leituras", type=int, default=1000, help="Para a votacao: quantas leituras com dropout.")
     parser.add_argument("--trechos-rag", type=int, default=8, help="Para o rag: quantos trechos procurar por pedaco.")
+    parser.add_argument(
+        "--whitening",
+        action="store_true",
+        help="Compara os vetores depois do whitening (calculado sobre os trechos do RAG).",
+    )
     argumentos = parser.parse_args()
 
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -352,6 +384,8 @@ def main():
 
         inicio = time.monotonic()
         leitor = leitura.Leitor(pasta_modelo, dispositivo)
+        if argumentos.whitening:
+            leitor.transformar = whitening_dos_trechos(config["EMBEDDING_MODEL"])
         frases = [(f["codigo"], f["texto"]) for f in frases_json]
         certos_blocos = {f["codigo"]: f["bloco_certo"] for f in frases_json}
         numeros_pedaco = sorted({f["pedaco"] for f in frases_json})
@@ -361,6 +395,8 @@ def main():
         texto_do_pedaco = {codigo: " ".join(t for _, t in p) for p in pedacos for codigo, _ in p}
 
         soltas = leitura.ler_frases_soltas(leitor, frases)
+        if leitor.transformar:
+            soltas = leitura.ajustar_leitura(soltas, leitor.transformar)
         escolhidos_blocos = blocos_das_frases(leitor, modelos, soltas.vetor_frase)
         contexto_inicial = CONTEXTO_INICIAL.format(sigla=sigla, autor=autor, ementa=ementa)
 
@@ -380,7 +416,9 @@ def main():
 
         dados = (frases, leitores, ementas, pec_id, temas_todos, oficiais, escolhidos_blocos, certos_blocos)
         resultado = {
-            "rodada": argumentos.rodada + ("_inversa" if argumentos.inversa else ""),
+            "rodada": argumentos.rodada
+            + ("_whitening" if argumentos.whitening else "")
+            + ("_inversa" if argumentos.inversa else ""),
             "pec": sigla,
             "quando": datetime.now().strftime("%d/%m/%Y %H:%M"),
             "dispositivo": embeddings.nome_do_dispositivo(dispositivo),
@@ -398,6 +436,7 @@ def main():
         if argumentos.rodada == "votacao":
             resultado["configuracao"]["leituras_com_dropout"] = argumentos.leituras
             lida = leitura.ler_frases_votacao(leitor, frases, argumentos.leituras)
+            lida = leitura.ajustar_leitura(lida, leitor.transformar) if leitor.transformar else lida
             resultado["notas"] = avaliar(leitor, lida, dados, {c: t for c, t in frases})
         elif argumentos.rodada == "rag":
             contextos, usados = contextos_do_rag(
@@ -405,6 +444,7 @@ def main():
             )
             resultado["configuracao"]["trechos_do_rag"] = usados
             lida = leitura.ler_encadeada(leitor, pedacos, lambda numero: contextos[numero])
+            lida = leitura.ajustar_leitura(lida, leitor.transformar) if leitor.transformar else lida
             resultado["notas"] = avaliar(leitor, lida, dados, texto_do_pedaco)
             resultado["por_pedaco"] = lida.por_pedaco
         elif argumentos.rodada == "base":
@@ -413,6 +453,7 @@ def main():
             lista = []
             for semente in range(argumentos.sementes):
                 lida = leitura.ler_encadeada(leitor, pedacos, prefixo(argumentos.camadas), random.Random(semente))
+                lida = leitura.ajustar_leitura(lida, leitor.transformar) if leitor.transformar else lida
                 lista.append(avaliar(leitor, lida, dados, texto_do_pedaco))
             resultado["notas_por_semente"] = lista
             resultado["resumo_das_sementes"] = _resumo_das_sementes(lista)
@@ -420,6 +461,7 @@ def main():
         else:
             camadas = {"encadeada": "nada", "contexto": "contexto", "planta": "planta"}[argumentos.rodada]
             lida = leitura.ler_encadeada(leitor, pedacos, prefixo(camadas))
+            lida = leitura.ajustar_leitura(lida, leitor.transformar) if leitor.transformar else lida
             resultado["notas"] = avaliar(leitor, lida, dados, texto_do_pedaco)
             resultado["por_pedaco"] = lida.por_pedaco
         resultado["leituras"] = leitor.leituras
