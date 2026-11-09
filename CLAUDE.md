@@ -1,7 +1,7 @@
 # Desperta Brasil — guia do projeto para o Claude Code
 
 > Coloque este arquivo na **raiz do repositório** com o nome `CLAUDE.md`. O Claude Code lê esse arquivo sozinho no início de cada sessão.
-> Última atualização: 08/11/2026 (Fases 1, 1.5, 2 e 2b concluídas; Fase 3 em andamento; decisões nas seções 10 a 23; ajuste físico do banco em `docs/AJUSTE_BANCO_SISTEMA.md`; treino da Roberta escritora em `docs/TREINAR_ROBERTA_ESCRITORA.md`; leitura encadeada da PEC em `docs/LEITURA_ENCADEADA.md`).
+> Última atualização: 09/11/2026 (Fases 1, 1.5, 2 e 2b concluídas; Fase 3 em andamento; decisões nas seções 10 a 23; ajuste físico do banco em `docs/AJUSTE_BANCO_SISTEMA.md`; treino da Roberta escritora em `docs/TREINAR_ROBERTA_ESCRITORA.md`; leitura encadeada da PEC em `docs/LEITURA_ENCADEADA.md`).
 
 ## 0. Como trabalhar neste projeto (leia primeiro)
 
@@ -1663,9 +1663,16 @@ O kernel 7.0.0-43 foi instalado sem o módulo da NVIDIA (`linux-modules-nvidia-5
 - Proposições 10.512, tramitações 175.788, votações 1.218, trechos 30.410.
 
 ### 23.8 Ordem a partir de agora
-1. As 5 primeiras rodadas da PEC 319 (23.5), com relatório.
+1. ~~As 5 primeiras rodadas da PEC 319 (23.5), com relatório.~~ Feito, com 1.000 repetições e os 4 leitores (23.9).
 2. Terça, 10/11: as duas medições da `horaria` que faltam e o merge do PR nº 2; depois, otimizar a `horaria` e agendar as rotinas.
-3. Grupo: meta de "preciso", PECs de conferência, ok na planta e no contexto inicial, interpretações do Caio e do Rhuan, tema das proposições sem tema (22.5) e as 20 consultas da busca (19.2).
+3. Grupo: meta de "preciso", PECs de conferência, ok na planta e no contexto inicial, o que conta como frase importante (23.9), tema das proposições sem tema (22.5) e as 20 consultas da busca (19.2).
 4. Revisão dos 626 rascunhos pela equipe (na Fase 4, pela área administrativa).
 5. Merge da `fase-3-rag` na `main` e começo da Fase 4.
 6. Treino da Roberta, só depois das rodadas e com a confirmação do grupo.
+
+### 23.9 Rodadas da PEC 319 com 4 leitores (08 e 09/11)
+- As 14 rodadas (7 formas de leitura, com e sem whitening) foram repetidas 1.000 vezes com dropout (`scripts/analise_pec/repeticoes.py`), primeiro com 2 leitores e depois com os 4 e o consenso (`--consenso lucas caio rhuan`). Resultado em `docs/LEITURA_ENCADEADA.md`, decisões 10 e 11, e no relatório (seções 4.5 e 4.6 da aba ABNT).
+- **Uma rodada única engana:** o mesmo leitor vai de 0,35 a 0,90 de AUC de uma leitura para outra. Toda configuração nova é avaliada por repetições.
+- **Contexto, memória, planta e RAG quase não mudam a leitura** (no máximo 0,07; a memória sorteada rende o mesmo que a verdadeira). **O whitening é o único ganho que se repete:** tema oficial de cerca de 20º para cerca de 9º.
+- **O grupo está dividido:** Caio e Claude ficam com o texto normativo, Lucas e Rhuan com o fim da justificação; Lucas e Caio, o único par independente (o Rhuan partiu do arquivo do Lucas), têm 1 frase em comum. O consenso de 2 das 3 pessoas é a própria escolha do Rhuan, e contra ele a Roberta fica no acaso.
+- **Decisão pendente do grupo:** combinar o que conta como frase importante (ou reunir mais leituras independentes) antes de fixar a meta de "preciso" ou de propor treino. Recomendação do Claude Code: deixar a análise da PEC como estudo por enquanto e seguir para a Fase 4; no portal, a RoBERTaLexPT entra pela busca e pela sugestão de tema.
