@@ -1,5 +1,7 @@
 from datetime import date, timedelta
 
+from flask import current_app
+
 from . import (
     blocos,
     deputados,
@@ -33,12 +35,21 @@ def base(cliente, id_legislatura=None):
 
 
 def horaria(cliente, hoje=None):
-    """Proposicoes dos tipos acompanhados com janela de 1 dia; eventos e votacoes de ontem e hoje."""
+    """
+    Votacoes e eventos de ontem e hoje; por ultimo, proposicoes dos tipos acompanhados com janela de 1 dia.
+    Ao fim do orcamento, a coleta em andamento e as seguintes fecham como parcial, sem itens.
+    """
     hoje = hoje or date.today()
     ontem = hoje - timedelta(days=1)
-    proposicoes.coletar(cliente, hoje, hoje, limite_pendentes=0)
-    eventos.coletar(cliente, ontem, hoje, limite_pendentes=LIMITE_EVENTOS_HORARIA)
-    votacoes.coletar(cliente, ontem, hoje)
+    cliente.definir_orcamento(current_app.config["HORARIA_ORCAMENTO_MIN"] * 60)
+    # A diaria da madrugada confere de novo o que for pulado aqui
+    reconferir = timedelta(hours=current_app.config["HORARIA_RECONFERIR_HORAS"])
+    try:
+        votacoes.coletar(cliente, ontem, hoje)
+        eventos.coletar(cliente, ontem, hoje, limite_pendentes=LIMITE_EVENTOS_HORARIA)
+        proposicoes.coletar(cliente, hoje, hoje, limite_pendentes=0, pular_conferidas_ha=reconferir)
+    finally:
+        cliente.definir_orcamento(None)
 
 
 def diaria(cliente, hoje=None):

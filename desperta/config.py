@@ -12,6 +12,9 @@ class Config:
     CAMARA_API_URL = os.getenv("CAMARA_API_URL", "https://dadosabertos.camara.leg.br/api/v2")
     CAMARA_TIMEOUT = int(os.getenv("CAMARA_TIMEOUT", "30"))
     TIPOS_ACOMPANHADOS = os.getenv("TIPOS_ACOMPANHADOS", "PL,PLP,PEC,MPV,PDL").split(",")
+    # Decisoes 14.2 e 15.3: limites da rotina horaria
+    HORARIA_ORCAMENTO_MIN = int(os.getenv("HORARIA_ORCAMENTO_MIN", "20"))
+    HORARIA_RECONFERIR_HORAS = int(os.getenv("HORARIA_RECONFERIR_HORAS", "6"))
     EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "eduagarcia/RoBERTaLexPT-base")
     # Decisao 21.2: modelos em pastas simples; so a RoBERTaLexPT-base pode ficar no pendrive
     MODELOS_DIR = os.getenv("MODELOS_DIR", "instance/modelos")
