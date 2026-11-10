@@ -86,6 +86,20 @@ def test_autogenerate_nao_encontra_diferencas(app_arquivo):
         assert compare_metadata(contexto, db.metadata) == []
 
 
+def test_check_ignora_os_indices_do_rag(app_arquivo):
+    """Decisao 16.4: sem a extensao, ler as colunas de vec_trecho daria erro no flask db check."""
+    sqlite_vec = pytest.importorskip("sqlite_vec")
+    _upgrade()
+    with db.engine.begin() as conexao:
+        sqlite = conexao.connection.driver_connection
+        sqlite.enable_load_extension(True)
+        sqlite_vec.load(sqlite)
+        conexao.execute(text("CREATE VIRTUAL TABLE vec_trecho USING vec0(trecho_id INTEGER PRIMARY KEY, v float[2])"))
+        conexao.execute(text("CREATE VIRTUAL TABLE trecho_fts USING fts5(texto)"))
+    db.engine.dispose()
+    flask_migrate.check(directory=str(MIGRACOES))
+
+
 def test_downgrade_base_apaga_tudo(app_arquivo):
     _upgrade()
     flask_migrate.downgrade(directory=str(MIGRACOES), revision="base")

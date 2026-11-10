@@ -31,7 +31,7 @@ Toda mudança no esquema é uma migração: `flask db migrate -m "descricao"`, r
 
 ```bash
 flask coletar base                 # legislaturas, partidos, deputados, órgãos e temas (rodar primeiro)
-flask coletar horaria              # proposições, eventos e votações desde a última janela concluída
+flask coletar horaria              # votações e eventos (ontem e hoje) e proposições (hoje), com limite de 20 minutos
 flask coletar proposicoes --inicio 2025-01-01 --fim 2025-03-31 --sigla-tipo PEC
 flask coletar relatorio            # colunas que falharam, textos vazios e instabilidade da API
 invoke coletar --rotina=semanal    # o mesmo pelo Invoke

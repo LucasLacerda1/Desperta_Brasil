@@ -1,16 +1,17 @@
 # Desperta Brasil — guia do projeto para o Claude Code
 
 > Coloque este arquivo na **raiz do repositório** com o nome `CLAUDE.md`. O Claude Code lê esse arquivo sozinho no início de cada sessão.
-> Última atualização: 30/10/2026 (Fases 1 e 1.5 concluídas; decisões nas seções 10 e 11; ajuste físico do banco em `docs/AJUSTE_BANCO_SISTEMA.md`).
+> Última atualização: 01/11/2026 (Fases 1, 1.5 e 2 concluídas; Fase 3 em andamento; decisões nas seções 10 a 17; ajuste físico do banco em `docs/AJUSTE_BANCO_SISTEMA.md`; treino da Roberta escritora em `docs/TREINAR_ROBERTA_ESCRITORA.md`).
 
 ## 0. Como trabalhar neste projeto (leia primeiro)
 
 - **Idioma:** responda, comente o código e escreva mensagens de commit em **português do Brasil**.
 - **Padrão obrigatório:** o código segue a estrutura do projeto **TaskFlow**, usado como exemplo pelo professor da disciplina (Programação Web Avançada, UVV). A seção 3 descreve esse padrão. Não invente outra organização, não troque o Flask-SQLAlchemy por outro ORM e não use outro estilo de modelo.
-- **Ordem do trabalho:** o projeto é construído por fases (seção 7). **As Fases 1 (banco), 1.5 (ajuste físico do banco, `docs/AJUSTE_BANCO_SISTEMA.md`) e 2 (coletor) estão concluídas; a Fase 2b fechou sem migração (14.1). Falta só o ajuste da `horaria` (14.2), numa branch pequena. Depois vem a Fase 3: IA e RAG.** Não comece o coletor, a IA, as rotas da API ou o front-end antes da fase anterior estar pronta e testada, a não ser que o grupo peça. Antes de mudar código, leia as seções 10 a 14 (decisões tomadas depois de cada relatório).
+- **Ordem do trabalho:** o projeto é construído por fases (seção 7). **As Fases 1 (banco), 1.5 (ajuste físico do banco, `docs/AJUSTE_BANCO_SISTEMA.md`) e 2 (coletor) estão concluídas; a Fase 2b fechou sem migração (14.1). Falta só o ajuste da `horaria` (14.2), numa branch pequena. Depois vem a Fase 3: IA e RAG.** Não comece o coletor, a IA, as rotas da API ou o front-end antes da fase anterior estar pronta e testada, a não ser que o grupo peça. Antes de mudar código, leia as seções 10 a 17 (decisões tomadas depois de cada relatório).
 - **Git:** a `main` no GitHub é a versão estável. Cada fase é feita numa branch própria (`fase-2-coletor`, `fase-3-ia`…), com commits pequenos ao fim de cada passo e mensagem em português; ao terminar a fase, abrir um pull request para a `main`. Quem faz o merge é o Lucas, depois de revisar (Caio e Rhuan revisam quando puderem). Não fazer push direto na `main`. Nunca versione `.venv/`, `instance/`, `.env` nem arquivos `*.db`, `*.db-wal`, `*.db-shm`.
 - **O modelo do banco já foi decidido pelo grupo** (32 tabelas, seção 5). Não acrescente, remova nem renomeie tabelas ou colunas por conta própria. A única exceção são as colunas técnicas, índices e configurações listados em `docs/AJUSTE_BANCO_SISTEMA.md` (camada física: controle de sincronização, índices, FTS5, migrações), que não mudam o modelo lógico. Se achar um problema no modelo, aponte e pergunte antes de mudar.
 - **Ao terminar cada passo:** rode os testes (`invoke test`) e mostre o resultado.
+- **Tudo open source (seção 18):** só use bibliotecas, modelos e ferramentas de código aberto, e adapte no próprio código o máximo possível. Nada de API paga ou serviço fechado (OpenAI, Google, AWS etc.) no funcionamento do portal.
 
 ---
 
@@ -91,7 +92,7 @@ Aplicação cliente-servidor. O back-end tem três partes (coletor, módulo de I
 | Coletor | Python, rotina agendada, `requests` |
 | IA (RAG) | **RoBERTaLexPT** (`eduagarcia/RoBERTaLexPT-base`) para embeddings e busca + um modelo de linguagem generativo para escrever (**ainda a definir pelo grupo**) |
 | Busca vetorial | **sqlite-vec** no próprio SQLite; PyTorch + Hugging Face Transformers |
-| Voz | **Whisper** (`faster-whisper`, modelo `small`, idioma `pt`) **só na busca por voz**; o áudio não é guardado. **Piper** (voz pt-BR) para ler as notícias; o áudio é gerado na publicação e salvo em arquivo pelo slug. Alternativa: Web Speech API do navegador |
+| Voz | **Whisper** (`faster-whisper`, modelo `small`, idioma `pt`) **só na busca por voz**; o áudio não é guardado. **Piper** (voz pt-BR) para ler as notícias; o áudio é gerado na publicação e salvo em arquivo pelo slug. (Web Speech API descartada, 18.2) |
 | Fonte de dados | API de Dados Abertos da Câmara v2: `https://dadosabertos.camara.leg.br/api/v2` (REST, gratuita, sem chave, JSON, **sem CORS**: só o back-end chama) |
 
 Decisões que **não** devem ser mudadas sem o grupo:
@@ -1104,7 +1105,7 @@ Ficam no código, não no banco. Respeite estas regras quando chegar a hora:
 ### 6.2 Voz (Fase 5)
 
 - `POST /api/voz/transcrever`: recebe o áudio gravado pelo navegador (MediaRecorder), transcreve com faster-whisper (`small`, `language="pt"`) e devolve o texto. **Não guardar o áudio.**
-- Leitura: ao publicar (ou alterar) uma notícia, gerar o áudio com o Piper (voz pt-BR) em `AUDIO_DIR/<slug>.wav`; o botão "Ouvir" toca esse arquivo. Alternativa no front-end: Web Speech API.
+- Leitura: ao publicar (ou alterar) uma notícia, gerar o áudio com o Piper (voz pt-BR) em `AUDIO_DIR/<slug>.wav`; o botão "Ouvir" toca esse arquivo (sem Web Speech API, 18.2).
 
 ---
 
@@ -1154,7 +1155,10 @@ Além da seção 6, a Fase 2 precisa:
 O Flask-Migrate já foi iniciado na Fase 1.5. Quando o grupo decidir os ajustes de `nullable` da carga de validação, aplicá-los como uma nova migração (`flask db migrate` + revisão + `flask db upgrade`). Toda mudança no esquema é migração, não `create_all()`.
 
 ### Fase 3 — IA e RAG
-Trechos, embeddings, índice sqlite-vec, busca, geração de rascunhos com o gerador ainda a definir, registro em `geracao_ia`, `geracao_trecho` e `noticia_fonte`.
+Trechos, embeddings, índice sqlite-vec, busca híbrida (16.1), geração de rascunhos com o `GeradorFrases` (17.2), registro em `geracao_ia`, `geracao_trecho` e `noticia_fonte`.
+
+### Fase 3b — Roberta escritora
+Treinar a RoBERTaLexPT como encoder-decoder para escrever título e resumo (seção 17 e `docs/TREINAR_ROBERTA_ESCRITORA.md`). Só entra no portal se passar na avaliação.
 
 ### Fase 4 — API REST e área administrativa
 Blueprints em `/api/...`: notícias publicadas (lista, por tema, busca, filtro por dia/mês/ano, detalhe pelo slug), proposição (tramitações), votação (votos e orientações), temas; visitante (cookie, consentimento, contagem por tema); área administrativa com login (sessão Flask + `SECRET_KEY`), papéis `editor`/`admin`, fluxo de status, histórico, coletas e log. Rotas finas, regras nos services. Antes do login, aplicar as decisões 10.4 (exclusão de registros), 10.5 (CORS) e 11.3 (`administrador.atualizado_em`). Também:
@@ -1180,8 +1184,9 @@ Personalização por tema, relatórios da IA, aviso de "dados desatualizados" (R
 
 ## 9. Em aberto (perguntar ao grupo antes de decidir)
 
-- Qual modelo de linguagem generativo vai escrever as notícias.
-- Voz exata do Piper em pt-BR (o valor em `Config` é só um padrão).
+- ~~Qual modelo de linguagem generativo vai escrever as notícias.~~ Decidido na seção 17: a própria RoBERTaLexPT será treinada para escrever; o `GeradorFrases` é o plano B.
+- Voz exata do Piper em pt-BR (o valor em `Config` é só um padrão). Conferir a licença da voz escolhida (18.2).
+- Licença do próprio Desperta Brasil (18.3).
 - Onde o projeto será publicado (servidor, HTTPS).
 - Versão do Python para as fases 3 e 5: o projeto roda em Python 3.14. Se `pip install -e ".[ia]"` ou `".[voz]"` falhar por falta de pacote para essa versão (PyTorch, faster-whisper/CTranslate2, Piper), avisar o grupo e propor um ambiente com Python 3.12, sem trocar de biblioteca.
 
@@ -1342,5 +1347,106 @@ Marcar como pronto para revisão e incluir o Rhuan como revisor. O merge na `mai
 Depois do merge, rodar a carga dos últimos 3 meses (12.2), à noite, com `setsid nohup` e o PC sem suspensão. É ela que dá conteúdo ao portal e matéria-prima para a IA da Fase 3. Frentes que faltaram entram na próxima `mensal`.
 
 ### 14.5 Antes da Fase 3
-O grupo precisa escolher o modelo de linguagem que vai escrever as notícias (seção 9). Sem isso, a Fase 3 só consegue fazer a parte da RoBERTaLexPT (trechos, embeddings, sqlite-vec e busca), com o gerador falso previsto em 6.1.
+**Resolvida na seção 17.** O grupo precisava escolher o modelo de linguagem que vai escrever as notícias (seção 9). Sem isso, a Fase 3 só consegue fazer a parte da RoBERTaLexPT (trechos, embeddings, sqlite-vec e busca), com o gerador falso previsto em 6.1.
 
+---
+
+## 15. Decisões depois do ajuste da `horaria` (01/11/2026)
+
+PR nº 1 com merge na `main`. O ajuste da 14.2 está no PR nº 2 (`fase-2-horaria`), que fica como **rascunho** até a medição em dia útil.
+
+### 15.1 Proposições pendentes não são puladas
+Aceito. Proposição sem filhos (por exemplo, citada por uma votação nova) é conferida mesmo com `sincronizado_em` recente.
+
+### 15.2 Votações antes de eventos
+Aceito, para os itens de pauta já acharem a votação gravada.
+
+### 15.3 Limites em `Config`
+Mudar no PR nº 2: os 20 minutos e as 6 horas saem das constantes de `rotinas.py` e vão para `Config`, lidos de variável de ambiente (`HORARIA_ORCAMENTO_MIN=20`, `HORARIA_RECONFERIR_HORAS=6`), como `TIPOS_ACOMPANHADOS`. Assim dá para ajustar depois da medição sem mexer no código.
+
+### 15.4 Atraso de até 6 horas
+Aceito. Uma mudança de situação logo depois da conferência aparece em até 6 horas ou na `diaria`. Votações, que são o principal do portal, não têm esse atraso.
+
+### 15.5 Ordem dos próximos passos
+1. Carga dos últimos 3 meses (14.4) numa noite com o PC ligado, a partir da `main`.
+2. Medição da `horaria` na terça, 03/11, se houver sessão no Plenário (início da tarde, fim da tarde e noite). Se passar de 20 minutos, avisar o grupo.
+3. Depois da medição: tirar o PR nº 2 de rascunho, Lucas revisa e faz o merge.
+4. Enquanto isso, a Fase 3 pode começar a partir da `main`, numa branch `fase-3-rag`, só com a parte da RoBERTaLexPT (trechos, embeddings, sqlite-vec e busca) e o gerador falso de 6.1, até o grupo escolher o modelo de linguagem (14.5).
+
+---
+
+## 16. Decisões depois do início da Fase 3 (01/11/2026)
+
+PR nº 3 (`fase-3-rag`) fica como **rascunho** até a busca melhorar e as tramitações serem indexadas.
+
+### 16.1 Busca híbrida (vetorial + palavras)
+A RoBERTaLexPT sozinha acertou 38% e dá similaridade entre 0,95 e 0,99 para quase tudo. Isso é esperado num modelo treinado para preencher lacunas e não para comparar frases: os vetores ficam todos parecidos. Decisão:
+- **Índice FTS5 de `trecho_rag`** (`trecho_fts`), igual ao `noticia_fts`: `content='trecho_rag'`, `tokenize='unicode61 remove_diacritics 2'`, gatilhos de inserção, remoção e atualização de `texto`. Tabela virtual, fora das 32, criada pelo módulo de IA (SQL isolado, como em 11.1) e ignorada pelo Flask-Migrate.
+- **Junção dos resultados por RRF** (Reciprocal Rank Fusion): buscar os 50 melhores em cada índice e somar `1 / (60 + posição)` de cada lista; os 8 maiores vão para o gerador. Os filtros por tipo e data valem para as duas buscas. Em `geracao_trecho.similaridade` gravar a nota do RRF.
+- **Experimento barato junto:** centralizar os embeddings (subtrair o vetor médio de todos os trechos e normalizar de novo). Costuma separar melhor os vetores desse tipo de modelo. Guardar o vetor médio num arquivo em `instance/` e aplicar também na consulta. Medir com e sem.
+- Fine-tuning com sentence-transformers só se a busca híbrida não bastar.
+
+### 16.2 Como medir a busca
+A medida "contém a palavra" favorece a busca por palavras. Trocar por um **conjunto de 20 consultas** escritas pelo grupo, cada uma com as proposições que deveriam aparecer (conferidas à mão), em `tests/dados/consultas_busca.json`. Métrica: quantas das esperadas aparecem nos 8 primeiros. Comparar vetorial, palavras, híbrida e híbrida com centralização. O Claude Code pode propor um rascunho das 20 consultas a partir do banco para o grupo corrigir.
+
+### 16.3 Tramitações
+- **Texto com identificação:** começar o trecho com a proposição (ex.: `PL 1234/2024 — `) e os primeiros 200 caracteres da ementa, depois data, órgão, situação e despacho. Sem isso, um despacho sozinho não diz de que projeto se trata.
+- **Só as recentes:** indexar tramitações dos últimos 90 dias (variável `RAG_TRAMITACAO_DIAS=90` em `Config`). O portal escreve sobre o que está acontecendo; as antigas continuam no banco para a página da proposição.
+- Indexar à noite, depois da carga de 3 meses, e medir o tempo.
+
+### 16.4 `flask db check` falhando na `main` e na `fase-2-horaria`
+Levar para o PR nº 2 só a mudança do `migrations/env.py` que ignora `vec_trecho` (e já preparar para ignorar `trecho_fts`), para o `flask db check` passar antes do merge da Fase 3. Testes e coletas não são afetados.
+
+### 16.5 Decisões do Claude Code
+Aceitas: PyTorch só para CPU; tipo e nome do evento juntos no trecho; sem geração real até o grupo escolher o modelo; testes de IA pulados sem as dependências. A do texto das tramitações foi trocada pela 16.3.
+
+### 16.7 Onde o modelo fica
+O modelo baixado não pode depender do cache escondido do usuário. Configurar em `Config` e no `.env.example`: `HF_HOME=instance/modelos` (o modelo fica dentro do projeto, fora do git) e, depois do primeiro download, `HF_HUB_OFFLINE=1` (roda sem internet e sem conferir versão). Um comando `flask ia baixar-modelo` (e `invoke baixar-modelo`) faz o download uma vez e confere se o modelo carrega. Registrar no README o tamanho (cerca de 500 MB).
+
+### 16.6 Ordem
+1. 16.4 no PR nº 2.
+2. Na `fase-3-rag`: 16.7, 16.1 e o rascunho das consultas de 16.2.
+3. Noite com o PC ligado: carga de 3 meses (15.5), depois indexação das tramitações recentes (16.3).
+4. Grupo corrige as 20 consultas; Claude Code mede as quatro opções e relata.
+5. Terça, 03/11: medição da `horaria` e merge do PR nº 2.
+
+---
+
+## 17. Gerador das notícias: a RoBERTaLexPT aprende a escrever (01/11/2026)
+
+### 17.1 Decisão do grupo
+Em vez de um modelo de linguagem pronto (14.5), a **própria RoBERTaLexPT** será treinada para escrever, montada como **encoder-decoder** (warm-start, RoBERTa2RoBERTa). O plano completo está em `docs/TREINAR_ROBERTA_ESCRITORA.md`. Resumo:
+- Ela escreve só **`titulo` e `resumo`**. O `corpo` é montado pelo código com os dados do banco.
+- O treino é feito **fora do PC, com GPU** (Google Colab ou Kaggle), com um notebook em `scripts/treino/`. O Lucas roda o notebook.
+- Os exemplos de treino (pares "dados da Câmara → título e lide") vêm da Agência Câmara de Notícias, **só se o `robots.txt` e os termos permitirem**. Esses textos servem só para treino e nunca vão para o portal nem para o banco.
+- O dataset fica em arquivo (`instance/dataset/pares.jsonl`), sem tabelas novas.
+- Só entra no portal se passar na avaliação: no máximo 2 erros de fato em 50 casos e clareza média de pelo menos 3,5.
+
+### 17.2 Plano B primeiro
+Antes de qualquer treino, implementar o **`GeradorFrases`** em `desperta/ia/gerador.py` (frases prontas, sem IA, nunca inventa número, nome ou data). `GERADOR` em `Config`: `falso`, `frases` ou `roberta`, com padrão `frases`. O MVP sai com ele se a Roberta escritora não ficar boa a tempo. Não apagar depois.
+
+### 17.3 Ordem
+A Fase 3b vem **depois** dos passos de 16.6 (busca híbrida, carga de 3 meses, tramitações, medição da `horaria` e merge do PR nº 2). Dentro dela: etapa 1 (`GeradorFrases`, na `fase-3-rag`) → etapa 2 (dataset, numa branch `fase-3b-roberta-escritora`; relatório com volume e licença) → **o grupo confirma** → etapa 3 (treino) → etapa 4 (avaliação) → etapa 5 (integração, só se passar).
+
+---
+
+## 18. Princípio do projeto: tudo open source e adaptado no código (01/11/2026)
+
+### 18.1 A regra
+O Desperta Brasil é uma plataforma **open source** e **personalizada no próprio código**. Por isso:
+- Toda biblioteca, modelo e ferramenta usada pelo portal precisa ter **licença aberta** (MIT, BSD, Apache 2.0, GPL/AGPL, CC-BY etc.). Antes de acrescentar uma dependência nova, conferir a licença e anotar no relatório.
+- **Nenhum serviço fechado ou pago no funcionamento do portal:** nada de OpenAI, Gemini, Google Cloud, AWS, APIs de tradução ou de voz de terceiros. A única fonte externa é a API de Dados Abertos da Câmara.
+- **Adaptar em vez de usar pronto:** quando der, o comportamento é do projeto (exemplos: a Roberta treinada para escrever, seção 17; o `GeradorFrases`; a busca híbrida, 16.1; as rotinas do coletor). Usar a biblioteca como base e escrever a parte do Desperta no nosso código, sem copiar código de outro projeto sem respeitar a licença.
+- Modelos baixados ficam em `instance/modelos/` e rodam **sem internet** (16.7).
+
+### 18.2 O que isso muda no que já foi decidido
+- **Web Speech API (antes citada nas seções 2 e 6):** sai como alternativa. No Chrome ela manda o áudio para servidores do Google. A voz fica só com Whisper (busca) e Piper (leitura).
+- **Vozes do Piper:** o Piper é aberto, mas cada voz tem a sua licença. Escolher uma voz pt-BR com licença que permita uso e redistribuição e registrar no README.
+- **Google Colab ou Kaggle (17):** são só a máquina emprestada para o treino. O código do treino (notebook em `scripts/treino/`) é do projeto e precisa rodar também em qualquer PC com GPU, sem depender de função exclusiva do Colab ou do Kaggle.
+- **Dados da Agência Câmara (17):** usados só no treino, nunca redistribuídos no repositório.
+
+### 18.3 Licença do projeto (o grupo decide)
+O repositório precisa de um arquivo `LICENSE`. Sugestões:
+- **AGPL-3.0:** quem usar o código num site também precisa abrir as mudanças. É a que mais protege a ideia de plataforma aberta.
+- **MIT:** mais simples e livre, mas permite que alguém feche uma cópia.
+O Claude Code não escolhe: só cria o `LICENSE` depois da decisão do grupo. Ao criar, colocar no README a lista de dependências e modelos com as licenças de cada um e os créditos da RoBERTaLexPT (Garcia et al., PROPOR 2024).

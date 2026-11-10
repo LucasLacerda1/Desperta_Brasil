@@ -85,7 +85,7 @@ def coletar_base(legislatura):
 @coletar.command("horaria")
 @_uma_coleta_por_vez
 def coletar_horaria():
-    """Proposicoes (1 dia), eventos e votacoes (ontem e hoje)."""
+    """Votacoes e eventos (ontem e hoje) e proposicoes (1 dia), com limite de 20 minutos."""
     rotinas.horaria(_cliente())
 
 
