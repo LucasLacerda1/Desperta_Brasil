@@ -1,13 +1,13 @@
 # Desperta Brasil — guia do projeto para o Claude Code
 
 > Coloque este arquivo na **raiz do repositório** com o nome `CLAUDE.md`. O Claude Code lê esse arquivo sozinho no início de cada sessão.
-> Última atualização: 09/11/2026 (Fases 1, 1.5, 2 e 2b concluídas; Fase 3 em andamento; decisões nas seções 10 a 23; ajuste físico do banco em `docs/AJUSTE_BANCO_SISTEMA.md`; treino da Roberta escritora em `docs/TREINAR_ROBERTA_ESCRITORA.md`; leitura encadeada da PEC em `docs/LEITURA_ENCADEADA.md`).
+> Última atualização: 10/11/2026 (Fases 1, 1.5, 2 e 2b concluídas; Fase 3 em andamento; decisões nas seções 10 a 23; ajuste físico do banco em `docs/AJUSTE_BANCO_SISTEMA.md`; treino da Roberta escritora em `docs/TREINAR_ROBERTA_ESCRITORA.md`; leitura encadeada da PEC em `docs/LEITURA_ENCADEADA.md`).
 
 ## 0. Como trabalhar neste projeto (leia primeiro)
 
 - **Idioma:** responda, comente o código e escreva mensagens de commit em **português do Brasil**.
 - **Padrão obrigatório:** o código segue a estrutura do projeto **TaskFlow**, usado como exemplo pelo professor da disciplina (Programação Web Avançada, UVV). A seção 3 descreve esse padrão. Não invente outra organização, não troque o Flask-SQLAlchemy por outro ORM e não use outro estilo de modelo.
-- **Ordem do trabalho:** o projeto é construído por fases (seção 7). **As Fases 1 (banco), 1.5 (ajuste físico do banco, `docs/AJUSTE_BANCO_SISTEMA.md`), 2 (coletor) e 2b (campos opcionais, com 2 migrações, 22.2) estão concluídas, e o banco tem a bateria de persistência (22.4). O ajuste da `horaria` (PR nº 2) espera as medições da terça, 10/11. A fase atual é a 3 (IA e RAG, branch `fase-3-rag`): antes da Roberta escritora (3b), vem a análise da PEC com a Roberta original (22.6). Siga a ordem de 23.8.** Princípio do portal: transparência total (22.5). Não comece as rotas da API ou o front-end antes da fase anterior estar pronta e testada, a não ser que o grupo peça. Antes de mudar código, leia as seções 10 a 23 (decisões tomadas depois de cada relatório).
+- **Ordem do trabalho:** o projeto é construído por fases (seção 7). **As Fases 1 (banco), 1.5 (ajuste físico do banco, `docs/AJUSTE_BANCO_SISTEMA.md`), 2 (coletor) e 2b (campos opcionais, com 2 migrações, 22.2) estão concluídas, e o banco tem a bateria de persistência (22.4). O ajuste da `horaria` (PR nº 2) foi medido em 10/11, abaixo da meta (23.10), e espera a revisão e o merge do Lucas. A fase atual é a 3 (IA e RAG, branch `fase-3-rag`): antes da Roberta escritora (3b), vem a análise da PEC com a Roberta original (22.6). Siga a ordem de 23.8.** Princípio do portal: transparência total (22.5). Não comece as rotas da API ou o front-end antes da fase anterior estar pronta e testada, a não ser que o grupo peça. Antes de mudar código, leia as seções 10 a 23 (decisões tomadas depois de cada relatório).
 - **Git:** a `main` no GitHub é a versão estável. Cada fase é feita numa branch própria (`fase-2-coletor`, `fase-3-ia`…), com commits pequenos ao fim de cada passo e mensagem em português; ao terminar a fase, abrir um pull request para a `main`. Quem faz o merge é o Lucas, depois de revisar (Caio e Rhuan revisam quando puderem). Não fazer push direto na `main`. Nunca versione `.venv/`, `instance/`, `.env` nem arquivos `*.db`, `*.db-wal`, `*.db-shm`.
 - **O modelo do banco já foi decidido pelo grupo** (32 tabelas, seção 5). Não acrescente, remova nem renomeie tabelas ou colunas por conta própria. A única exceção são as colunas técnicas, índices e configurações listados em `docs/AJUSTE_BANCO_SISTEMA.md` (camada física: controle de sincronização, índices, FTS5, migrações), que não mudam o modelo lógico. Se achar um problema no modelo, aponte e pergunte antes de mudar.
 - **Ao terminar cada passo:** rode os testes (`invoke test`) e mostre o resultado.
@@ -1664,7 +1664,7 @@ O kernel 7.0.0-43 foi instalado sem o módulo da NVIDIA (`linux-modules-nvidia-5
 
 ### 23.8 Ordem a partir de agora
 1. ~~As 5 primeiras rodadas da PEC 319 (23.5), com relatório.~~ Feito, com 1.000 repetições e os 4 leitores (23.9).
-2. Terça, 10/11: as duas medições da `horaria` que faltam e o merge do PR nº 2; depois, otimizar a `horaria` e agendar as rotinas.
+2. ~~Terça, 10/11: as duas medições da `horaria` que faltam.~~ Feito (23.10). Falta: PR nº 2 sai de rascunho, Lucas revisa e faz o merge; depois, otimizar a `horaria` e agendar as rotinas.
 3. Grupo: meta de "preciso", PECs de conferência, ok na planta e no contexto inicial, o que conta como frase importante (23.9), tema das proposições sem tema (22.5) e as 20 consultas da busca (19.2).
 4. Revisão dos 626 rascunhos pela equipe (na Fase 4, pela área administrativa).
 5. Merge da `fase-3-rag` na `main` e começo da Fase 4.
@@ -1676,3 +1676,17 @@ O kernel 7.0.0-43 foi instalado sem o módulo da NVIDIA (`linux-modules-nvidia-5
 - **Contexto, memória, planta e RAG quase não mudam a leitura** (no máximo 0,07; a memória sorteada rende o mesmo que a verdadeira). **O whitening é o único ganho que se repete:** tema oficial de cerca de 20º para cerca de 9º.
 - **O grupo está dividido:** Caio e Claude ficam com o texto normativo, Lucas e Rhuan com o fim da justificação; Lucas e Caio, o único par independente (o Rhuan partiu do arquivo do Lucas), têm 1 frase em comum. O consenso de 2 das 3 pessoas é a própria escolha do Rhuan, e contra ele a Roberta fica no acaso.
 - **Decisão pendente do grupo:** combinar o que conta como frase importante (ou reunir mais leituras independentes) antes de fixar a meta de "preciso" ou de propor treino. Recomendação do Claude Code: deixar a análise da PEC como estudo por enquanto e seguir para a Fase 4; no portal, a RoBERTaLexPT entra pela busca e pela sugestão de tema.
+
+### 23.10 Medições da `horaria` em dia útil (10/11)
+- Rodadas a partir do código da `fase-2-horaria` (`93a471c`, `HORARIA_ORCAMENTO_MIN=20`, `HORARIA_RECONFERIR_HORAS=6`), no banco real, com sessão deliberativa no Plenário desde 13h55. A API da Câmara ficou fora (502, 503 e 504) até 15h25. Backup antes: `instance/desperta-antes-horaria-10-11.db`.
+
+| Medição | Hora | Duração | Requisições | Erros HTTP | Votações | Eventos | Proposições |
+|---|---|---|---|---|---|---|---|
+| 04/11 | 19h42 | 20 min (parou no limite) | — | — | — | — | — |
+| 10/11, nº 1 | 15h27 | 3 min 55 s | 1.178 | 0 | 0 | 344 | 5.598 |
+| 10/11, nº 2 | 18h32 | 3 min 7 s | 876 | 0 | 2 | 269 | 3.801 |
+
+- **As duas ficaram bem abaixo da meta de 20 minutos.** A segunda foi mais rápida porque pulou as proposições conferidas na primeira (regra das 6 horas). A de 04/11 foi a primeira `horaria` depois de dias sem coleta, um caso mais pesado que o normal.
+- Os "novos" da `coleta` contam também autores, temas, tramitações e proposições citadas por pauta (REQ, PRL, PAR…); as proposições no banco foram de 10.716 para 10.827.
+- **Limite do teste:** só 2 votações registradas até 18h32. Se a `horaria` da noite, com muitas votações, passar de 20 minutos, o orçamento fecha a coleta como `parcial` e o resto fica para a hora seguinte.
+- Os arquivos `instance/horaria-medicao-10-11-*.log` ficam vazios, porque o coletor não escreve no terminal; os números vêm da tabela `coleta` (ids 94 a 99).
