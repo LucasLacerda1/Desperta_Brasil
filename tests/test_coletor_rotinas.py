@@ -711,3 +711,106 @@ def test_relatorio_nao_conta_pendente_resolvida(base, api, cliente):
     _proposicao(api)
     proposicoes.coletar(cliente, HOJE, HOJE, limite_pendentes=0)
     assert relatorio.proposicoes_pendentes() == (0, 0)
+
+
+# ======================================================
+# AGENDADOR: flask coletar agendada (decisao 23.8, item 2)
+# ======================================================
+@pytest.fixture
+def ia_falsa(monkeypatch, comandos):
+    """Troca a indexacao e os rascunhos por uma versao que so registra a chamada."""
+    from collections import Counter
+
+    from desperta.ia import automatico
+
+    chamadas = []
+
+    def depois_da_coleta():
+        # A IA roda ainda com a trava: a proxima coleta nao entra no meio
+        chamadas.append(os.path.exists(comandos.caminho_trava))
+        return Counter(indexados=3, iguais=7), automatico.Resumo(inicio=HOJE)
+
+    monkeypatch.setattr(automatico, "depois_da_coleta", depois_da_coleta)
+    return chamadas
+
+
+def test_agendada_coleta_indexa_e_escreve_sob_a_mesma_trava(comandos, db, api, ia_falsa):
+    _apoio(api)
+    _proposicao(api)
+    _evento(api)
+    _votacao(api)
+    comandos.invoke(args=["coletar", "base"])
+    resultado = comandos.invoke(args=["coletar", "agendada", "horaria"])
+    assert resultado.exit_code == 0, resultado.output
+    assert db.session.scalars(db.select(Voto)).first() is not None
+    assert ia_falsa == [True]
+    assert "indexados=3" in resultado.output
+    assert "coleta " in resultado.output and "requisicoes=" in resultado.output
+    assert not os.path.exists(comandos.caminho_trava)
+
+
+def test_agendada_sem_ia_so_coleta(comandos, api, ia_falsa, monkeypatch):
+    monkeypatch.setitem(modulo_cli.ROTINAS_AGENDADAS, "mensal", lambda cliente: None)
+    resultado = comandos.invoke(args=["coletar", "agendada", "mensal", "--sem-ia"])
+    assert resultado.exit_code == 0, resultado.output
+    assert ia_falsa == []
+
+
+def test_agendada_horaria_nao_espera_outra_coleta(comandos, db, api, ia_falsa):
+    assert trava.adquirir(comandos.caminho_trava)
+    resultado = comandos.invoke(args=["coletar", "agendada", "horaria"])
+    assert resultado.exit_code == 0
+    assert "Outra coleta" in resultado.output
+    assert api.chamadas == [] and ia_falsa == []
+    assert db.session.scalar(db.select(LogSistema).where(LogSistema.acao == "coleta_em_andamento"))
+
+
+def test_agendada_diaria_espera_a_outra_coleta_terminar(comandos, ia_falsa, monkeypatch):
+    rodou = []
+    esperas = []
+    monkeypatch.setitem(modulo_cli.ROTINAS_AGENDADAS, "diaria", lambda cliente: rodou.append(True))
+
+    def esperar(segundos):
+        # A outra coleta termina enquanto a diaria espera
+        esperas.append(segundos)
+        trava.liberar(comandos.caminho_trava)
+
+    monkeypatch.setattr(modulo_cli.time, "sleep", esperar)
+    assert trava.adquirir(comandos.caminho_trava)
+    resultado = comandos.invoke(args=["coletar", "agendada", "diaria"])
+    assert resultado.exit_code == 0, resultado.output
+    assert rodou == [True] and ia_falsa == [True]
+    assert esperas == [modulo_cli.INTERVALO_ESPERA_S]
+    assert not os.path.exists(comandos.caminho_trava)
+
+
+def test_agendada_desiste_quando_a_espera_acaba(comandos, db, ia_falsa, monkeypatch):
+    relogio = [0.0]
+    monkeypatch.setattr(modulo_cli.time, "monotonic", lambda: relogio[0])
+    monkeypatch.setattr(modulo_cli.time, "sleep", lambda segundos: relogio.__setitem__(0, relogio[0] + segundos))
+    monkeypatch.setitem(modulo_cli.ROTINAS_AGENDADAS, "semanal", lambda cliente: pytest.fail("nao devia rodar"))
+    assert trava.adquirir(comandos.caminho_trava)
+    resultado = comandos.invoke(args=["coletar", "agendada", "semanal", "--esperar", "2"])
+    assert resultado.exit_code == 0
+    assert "Outra coleta" in resultado.output
+    assert relogio[0] == 120 and ia_falsa == []
+    assert os.path.exists(comandos.caminho_trava)
+
+
+def test_espera_padrao_so_na_horaria_e_zero():
+    assert modulo_cli.ESPERA_PADRAO_MIN == {"horaria": 0, "diaria": 180, "semanal": 180, "mensal": 180}
+    assert set(modulo_cli.ROTINAS_AGENDADAS) == {"horaria", "diaria", "semanal", "mensal"}
+
+
+def test_agendada_com_erro_na_rotina_ainda_roda_a_ia_e_sai_com_erro(comandos, db, ia_falsa, monkeypatch):
+    def quebrar(cliente):
+        raise ZeroDivisionError("divisao por zero")
+
+    monkeypatch.setitem(modulo_cli.ROTINAS_AGENDADAS, "horaria", quebrar)
+    resultado = comandos.invoke(args=["coletar", "agendada", "horaria"])
+    assert resultado.exit_code == 1
+    assert "parou com erro" in resultado.output
+    assert ia_falsa == [True]
+    erro = db.session.scalar(db.select(LogSistema).where(LogSistema.acao == "rotina_agendada"))
+    assert erro.nivel == "erro" and "ZeroDivisionError" in erro.descricao
+    assert not os.path.exists(comandos.caminho_trava)

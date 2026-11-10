@@ -175,3 +175,37 @@ def gerar_novos(modelo, dias=None, limite=None, simular=False, refazer_erros=Fal
         )
         db.session.commit()
     return resumo
+
+
+# ======================================================
+# DEPOIS DE CADA COLETA (AGENDADOR)
+# ======================================================
+def carregar_modelo_ou_nada():
+    """
+    Decisao 21.3: sem a RoBERTaLexPT (pendrive fora), sem a placa pedida ou sem o PyTorch,
+    devolve None e deixa um aviso no log; a geracao segue so com a busca por palavras.
+    """
+    from . import embeddings, services
+
+    try:
+        return services.carregar_modelo()
+    except embeddings.RobertaAusente:
+        # O aviso ja foi para o log em carregar_modelo
+        return None
+    except (embeddings.DispositivoIndisponivel, ImportError) as erro:
+        db.session.add(LogSistema(nivel="aviso", modulo="IA", acao="modelo_indisponivel", descricao=str(erro)))
+        db.session.commit()
+        return None
+
+
+def depois_da_coleta():
+    """
+    Secao 6.1 e decisao 23.2: indexa o que e novo ou mudou e escreve os rascunhos dos fatos novos.
+    Sem o modelo, a indexacao fica para a proxima vez (ela e incremental pelo hash_texto).
+    Devolve (resumo da indexacao ou None, resumo da geracao).
+    """
+    from . import services
+
+    modelo = carregar_modelo_ou_nada()
+    indexacao = services.indexar(modelo) if modelo is not None else None
+    return indexacao, gerar_novos(modelo)

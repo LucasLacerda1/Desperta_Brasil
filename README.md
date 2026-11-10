@@ -43,14 +43,27 @@ Carga de validação (amostra da decisão 12.2), que não morre se a sessão fec
 nohup invoke carga-validacao > instance/carga.log 2>&1 &
 ```
 
-Agendamento do RF02, conforme a decisão 12.1 do `CLAUDE.md` (exemplo de `crontab`, com o caminho do projeto ajustado):
+### Agendamento (RF02)
 
-```cron
-0 * * * *  cd /caminho/Desperta_Brasil && .venv/bin/flask coletar horaria
-0 2 * * *  cd /caminho/Desperta_Brasil && .venv/bin/flask coletar diaria
-0 4 * * 0  cd /caminho/Desperta_Brasil && .venv/bin/flask coletar semanal
-0 4 1 * *  cd /caminho/Desperta_Brasil && .venv/bin/flask coletar mensal
+As rotinas rodam sozinhas por timers de usuário do `systemd` (decisão 23.11 do `CLAUDE.md`). Cada timer chama `flask coletar agendada <rotina>`, que faz a coleta e, sob a mesma trava, indexa o que mudou (`flask ia indexar`) e escreve os rascunhos novos (`flask ia gerar-novos`).
+
+| Rotina | Quando | Se outra coleta estiver rodando | PC desligado na hora |
+|---|---|---|---|
+| `horaria` | de hora em hora, no minuto 5 | não roda (fica para a hora seguinte) | não recupera |
+| `diaria` | todo dia, 3h30 | espera até 3 horas | roda quando o PC ligar |
+| `semanal` | domingo, 4h30 | espera até 3 horas | roda quando o PC ligar |
+| `mensal` | dia 1, 5h30 | espera até 3 horas | roda quando o PC ligar |
+
+```bash
+invoke agendar        # grava os arquivos em ~/.config/systemd/user e liga os 4 timers
+invoke agenda         # próximas execuções
+invoke desagendar     # desliga os timers (a coleta em andamento continua até o fim)
+tail -f instance/agendador.log                        # o que cada execução fez
+flask coletar agendada horaria --sem-ia               # o mesmo à mão, só a coleta
+python scripts/agendador/agendador.py mostrar         # os arquivos do systemd, sem instalar
 ```
+
+Os caminhos dos arquivos do `systemd` vêm da pasta do projeto e do Python do `.venv`, então o mesmo comando serve no servidor (21.4). Os timers de usuário só rodam com o usuário logado; para rodar sem login (servidor), use `loginctl enable-linger <usuario>`. Sem a RoBERTaLexPT (pendrive fora), a coleta e os rascunhos continuam, só com a busca por palavras, e a indexação fica para a próxima vez (21.3).
 
 Só roda uma coleta por vez: a trava fica em `instance/coletor.lock`. Quem encontra a trava não roda e grava um aviso em `log_sistema`. Trava de um processo que não existe mais, ou com mais de 6 horas, é considerada abandonada: é removida, com um aviso no log.
 

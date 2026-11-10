@@ -1,3 +1,5 @@
+import sys
+
 from invoke import task
 
 
@@ -110,6 +112,30 @@ def ver_banco(c, banco="instance/desperta.db", porta=8001):
 def run(c):
     """Executa a aplicacao Flask."""
     c.run("flask --app app.py run --debug", pty=True)
+
+
+# ------------------------------------------------------
+# AGENDADOR (timers de usuario do systemd, decisao 23.8)
+# ------------------------------------------------------
+AGENDADOR = "scripts/agendador/agendador.py"
+
+
+@task
+def agendar(c):
+    """Liga os timers da horaria, diaria, semanal e mensal (coleta, indexacao e rascunhos)."""
+    c.run(f"{sys.executable} {AGENDADOR} instalar", echo=True)
+
+
+@task
+def desagendar(c):
+    """Desliga os timers e apaga os arquivos do systemd (nao interrompe a coleta em andamento)."""
+    c.run(f"{sys.executable} {AGENDADOR} remover", echo=True)
+
+
+@task
+def agenda(c):
+    """Mostra as proximas execucoes das rotinas agendadas."""
+    c.run(f"{sys.executable} {AGENDADOR} situacao", echo=True)
 
 
 @task
