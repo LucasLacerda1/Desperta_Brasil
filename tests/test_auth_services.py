@@ -5,7 +5,8 @@ import pytest
 import fabricas
 from desperta.auth import services
 from desperta.auth.models import Administrador
-from desperta.ext.erros import Conflito, DadosInvalidos
+from desperta.ext.erros import Conflito, DadosInvalidos, MuitasTentativas, NaoAutenticado
+from desperta.sistema.models import LogSistema
 
 ANTIGO = datetime(2020, 1, 1, 12, 0)
 
@@ -109,3 +110,59 @@ def test_administrador_nao_e_apagado(db, admin):
     with pytest.raises(Conflito):
         services.excluir_administrador(admin)
     assert db.session.get(Administrador, admin.id) is not None
+
+
+# ======================================================
+# ULTIMO ADMIN E LOGIN
+# ======================================================
+def test_ultimo_admin_ativo_nao_e_desativado_nem_rebaixado(db, admin):
+    services.editar_cadastro(admin, papel="admin")
+    for mudanca in ({"ativo": False}, {"papel": "editor"}):
+        with pytest.raises(Conflito):
+            services.editar_cadastro(admin, **mudanca)
+        db.session.expire_all()
+        assert (admin.papel, admin.ativo) == ("admin", True)
+    services.criar_administrador("Caio", "caio@desperta.org", "senha-forte", papel="admin")
+    assert services.desativar(admin) is True
+
+
+@pytest.fixture
+def sem_falhas(app):
+    services.limpar_tentativas()
+    yield
+    services.limpar_tentativas()
+
+
+def test_autenticar_certo_grava_ultimo_acesso_e_log(db, admin, sem_falhas):
+    assert services.autenticar(" LUCAS@desperta.org ", "senha-de-teste", ip="10.0.0.1") is admin
+    assert admin.ultimo_acesso is not None
+    assert db.session.scalar(db.select(LogSistema).filter_by(acao="login")).admin_id == admin.id
+
+
+@pytest.mark.parametrize("email, senha", [("lucas@desperta.org", "errada-123"), ("ninguem@desperta.org", "x" * 9)])
+def test_autenticar_errado_tem_a_mesma_mensagem(db, admin, sem_falhas, email, senha):
+    with pytest.raises(NaoAutenticado) as erro:
+        services.autenticar(email, senha, ip="10.0.0.1")
+    assert erro.value.mensagem == services.MENSAGEM_LOGIN
+    assert db.session.scalar(db.select(LogSistema).filter_by(acao="login_falhou")).nivel == "aviso"
+
+
+def test_desativado_nao_entra(db, admin, sem_falhas):
+    services.desativar(admin)
+    with pytest.raises(NaoAutenticado):
+        services.autenticar("lucas@desperta.org", "senha-de-teste")
+
+
+def test_muitas_falhas_bloqueiam_ate_a_senha_certa(db, admin, sem_falhas, app):
+    for _ in range(app.config["LOGIN_TENTATIVAS"]):
+        with pytest.raises(NaoAutenticado):
+            services.autenticar("lucas@desperta.org", "errada-123", ip="10.0.0.1")
+    with pytest.raises(MuitasTentativas):
+        services.autenticar("lucas@desperta.org", "senha-de-teste", ip="10.0.0.2")
+
+
+def test_trocar_propria_senha_confere_a_atual(db, admin):
+    with pytest.raises(DadosInvalidos):
+        services.trocar_propria_senha(admin, "errada-123", "nova-senha-1")
+    assert services.trocar_propria_senha(admin, "senha-de-teste", "nova-senha-1") is True
+    assert admin.confere_senha("nova-senha-1")

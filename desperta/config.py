@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 
 
 class Config:
@@ -14,6 +15,11 @@ class Config:
     SESSION_COOKIE_SAMESITE = "Lax"
     # Em producao (HTTPS), SESSION_COOKIE_SECURE=1
     SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "0") == "1"
+    # Login da equipe: a sessao dura um turno de trabalho
+    PERMANENT_SESSION_LIFETIME = timedelta(hours=int(os.getenv("SESSAO_HORAS", "8")))
+    # RNF10: depois destas falhas na janela, o login responde 429 (por e-mail e, x4, por IP)
+    LOGIN_TENTATIVAS = int(os.getenv("LOGIN_TENTATIVAS", "5"))
+    LOGIN_JANELA_MIN = int(os.getenv("LOGIN_JANELA_MIN", "15"))
 
     # Fases seguintes (ja deixar declarado)
     CAMARA_API_URL = os.getenv("CAMARA_API_URL", "https://dadosabertos.camara.leg.br/api/v2")

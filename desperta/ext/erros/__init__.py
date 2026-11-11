@@ -20,6 +20,11 @@ class DadosInvalidos(ErroDoPortal):
     codigo = 400
 
 
+# === NaoAutenticado (401: precisa entrar com e-mail e senha) ===
+class NaoAutenticado(ErroDoPortal):
+    codigo = 401
+
+
 # === AcessoNegado (403: papel sem permissao) ===
 class AcessoNegado(ErroDoPortal):
     codigo = 403
@@ -33,6 +38,11 @@ class NaoEncontrado(ErroDoPortal):
 # === Conflito (409: registro em uso, duplicado ou que nao pode ser apagado) ===
 class Conflito(ErroDoPortal):
     codigo = 409
+
+
+# === MuitasTentativas (429: excesso de requisicoes, RNF10) ===
+class MuitasTentativas(ErroDoPortal):
+    codigo = 429
 
 
 def init_app(app):
