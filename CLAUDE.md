@@ -1,7 +1,7 @@
 # Desperta Brasil — guia do projeto para o Claude Code
 
 > Coloque este arquivo na **raiz do repositório** com o nome `CLAUDE.md`. O Claude Code lê esse arquivo sozinho no início de cada sessão.
-> Última atualização: 10/11/2026 (Fases 1, 1.5, 2 e 2b concluídas; Fase 3 em andamento; decisões nas seções 10 a 23; ajuste físico do banco em `docs/AJUSTE_BANCO_SISTEMA.md`; treino da Roberta escritora em `docs/TREINAR_ROBERTA_ESCRITORA.md`; leitura encadeada da PEC em `docs/LEITURA_ENCADEADA.md`).
+> Última atualização: 11/11/2026 (Fases 1, 1.5, 2 e 2b concluídas; Fase 3 em andamento; decisões nas seções 10 a 23; ajuste físico do banco em `docs/AJUSTE_BANCO_SISTEMA.md`; treino da Roberta escritora em `docs/TREINAR_ROBERTA_ESCRITORA.md`; leitura encadeada da PEC em `docs/LEITURA_ENCADEADA.md`).
 
 ## 0. Como trabalhar neste projeto (leia primeiro)
 
@@ -1666,7 +1666,7 @@ O kernel 7.0.0-43 foi instalado sem o módulo da NVIDIA (`linux-modules-nvidia-5
 1. ~~As 5 primeiras rodadas da PEC 319 (23.5), com relatório.~~ Feito, com 1.000 repetições e os 4 leitores (23.9).
 2. ~~Medições da `horaria`, merge do PR nº 2 e agendamento das rotinas.~~ Feito (23.10 e 23.11).
 3. Grupo: meta de "preciso", PECs de conferência, ok na planta e no contexto inicial, o que conta como frase importante (23.9), tema das proposições sem tema (22.5) e as 20 consultas da busca (19.2).
-4. Revisão dos 626 rascunhos pela equipe (na Fase 4, pela área administrativa).
+4. Revisão dos rascunhos pela equipe (na Fase 4, pela área administrativa; eram 2.354 em 11/11, 23.12).
 5. Merge da `fase-3-rag` na `main` e começo da Fase 4.
 6. Treino da Roberta, só depois das rodadas e com a confirmação do grupo.
 
@@ -1698,3 +1698,10 @@ O kernel 7.0.0-43 foi instalado sem o módulo da NVIDIA (`linux-modules-nvidia-5
 - **Timers de usuário do `systemd`**, gerados por `scripts/agendador/agendador.py` com os caminhos da pasta do projeto e do Python do `.venv` (nada do PC escrito no código, 21.4): `horaria` a cada hora no minuto 5; `diaria` às 3h30; `semanal` domingo às 4h30; `mensal` dia 1 às 5h30. Os três últimos com `Persistent=true` (rodam quando o PC ligar, se ele estava desligado). Saída em `instance/agendador.log`. Comandos: `invoke agendar`, `invoke agenda` e `invoke desagendar`.
 - Timers de usuário só rodam com o Lucas logado (`Linger=no`); no servidor, `loginctl enable-linger`.
 - **Teste no banco real (10/11, 19h44, backup `instance/desperta-antes-agendador-10-11.db`):** 2 min 40 s no total. Coleta em 76 s (votações 8 itens, eventos 249, proposições 1.919; 457 requisições, 0 erro HTTP); indexação de 1.925 trechos e 1.396 removidos (tramitações com mais de 90 dias); **531 rascunhos novos** (4 votações, 518 mudanças de situação e 9 proposições novas, janela desde 07/11), 0 erro, 16 sem tema. Os rascunhos à espera de revisão passam de 1.100.
+
+### 23.12 Primeiro dia do agendador (11/11)
+- **Tudo rodou sozinho**, das 20h05 de 10/11 às 19h05 de 11/11: todas as execuções com `Result=success`, sem erro HTTP e sem "modelo indisponível" (pendrive conectado). Saída em `instance/agendador.log`.
+- **Primeira `diaria` automática (03h30):** 4 min 40 s. Proposições: 4.691 conferidas, 987 itens novos e 1.620 atualizados (1.484 requisições). Indexação de 687 trechos; 349 rascunhos novos (113 de votações, 229 de mudanças de situação e 7 de proposições novas). Eventos e votações sem pendentes.
+- **`horaria`:** de 3 min 20 s a 7 min 10 s (a mais longa às 03h05), bem abaixo dos 20 minutos.
+- **Rascunhos à espera de revisão:** 2.354.
+- **30 votações de 10/11 com HTTP 404 no detalhe:** aparecem na listagem `/votacoes`, mas `/votacoes/{id}` dá 404 (conferido de novo às 19h34). São registros do Plenário com a descrição "Alteração do Regime de Tramitação desta proposição…". Por causa delas, a coleta de votações de toda `horaria` fica `parcial`, com 30 erros no log por hora, até 10/11 sair da janela (ontem e hoje). O erro é da Câmara; nada muda no código. Se o problema voltar, avaliar com o grupo anotar os 404 para não tentar de novo na mesma janela, porque o `parcial` por esse motivo esconde o `parcial` por tempo que a 23.11 manda observar.
