@@ -1,0 +1,392 @@
+{
+  "rascunho": true,
+  "observacao": "Rascunho do Claude Code a partir do banco de 01/11/2026. O grupo corrige as consultas e as esperadas (decisao 16.2).",
+  "consultas": [
+    {
+      "consulta": "pena maior para quem mata mulher por ser mulher",
+      "esperadas": [
+        858860
+      ],
+      "conferir": [
+        {
+          "id": 858860,
+          "proposicao": "PL 8305/2014",
+          "ementa": "Altera o art. 121 do Decreto-Lei nº 2.848, de 7 de dezembro de 1940 (Código Penal), para prever o feminicídio como circunstância qualificadora do crime de homicídio, e o art. 1º da Lei nº 8.072, de 25 de julho de 1990, para incluir o feminicídio no rol dos crimes hediondos."
+        }
+      ]
+    },
+    {
+      "consulta": "controle do uso de veneno nas lavouras",
+      "esperadas": [
+        946428
+      ],
+      "conferir": [
+        {
+          "id": 946428,
+          "proposicao": "PL 293/2015",
+          "ementa": "Cria o controle da produção e consumo de agrotóxicos por meio de vigilância eletrônica e sanitária."
+        }
+      ]
+    },
+    {
+      "consulta": "aposentadoria especial para quem trabalha em atividade de risco",
+      "esperadas": [
+        2487332,
+        475404
+      ],
+      "conferir": [
+        {
+          "id": 2487332,
+          "proposicao": "PLP 66/2025",
+          "ementa": "Dispõe sobre os requisitos e critérios diferenciados para a concessão de aposentadoria especial a quem trabalha em atividade de mineração subterrânea de carvão."
+        },
+        {
+          "id": 475404,
+          "proposicao": "PLP 572/2010",
+          "ementa": "Cria a aposentadoria especial aos frentistas de postos de revenda de combustíveis."
+        }
+      ]
+    },
+    {
+      "consulta": "desconto ou isenção na conta de luz",
+      "esperadas": [
+        592339,
+        949257,
+        2191728,
+        2190884
+      ],
+      "conferir": [
+        {
+          "id": 592339,
+          "proposicao": "PL 6362/2013",
+          "ementa": "Dispõe sobre a isenção de cobrança de tarifa de energia elétrica para poços artesianos, e dá outras providências."
+        },
+        {
+          "id": 949257,
+          "proposicao": "PL 496/2015",
+          "ementa": "Dispõe sobre a exclusão dos custos de transmissão de energia elétrica da base de cálculo da tarifa de energia elétrica incidente sobre as unidades consumidoras localizadas nos Municípios que possuem hidrelétricas."
+        },
+        {
+          "id": 2191728,
+          "proposicao": "PDL 29/2019",
+          "ementa": "Susta os efeitos do Decreto nº 9.642/2018, que \"Altera o Decreto nº 7.891, de 23 de janeiro de 2013, para dispor sobre a redução gradativa dos descontos concedidos em tarifa de uso do sistema de distribuição e tarifa de energia elétrica."
+        },
+        {
+          "id": 2190884,
+          "proposicao": "PDL 7/2019",
+          "ementa": "Susta o Decreto nº 9.642/2018, que \"Altera o Decreto nº 7.891, de 23 de janeiro de 2013, para dispor sobre a redução gradativa dos descontos concedidos em tarifa de uso do sistema de distribuição e tarifa de energia elétrica\"."
+        }
+      ]
+    },
+    {
+      "consulta": "Congresso decidir sobre a demarcação de terras indígenas",
+      "esperadas": [
+        265999,
+        253493
+      ],
+      "conferir": [
+        {
+          "id": 265999,
+          "proposicao": "PEC 319/2004",
+          "ementa": "Dá nova redação ao art. 231 da Constituição Federal, submetendo a demarcação de terras indígenas à aprovação do Congresso Nacional."
+        },
+        {
+          "id": 253493,
+          "proposicao": "PEC 275/2004",
+          "ementa": "Dá nova redação aos arts. 49, XVI e 231, caput, da Constituição Federal, submetendo ao Congresso Nacional a demarcação  de  terras  indígenas."
+        }
+      ]
+    },
+    {
+      "consulta": "porte de arma para guardas e oficiais de justiça",
+      "esperadas": [
+        976410,
+        2642061
+      ],
+      "conferir": [
+        {
+          "id": 976410,
+          "proposicao": "PL 633/2015",
+          "ementa": "Altera a lei 10.826 de 22 de dezembro de 2003, concedendo o porte de armas de fogo aos Oficiais de Justiça, aos fiscais do IBAMA e fiscais do Trabalho."
+        },
+        {
+          "id": 2642061,
+          "proposicao": "PL 4902/2026",
+          "ementa": "Altera a Lei nº 13.022, de 8 de agosto de 2014, que dispõe sobre o Estatuto Geral das Guardas Municipais, e a Lei nº 10.826, de 22 de dezembro de 2003, que dispõe sobre registro, posse e comercialização de armas de fogo e munição, sobre o Sistema Nacional de Armas – Sinarm, define crimes e dá outras"
+        }
+      ]
+    },
+    {
+      "consulta": "reduzir impostos sobre o óleo diesel",
+      "esperadas": [
+        947741
+      ],
+      "conferir": [
+        {
+          "id": 947741,
+          "proposicao": "PL 409/2015",
+          "ementa": "Institui isenção da contribuição para o PIS/PASEP, COFINS e CIDE-Combustíveis incidente sobre o óleo diesel utilizado na agricultura e pecuária e nos transportes de passageiros e de cargas."
+        }
+      ]
+    },
+    {
+      "consulta": "descontar gastos com veterinário no imposto de renda",
+      "esperadas": [
+        2638264,
+        464417
+      ],
+      "conferir": [
+        {
+          "id": 2638264,
+          "proposicao": "PL 3568/2026",
+          "ementa": "Altera a legislação do Imposto sobre a Renda da Pessoa Física para permitir a dedução das despesas com assistência médico-veterinária e planos de saúde de animais domésticos de estimação da base de cálculo do Imposto de Renda da Pessoa Física (IRPF), e dá outras providências."
+        },
+        {
+          "id": 464417,
+          "proposicao": "PL 6631/2009",
+          "ementa": "Acrescenta alínea ao inciso II do art. 8º da Lei nº 9.250, de 26 de dezembro de 1995, para incluir as despesas veterinárias nas deduções da base de cálculo do imposto de renda das pessoas físicas."
+        }
+      ]
+    },
+    {
+      "consulta": "inclusão de autistas nas escolas",
+      "esperadas": [
+        2604139,
+        2254205
+      ],
+      "conferir": [
+        {
+          "id": 2604139,
+          "proposicao": "PL 700/2026",
+          "ementa": "Institui a Garantia de Transição Assistida na Educação para crianças, adolescentes e jovens com Transtorno do Espectro Autista (TEA) e dá outras providências."
+        },
+        {
+          "id": 2254205,
+          "proposicao": "PL 3035/2020",
+          "ementa": "\"Institui a Política para Educação Especial e Inclusiva, para atendimento às pessoas com Transtorno Mental, Transtorno do Espectro Autista (TEA), deficiência Intelectual e Deficiências Múltiplas\"."
+        }
+      ]
+    },
+    {
+      "consulta": "carteira ou cadastro de pessoas com autismo",
+      "esperadas": [
+        2408590,
+        2644545
+      ],
+      "conferir": [
+        {
+          "id": 2408590,
+          "proposicao": "PL 5796/2023",
+          "ementa": "Institui o Cadastro Nacional da Pessoa com Transtorno do Espectro Autista (CNPTEA) e estabelece diretrizes para aprimoramento das políticas públicas destinadas às pessoas com TEA."
+        },
+        {
+          "id": 2644545,
+          "proposicao": "PL 5169/2026",
+          "ementa": "Dispõe sobre a proibição de comercialização da Carteira de Identificação da Pessoa com Transtorno do Espectro Autista (CIPTEA)."
+        }
+      ]
+    },
+    {
+      "consulta": "campanha de vacina para cachorros e gatos",
+      "esperadas": [
+        2640622,
+        2496046,
+        2640623
+      ],
+      "conferir": [
+        {
+          "id": 2640622,
+          "proposicao": "PL 3947/2026",
+          "ementa": "Estabelece diretrizes para campanhas de vacinação e prevenção de doenças em cães e gatos e dá outras providências."
+        },
+        {
+          "id": 2496046,
+          "proposicao": "PL 1586/2025",
+          "ementa": "Institui a Campanha Nacional de Vacinação para Cães e Gatos, incluindo animais em situação de rua, e dá outras providências."
+        },
+        {
+          "id": 2640623,
+          "proposicao": "PL 3948/2026",
+          "ementa": "Institui a Política Nacional de Apoio à Vacinação Animal de Cães e Gatos em Situação de Vulnerabilidade Social e estabelece diretrizes para a cooperação federativa em ações de imunização animal."
+        }
+      ]
+    },
+    {
+      "consulta": "vacinar idosos em casa",
+      "esperadas": [
+        2440558
+      ],
+      "conferir": [
+        {
+          "id": 2440558,
+          "proposicao": "PL 2361/2024",
+          "ementa": "Dispõe sobre a implementação de um Programa de Vacinação Domiciliar para Idosos, destinado a indivíduos com 60 anos ou mais que estejam incapacitados de se deslocar até os locais de vacinação, proporcionando acesso à imunização contra Covid-19 e gripe (Influenza)."
+        }
+      ]
+    },
+    {
+      "consulta": "proibir propaganda de casas de apostas e bets",
+      "esperadas": [
+        2459654,
+        2641874,
+        2459342,
+        2457525
+      ],
+      "conferir": [
+        {
+          "id": 2459654,
+          "proposicao": "PL 3774/2024",
+          "ementa": "Veda a exploração de apostas de quota fixa realizados em meio virtual (bets); proíbe a publicidade referente a essa modalidade de apostas online; e altera as Leis nº 14.790, de 29 de dezembro de 2023 e 13.756, de 12 de dezembro de 2028."
+        },
+        {
+          "id": 2641874,
+          "proposicao": "PL 4870/2026",
+          "ementa": "Altera a Lei nº 14.790, de 29 de dezembro de 2023, para proibir a veiculação de publicidade de apostas de quota fixa no rádio e na televisão entre as 8 horas e as 22 horas."
+        },
+        {
+          "id": 2459342,
+          "proposicao": "PL 3730/2024",
+          "ementa": "\"Proíbe a divulgação de jogos de apostas ou de azar, bem como de motéis ou sites de acompanhantes, em rede nacional no horário de classificação indicativa livre, e dá outras providências.\""
+        },
+        {
+          "id": 2457525,
+          "proposicao": "PL 3511/2024",
+          "ementa": "Proíbe a publicidade, a divulgação e a propaganda de empresas e casas de apostas online ou não, e de produtos ligados a jogos de azar, inclusive os previstos na Lei nº 14.790, de 29 de dezembro de 2023."
+        }
+      ]
+    },
+    {
+      "consulta": "regras para o uso de inteligência artificial",
+      "esperadas": [
+        2555654,
+        2641936
+      ],
+      "conferir": [
+        {
+          "id": 2555654,
+          "proposicao": "PL 4356/2025",
+          "ementa": "Estabelece normas gerais programáticas, de aplicação em âmbito nacional, para a utilização de tecnologias baseadas em inteligência artificial no âmbito do Sistema Único de Segurança Pública – SUSP, visando à prevenção e à repressão de infrações penais, à proteção de pessoas e bens e à preservação da"
+        },
+        {
+          "id": 2641936,
+          "proposicao": "PL 4881/2026",
+          "ementa": "Dispõe sobre os deveres de governança, segurança, transparência, responsabilidade, conformidade e proteção do consumidor na utilização de sistemas de inteligência artificial nas relações de consumo, institui o Regime Jurídico de Integridade Algorítmica nas Relações de Consumo, altera a Lei nº 8.078,"
+        }
+      ]
+    },
+    {
+      "consulta": "crime de montagem pornográfica falsa feita com tecnologia",
+      "esperadas": [
+        2401172,
+        2402162
+      ],
+      "conferir": [
+        {
+          "id": 2401172,
+          "proposicao": "PL 5342/2023",
+          "ementa": "Tipifica o crime de Porno Fake e acrescenta o artigo 218-D ao Decreto-Lei nº 2.848, de 7 de dezembro de 1940 (Código Penal), para tipificar o crime de criação, divulgação e comercialização de imagem de nudez ou de cunho sexual não autorizada, gerada por softwares e inteligência artificial (AI); alte"
+        },
+        {
+          "id": 2402162,
+          "proposicao": "PL 5394/2023",
+          "ementa": "Altera o Decreto-Lei nº 2.848, de 7 de dezembro de 1940, Código Penal, para criminalizar a adulteração, montagem ou modificação de fotografia, vídeo ou qualquer outra forma de representação visual relativos à intimidade da pessoa, por meio de Inteligência Artificial, e dá outras providências."
+        }
+      ]
+    },
+    {
+      "consulta": "ônibus de graça para idosos",
+      "esperadas": [
+        15390
+      ],
+      "conferir": [
+        {
+          "id": 15390,
+          "proposicao": "PL 387/1999",
+          "ementa": "Concede passe livre às pessoas com idade igual ou superior a sessenta e cinco anos no sistema de transporte público coletivo rodoviário interestadual."
+        }
+      ]
+    },
+    {
+      "consulta": "piso salarial dos professores",
+      "esperadas": [
+        502628,
+        532814,
+        946171
+      ],
+      "conferir": [
+        {
+          "id": 502628,
+          "proposicao": "PL 1376/2011",
+          "ementa": "Regulamenta a instituição do Piso Salarial Profissional Nacional (PSPN) para os profissionais da educação escolar, nos termos do Art. 206 da Constituição Federal."
+        },
+        {
+          "id": 532814,
+          "proposicao": "PL 3020/2011",
+          "ementa": "Altera o caput do art. 4º da Lei nº 11.738, de 16 de julho de 2008, que Regulamenta a alínea \"e\" do inciso III do caput do art. 60 do Ato das Disposições Constitucionais Transitórias, para instituir o piso salarial profissional nacional para os profissionais do magistério público da educação básica,"
+        },
+        {
+          "id": 946171,
+          "proposicao": "PL 251/2015",
+          "ementa": "Altera a Lei nº 11.738, de 16 de julho de 2008, que regulamentou o piso salarial profissional nacional para os profissionais do magistério público da educação básica, previsto na alínea \"e\" do inciso III do art. 60 do Ato das Disposições Constitucionais Transitórias, para viabilizar que todos os Est"
+        }
+      ]
+    },
+    {
+      "consulta": "remédio de graça pelo SUS para TDAH",
+      "esperadas": [
+        533790
+      ],
+      "conferir": [
+        {
+          "id": 533790,
+          "proposicao": "PL 3092/2012",
+          "ementa": "Que dispõe sobre a obrigatoriedade de fornecimento de medicamentos gratuito pelo SUS  para tratar Hiperatividade e TDHA em crianças portadoras da síndrome sem distinção de classe, nem mesmo aqueles pacientes que não se enquadram como os mais carentes poderão ser  excluídos do benefício."
+        }
+      ]
+    },
+    {
+      "consulta": "nova tributação sobre consumo: IBS e CBS da reforma tributária",
+      "esperadas": [
+        2430143,
+        2422069
+      ],
+      "conferir": [
+        {
+          "id": 2430143,
+          "proposicao": "PLP 68/2024",
+          "ementa": "Institui o Imposto sobre Bens e Serviços - IBS, a Contribuição Social sobre Bens e Serviços - CBS e o Imposto Seletivo - IS e dá outras providências."
+        },
+        {
+          "id": 2422069,
+          "proposicao": "PLP 29/2024",
+          "ementa": "Dispõe sobre a regulamentação do imposto seletivo previsto na Emenda Constitucional nº 132, de 20 de dezembro de 2023, e dá outras providências."
+        }
+      ]
+    },
+    {
+      "consulta": "proteção à mulher vítima de violência em casa, Lei Maria da Penha",
+      "esperadas": [
+        2640914,
+        2641724,
+        949119
+      ],
+      "conferir": [
+        {
+          "id": 2640914,
+          "proposicao": "PL 4234/2026",
+          "ementa": "Altera a Lei nº 11.340, de 7 de agosto de 2006, para estender expressamente as medidas protetivas de urgência às situações de violência doméstica e familiar em relações afetivas, independentemente de sexo ou identidade de gênero."
+        },
+        {
+          "id": 2641724,
+          "proposicao": "PL 4829/2026",
+          "ementa": "Altera a Lei nº 11.340, de 7 de agosto de 2006 (Lei Maria da Penha), para isentar de custas processuais, emolumentos e demais despesas processuais as vítimas de violência doméstica e familiar em ações de conhecimento no juízo cível destinadas à reparação de danos materiais e morais e em cumprimento "
+        },
+        {
+          "id": 949119,
+          "proposicao": "PL 477/2015",
+          "ementa": "Altera os artigos 5º e 8º da Lei nº 11.340,de 7 de agosto de 2006, que cria mecanismos para coibir a violência doméstica e familiar contra a mulher, substituindo o termo gênero por sexo."
+        }
+      ]
+    }
+  ]
+}

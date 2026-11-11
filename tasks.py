@@ -1,3 +1,5 @@
+import sys
+
 from invoke import task
 
 
@@ -52,6 +54,30 @@ def carga_validacao(c):
     c.run("flask --app app.py coletar relatorio", echo=True)
 
 
+@task(name="baixar-modelo")
+def baixar_modelo(c):
+    """Baixa a RoBERTaLexPT uma vez para ROBERTA_DIR (cerca de 500 MB)."""
+    c.run("flask --app app.py ia baixar-modelo", echo=True)
+
+
+@task
+def indexar(c):
+    """Cria os trechos e os embeddings do RAG (precisa de pip install -e ".[ia]")."""
+    c.run("flask --app app.py ia indexar", echo=True)
+
+
+@task(name="gerar-novos")
+def gerar_novos(c, simular=False):
+    """Escreve os rascunhos dos fatos novos dos ultimos dias (votacoes, situacoes e proposicoes)."""
+    c.run(f"flask --app app.py ia gerar-novos{' --simular' if simular else ''}", echo=True)
+
+
+@task(name="analise-pec")
+def analise_pec(c, rodada="base"):
+    """Uma rodada da analise da PEC (docs/LEITURA_ENCADEADA.md): base, encadeada, contexto, planta ou controle."""
+    c.run(f"python scripts/analise_pec/rodar.py --rodada {rodada}", echo=True)
+
+
 @task(name="verificar-banco")
 def verificar_banco(c):
     """Confere estrutura, integridade e coerencia do banco, sem gravar nada."""
@@ -64,10 +90,52 @@ def testar_persistencia(c):
     c.run("flask --app app.py banco testar-persistencia --relatorio instance/persistencia.md", echo=True)
 
 
+@task(name="ver-banco")
+def ver_banco(c, banco="instance/desperta.db", porta=8001):
+    """Abre o banco no navegador (Datasette, so leitura), em http://127.0.0.1:8001, com a visao geral em /visao-geral."""
+    try:
+        import sqlite_vec
+
+        extensao = f'--load-extension="{sqlite_vec.loadable_path()}"'
+    except ImportError:
+        extensao = ""
+    c.run("python scripts/ver_banco/montar_metadata.py", hide=True)
+    c.run(
+        f"datasette {banco} -m scripts/ver_banco/metadata.json --template-dir scripts/ver_banco/templates {extensao} "
+        f"-h 127.0.0.1 -p {porta} "
+        "--setting sql_time_limit_ms 5000 --setting facet_time_limit_ms 1500 --setting default_page_size 50 --open",
+        pty=True,
+    )
+
+
 @task
 def run(c):
     """Executa a aplicacao Flask."""
     c.run("flask --app app.py run --debug", pty=True)
+
+
+# ------------------------------------------------------
+# AGENDADOR (timers de usuario do systemd, decisao 23.8)
+# ------------------------------------------------------
+AGENDADOR = "scripts/agendador/agendador.py"
+
+
+@task
+def agendar(c):
+    """Liga os timers da horaria, diaria, semanal e mensal (coleta, indexacao e rascunhos)."""
+    c.run(f"{sys.executable} {AGENDADOR} instalar", echo=True)
+
+
+@task
+def desagendar(c):
+    """Desliga os timers e apaga os arquivos do systemd (nao interrompe a coleta em andamento)."""
+    c.run(f"{sys.executable} {AGENDADOR} remover", echo=True)
+
+
+@task
+def agenda(c):
+    """Mostra as proximas execucoes das rotinas agendadas."""
+    c.run(f"{sys.executable} {AGENDADOR} situacao", echo=True)
 
 
 @task

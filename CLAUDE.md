@@ -1,16 +1,17 @@
 # Desperta Brasil — guia do projeto para o Claude Code
 
 > Coloque este arquivo na **raiz do repositório** com o nome `CLAUDE.md`. O Claude Code lê esse arquivo sozinho no início de cada sessão.
-> Última atualização: 01/11/2026 (Fases 1, 1.5 e 2 concluídas; Fase 3 em andamento; decisões nas seções 10 a 17; ajuste físico do banco em `docs/AJUSTE_BANCO_SISTEMA.md`; treino da Roberta escritora em `docs/TREINAR_ROBERTA_ESCRITORA.md`).
+> Última atualização: 11/11/2026 (Fases 1, 1.5, 2 e 2b concluídas; Fase 3 em andamento; decisões nas seções 10 a 23; ajuste físico do banco em `docs/AJUSTE_BANCO_SISTEMA.md`; treino da Roberta escritora em `docs/TREINAR_ROBERTA_ESCRITORA.md`; leitura encadeada da PEC em `docs/LEITURA_ENCADEADA.md`).
 
 ## 0. Como trabalhar neste projeto (leia primeiro)
 
 - **Idioma:** responda, comente o código e escreva mensagens de commit em **português do Brasil**.
 - **Padrão obrigatório:** o código segue a estrutura do projeto **TaskFlow**, usado como exemplo pelo professor da disciplina (Programação Web Avançada, UVV). A seção 3 descreve esse padrão. Não invente outra organização, não troque o Flask-SQLAlchemy por outro ORM e não use outro estilo de modelo.
-- **Ordem do trabalho:** o projeto é construído por fases (seção 7). **As Fases 1 (banco), 1.5 (ajuste físico do banco, `docs/AJUSTE_BANCO_SISTEMA.md`) e 2 (coletor) estão concluídas; a Fase 2b fechou sem migração (14.1). Falta só o ajuste da `horaria` (14.2), numa branch pequena. Depois vem a Fase 3: IA e RAG.** Não comece o coletor, a IA, as rotas da API ou o front-end antes da fase anterior estar pronta e testada, a não ser que o grupo peça. Antes de mudar código, leia as seções 10 a 17 (decisões tomadas depois de cada relatório).
+- **Ordem do trabalho:** o projeto é construído por fases (seção 7). **As Fases 1 (banco), 1.5 (ajuste físico do banco, `docs/AJUSTE_BANCO_SISTEMA.md`), 2 (coletor) e 2b (campos opcionais, com 2 migrações, 22.2) estão concluídas, e o banco tem a bateria de persistência (22.4). O ajuste da `horaria` (PR nº 2) foi medido em 10/11, abaixo da meta (23.10), e está na `main`; as rotinas rodam sozinhas pelo agendador (23.11). A fase atual é a 3 (IA e RAG, branch `fase-3-rag`): antes da Roberta escritora (3b), vem a análise da PEC com a Roberta original (22.6). Siga a ordem de 23.8.** Princípio do portal: transparência total (22.5). Não comece as rotas da API ou o front-end antes da fase anterior estar pronta e testada, a não ser que o grupo peça. Antes de mudar código, leia as seções 10 a 23 (decisões tomadas depois de cada relatório).
 - **Git:** a `main` no GitHub é a versão estável. Cada fase é feita numa branch própria (`fase-2-coletor`, `fase-3-ia`…), com commits pequenos ao fim de cada passo e mensagem em português; ao terminar a fase, abrir um pull request para a `main`. Quem faz o merge é o Lucas, depois de revisar (Caio e Rhuan revisam quando puderem). Não fazer push direto na `main`. Nunca versione `.venv/`, `instance/`, `.env` nem arquivos `*.db`, `*.db-wal`, `*.db-shm`.
 - **O modelo do banco já foi decidido pelo grupo** (32 tabelas, seção 5). Não acrescente, remova nem renomeie tabelas ou colunas por conta própria. A única exceção são as colunas técnicas, índices e configurações listados em `docs/AJUSTE_BANCO_SISTEMA.md` (camada física: controle de sincronização, índices, FTS5, migrações), que não mudam o modelo lógico. Se achar um problema no modelo, aponte e pergunte antes de mudar.
 - **Ao terminar cada passo:** rode os testes (`invoke test`) e mostre o resultado.
+- **Coautoria (22.8):** todo commit de trabalho e todo merge leva `Co-authored-by` do Caio e do Rhuan.
 - **Tudo open source (seção 18):** só use bibliotecas, modelos e ferramentas de código aberto, e adapte no próprio código o máximo possível. Nada de API paga ou serviço fechado (OpenAI, Google, AWS etc.) no funcionamento do portal.
 
 ---
@@ -45,7 +46,7 @@ Complementares:
 | Código | Requisito |
 |---|---|
 | RF01 | Consumir a API v2 da Câmara: proposições (autores, temas, tramitações), votações (votos, orientações, proposições afetadas), deputados, partidos, legislaturas, órgãos (membros e Mesa), eventos (pauta), lideranças, blocos, frentes e a lista de temas. |
-| RF02 | Coleta agendada (revisto em 30/10/2026, ver 12.1): votações e eventos a cada hora; proposições dos tipos acompanhados a cada hora (janela curta) e numa revisão diária dos últimos dias; varredura de 30 dias uma vez por semana; cargos em órgãos e blocos semanalmente; frentes mensalmente. |
+| RF02 | Coleta agendada (revisto em 05/11/2026, ver 12.1, 13.1 a 13.3, 14.2 e 15.3), em quatro rotinas. **De hora em hora:** votações e eventos de ontem e de hoje e proposições do dia dos tipos acompanhados (PL, PLP, PEC, MPV e PDL); pula proposições conferidas há menos de 6 horas, para sozinha aos 20 minutos e busca votações e eventos primeiro. **Diária, de madrugada:** proposições dos últimos 3 dias e tudo o que ficou pendente (pautas, votos e proposições incompletas). **Semanal, no domingo de madrugada:** varredura de 30 dias das proposições, tabelas de apoio (legislaturas, partidos, deputados, órgãos e temas), membros de órgãos, Mesa, lideranças e blocos. **Mensal:** frentes. Só uma coleta roda por vez; outros tipos de proposição entram só quando citados por votação ou pauta; os limites de 20 minutos e 6 horas são configuráveis. |
 | RF03 | Guardar os dados num modelo relacional que espelha a API, com os mesmos ids, atualizando (upsert) em vez de duplicar. |
 | RF04 | Registrar cada coleta (endpoint, parâmetros, início, fim, total, novos, atualizados, status, erro) e guardar o link do inteiro teor. |
 | RF05 | Classificar proposições e notícias pelos temas oficiais da Câmara (proposições recebem os temas da API; cada notícia tem um tema principal). |
@@ -90,7 +91,7 @@ Aplicação cliente-servidor. O back-end tem três partes (coletor, módulo de I
 | Back-end / API | Python + Flask (API REST), padrão Application Factory, Blueprints |
 | Banco | SQLite com Flask-SQLAlchemy (ORM). Migrações com Flask-Migrate quando o esquema estabilizar |
 | Coletor | Python, rotina agendada, `requests` |
-| IA (RAG) | **RoBERTaLexPT** (`eduagarcia/RoBERTaLexPT-base`) para embeddings e busca + um modelo de linguagem generativo para escrever (**ainda a definir pelo grupo**) |
+| IA (RAG) | **RoBERTaLexPT** (`eduagarcia/RoBERTaLexPT-base`) para embeddings e busca. Escrita: `GeradorFrases` (frases prontas) e, se passar na avaliação, a **Roberta escritora**, um modelo separado treinado a partir da RoBERTaLexPT (seção 17) |
 | Busca vetorial | **sqlite-vec** no próprio SQLite; PyTorch + Hugging Face Transformers |
 | Voz | **Whisper** (`faster-whisper`, modelo `small`, idioma `pt`) **só na busca por voz**; o áudio não é guardado. **Piper** (voz pt-BR) para ler as notícias; o áudio é gerado na publicação e salvo em arquivo pelo slug. (Web Speech API descartada, 18.2) |
 | Fonte de dados | API de Dados Abertos da Câmara v2: `https://dadosabertos.camara.leg.br/api/v2` (REST, gratuita, sem chave, JSON, **sem CORS**: só o back-end chama) |
@@ -99,8 +100,8 @@ Decisões que **não** devem ser mudadas sem o grupo:
 - **Sem Redis no MVP.** (Fica como evolução, para fila de gerações ou cache.)
 - O Whisper **não lê texto**: só transcreve a busca por voz. A leitura é do Piper.
 - Voz não cria tabela nova.
-- A RoBERTaLexPT **não gera texto**: só faz embeddings e busca.
-- A API Flask não carrega a RoBERTaLexPT; o modelo roda no módulo de IA, em segundo plano, depois de cada coleta.
+- A versão original da RoBERTaLexPT-base, usada como modelo de **embeddings**, **não gera texto**: só faz busca. A escrita é de um **modelo separado**, a versão adaptada da Fase 3b: a Roberta escritora (encoder-decoder montado e treinado a partir dela, seção 17), que fica em `instance/modelos/roberta-escritora/`.
+- A API Flask não carrega nenhum dos dois modelos; eles rodam no módulo de IA, em segundo plano, depois de cada coleta.
 
 ---
 
@@ -1092,15 +1093,15 @@ Ficam no código, não no banco. Respeite estas regras quando chegar a hora:
 
 ### 6.1 RAG com a RoBERTaLexPT (Fase 3)
 
-- Carregar com `AutoTokenizer` e `AutoModel` (`eduagarcia/RoBERTaLexPT-base`), `model.eval()` e `torch.no_grad()`, uma vez no início do módulo de IA; CPU.
+- Carregar com `AutoTokenizer` e `AutoModel` (`eduagarcia/RoBERTaLexPT-base`), `model.eval()` e `torch.no_grad()`, uma vez no início do módulo de IA; dispositivo pelo `IA_DISPOSITIVO` (seção 20: RTX 4050 quando houver, CPU se não houver).
 - Limite de 512 tokens; trechos de até 400 tokens com 50 de sobreposição; textos curtos ficam num trecho só.
 - Embedding: mean pooling com a máscara de atenção + normalização L2 (768 dimensões, float32).
 - Índice: tabela virtual do sqlite-vec ligada a `trecho_rag.id`, por exemplo `CREATE VIRTUAL TABLE vec_trecho USING vec0(trecho_id INTEGER PRIMARY KEY, embedding float[768] distance_metric=cosine)`. Criada pelo módulo de IA (não pelo `create_all`) e reconstruível a partir de `trecho_rag`.
 - Busca: 8 trechos mais parecidos, com filtro por tipo e data quando preciso; gravar em `geracao_trecho` com `posicao` e `similaridade`.
 - Só registros novos ou com `hash_texto` diferente recebem embedding depois de cada coleta.
-- O que vira trecho: proposição (sigla, número/ano, ementa, ementa detalhada, keywords); tramitação (data, órgão, situação, despacho); votação (descrição, órgão, data, resultado); evento e item de pauta (descrição, tópico, texto do parecer).
+- O que vira trecho: proposição (sigla, número/ano, ementa, ementa detalhada, keywords); tramitação (data, órgão, situação, despacho); votação (descrição, órgão, data, resultado e a situação dos votos: nominal, secreta, simbólica ou pendente, 22.5); evento e item de pauta (descrição, tópico, texto do parecer).
 - Começar com o modelo original e medir a busca; fine-tuning com sentence-transformers só se precisar.
-- **O modelo de linguagem que escreve ainda não foi escolhido.** Deixe uma interface (`ia/gerador.py`) com uma implementação falsa para teste até o grupo decidir.
+- **Quem escreve (atualizado, seção 17):** `ia/gerador.py` tem a interface, o `GeradorFalso` (testes), o `GeradorFrases` (plano B, padrão do MVP) e, depois da Fase 3b, o `GeradorRoberta`.
 
 ### 6.2 Voz (Fase 5)
 
@@ -1151,11 +1152,11 @@ Além da seção 6, a Fase 2 precisa:
 - **Pedidos do relatório da Fase 1.5:** seguir a decisão 11.4 (contadores HTTP, endpoints com 504, `nullable` testado numa cópia do banco).
 - **Decisões depois do relatório da Fase 2:** seguir a seção 12. O que falta para fechar a fase está em 12.7.
 
-### Fase 2b — Ajustes de `nullable` (FECHADA em 01/11/2026 sem migração, ver 14.1)
+### Fase 2b — Ajustes de `nullable` (CONCLUÍDA em 04/11/2026 com 2 migrações, ver 22.2; a 14.1 fechou só a parte dos textos vazios)
 O Flask-Migrate já foi iniciado na Fase 1.5. Quando o grupo decidir os ajustes de `nullable` da carga de validação, aplicá-los como uma nova migração (`flask db migrate` + revisão + `flask db upgrade`). Toda mudança no esquema é migração, não `create_all()`.
 
 ### Fase 3 — IA e RAG
-Trechos, embeddings, índice sqlite-vec, busca híbrida (16.1), geração de rascunhos com o `GeradorFrases` (17.2), registro em `geracao_ia`, `geracao_trecho` e `noticia_fonte`.
+Trechos, embeddings, índice sqlite-vec, busca híbrida (16.1), geração de rascunhos com o `GeradorFrases` (17.2), registro em `geracao_ia`, `geracao_trecho` e `noticia_fonte`, transparência dos dados (22.5) e análise da PEC com a Roberta original (22.6).
 
 ### Fase 3b — Roberta escritora
 Treinar a RoBERTaLexPT como encoder-decoder para escrever título e resumo (seção 17 e `docs/TREINAR_ROBERTA_ESCRITORA.md`). Só entra no portal se passar na avaliação.
@@ -1187,7 +1188,7 @@ Personalização por tema, relatórios da IA, aviso de "dados desatualizados" (R
 - ~~Qual modelo de linguagem generativo vai escrever as notícias.~~ Decidido na seção 17: a própria RoBERTaLexPT será treinada para escrever; o `GeradorFrases` é o plano B.
 - Voz exata do Piper em pt-BR (o valor em `Config` é só um padrão). Conferir a licença da voz escolhida (18.2).
 - Licença do próprio Desperta Brasil (18.3).
-- Onde o projeto será publicado (servidor, HTTPS).
+- Onde o projeto será publicado (servidor, HTTPS). Plano inicial na 21.4.
 - Versão do Python para as fases 3 e 5: o projeto roda em Python 3.14. Se `pip install -e ".[ia]"` ou `".[voz]"` falhar por falta de pacote para essa versão (PyTorch, faster-whisper/CTranslate2, Piper), avisar o grupo e propor um ambiente com Python 3.12, sem trocar de biblioteca.
 
 ---
@@ -1315,7 +1316,7 @@ Aceito, com o limite de 200 pendentes por janela. O `relatorio` deve mostrar qua
 **Acréscimo:** ao encontrar `instance/coletor.lock`, o coletor confere se o PID gravado ainda está rodando (`os.kill(pid, 0)`: `ProcessLookupError` = processo morto). Se o processo não existe, a trava é abandonada: remover, gravar um aviso em `log_sistema` e seguir com a coleta. Se o processo existe, não rodar. O limite de 6 horas continua como segunda proteção, para o caso de o número do PID ter sido reaproveitado por outro programa. Com testes para os três casos: PID vivo, PID morto e trava com mais de 6 horas.
 
 ### 13.7 RF02 no documento do MVP
-Continua com o grupo: atualizar o RF02 com o calendário de 12.1 e 13.1 a 13.3.
+Continua com o grupo: atualizar o RF02 com o calendário de 12.1 e 13.1 a 13.3. **Atualizado em 05/11/2026:** o texto do RF02 na seção 1.2 foi reescrito com o calendário; o grupo copia o mesmo texto para o documento do MVP.
 
 ### 13.8 Primeira `diaria`
 A primeira execução pode passar de 3 horas (cerca de 7.200 chamadas). Isso é aceito uma vez: rodar a primeira `diaria` com `nohup`, logo depois da amostra. A meta de 3 horas vale a partir da segunda execução. Se a segunda também passar, avisar o grupo.
@@ -1329,7 +1330,7 @@ Rodar `invoke test` e conferir o resultado **antes** de fazer o commit, em coman
 
 ### 14.1 Fase 2b: textos vazios em colunas obrigatórias
 A amostra não teve nenhuma falha de `NOT NULL`. Apareceram só textos vazios (`''`) que a própria API manda: `tramitacao.despacho` (7 linhas), `orgao.sigla` (2) e `orgao.apelido` (1).
-- **Decisão: nada muda no banco.** As três colunas continuam `NOT NULL` e guardam `''` como a API manda (regra da seção 9 do ajuste físico: em coluna obrigatória, texto vazio fica `''`). A Fase 2b fecha **sem migração**.
+- **Decisão: nada muda no banco.** As três colunas continuam `NOT NULL` e guardam `''` como a API manda (regra da seção 9 do ajuste físico: em coluna obrigatória, texto vazio fica `''`). A Fase 2b fecha **sem migração**. **Atualizado em 22.2:** a carga de 3 meses mostrou campos que a API manda nulos, e a Fase 2b ganhou 2 migrações.
 - Na API do portal e no front-end (Fases 4 e 5), texto vazio é tratado como "sem valor": não mostrar despacho vazio, e mostrar `orgao.nome` quando `sigla` estiver vazia.
 - O `flask coletar relatorio` passa a contar também textos vazios em colunas obrigatórias de texto, para isso aparecer sem consulta à parte.
 
@@ -1398,10 +1399,7 @@ A medida "contém a palavra" favorece a busca por palavras. Trocar por um **conj
 Levar para o PR nº 2 só a mudança do `migrations/env.py` que ignora `vec_trecho` (e já preparar para ignorar `trecho_fts`), para o `flask db check` passar antes do merge da Fase 3. Testes e coletas não são afetados.
 
 ### 16.5 Decisões do Claude Code
-Aceitas: PyTorch só para CPU; tipo e nome do evento juntos no trecho; sem geração real até o grupo escolher o modelo; testes de IA pulados sem as dependências. A do texto das tramitações foi trocada pela 16.3.
-
-### 16.7 Onde o modelo fica
-O modelo baixado não pode depender do cache escondido do usuário. Configurar em `Config` e no `.env.example`: `HF_HOME=instance/modelos` (o modelo fica dentro do projeto, fora do git) e, depois do primeiro download, `HF_HUB_OFFLINE=1` (roda sem internet e sem conferir versão). Um comando `flask ia baixar-modelo` (e `invoke baixar-modelo`) faz o download uma vez e confere se o modelo carrega. Registrar no README o tamanho (cerca de 500 MB).
+Aceitas: PyTorch só para CPU (trocado pelo PyTorch com CUDA na 20.2); tipo e nome do evento juntos no trecho; sem geração real até o grupo escolher o modelo; testes de IA pulados sem as dependências. A do texto das tramitações foi trocada pela 16.3.
 
 ### 16.6 Ordem
 1. 16.4 no PR nº 2.
@@ -1410,6 +1408,9 @@ O modelo baixado não pode depender do cache escondido do usuário. Configurar e
 4. Grupo corrige as 20 consultas; Claude Code mede as quatro opções e relata.
 5. Terça, 03/11: medição da `horaria` e merge do PR nº 2.
 
+### 16.7 Onde o modelo fica
+O modelo baixado não pode depender do cache escondido do usuário. Configurar em `Config` e no `.env.example`: `HF_HOME=instance/modelos` (o modelo fica dentro do projeto, fora do git) e, depois do primeiro download, `HF_HUB_OFFLINE=1` (roda sem internet e sem conferir versão). Um comando `flask ia baixar-modelo` (e `invoke baixar-modelo`) faz o download uma vez e confere se o modelo carrega. Registrar no README o tamanho (cerca de 500 MB). **Atualizado na seção 21:** a RoBERTaLexPT-base passa a vir de `ROBERTA_DIR`, que vai apontar para um pendrive; os outros modelos ficam em `MODELOS_DIR` (`instance/modelos`).
+
 ---
 
 ## 17. Gerador das notícias: a RoBERTaLexPT aprende a escrever (01/11/2026)
@@ -1417,16 +1418,16 @@ O modelo baixado não pode depender do cache escondido do usuário. Configurar e
 ### 17.1 Decisão do grupo
 Em vez de um modelo de linguagem pronto (14.5), a **própria RoBERTaLexPT** será treinada para escrever, montada como **encoder-decoder** (warm-start, RoBERTa2RoBERTa). O plano completo está em `docs/TREINAR_ROBERTA_ESCRITORA.md`. Resumo:
 - Ela escreve só **`titulo` e `resumo`**. O `corpo` é montado pelo código com os dados do banco.
-- O treino é feito **fora do PC, com GPU** (Google Colab ou Kaggle), com um notebook em `scripts/treino/`. O Lucas roda o notebook.
+- O treino é feito **na GPU principal do PC do Lucas, a NVIDIA RTX 4050** (seção 20), com um script em `scripts/treino/`. Google Colab ou Kaggle só se a 4050 não der conta.
 - Os exemplos de treino (pares "dados da Câmara → título e lide") vêm da Agência Câmara de Notícias, **só se o `robots.txt` e os termos permitirem**. Esses textos servem só para treino e nunca vão para o portal nem para o banco.
 - O dataset fica em arquivo (`instance/dataset/pares.jsonl`), sem tabelas novas.
-- Só entra no portal se passar na avaliação: no máximo 2 erros de fato em 50 casos e clareza média de pelo menos 3,5.
+- Só entra no portal se passar na avaliação: no máximo 2 erros de fato em 50 casos e clareza média de pelo menos 4,0.
 
 ### 17.2 Plano B primeiro
 Antes de qualquer treino, implementar o **`GeradorFrases`** em `desperta/ia/gerador.py` (frases prontas, sem IA, nunca inventa número, nome ou data). `GERADOR` em `Config`: `falso`, `frases` ou `roberta`, com padrão `frases`. O MVP sai com ele se a Roberta escritora não ficar boa a tempo. Não apagar depois.
 
 ### 17.3 Ordem
-A Fase 3b vem **depois** dos passos de 16.6 (busca híbrida, carga de 3 meses, tramitações, medição da `horaria` e merge do PR nº 2). Dentro dela: etapa 1 (`GeradorFrases`, na `fase-3-rag`) → etapa 2 (dataset, numa branch `fase-3b-roberta-escritora`; relatório com volume e licença) → **o grupo confirma** → etapa 3 (treino) → etapa 4 (avaliação) → etapa 5 (integração, só se passar).
+**Ajustada em 19.4: a etapa 1 pode começar já.** A Fase 3b vem **depois** dos passos de 16.6 (busca híbrida, carga de 3 meses, tramitações, medição da `horaria` e merge do PR nº 2). Dentro dela: etapa 1 (`GeradorFrases`, na `fase-3-rag`) → etapa 2 (dataset, numa branch `fase-3b-roberta-escritora`; relatório com volume e licença) → **o grupo confirma** → etapa 3 (treino) → etapa 4 (avaliação) → etapa 5 (integração, só se passar).
 
 ---
 
@@ -1442,11 +1443,265 @@ O Desperta Brasil é uma plataforma **open source** e **personalizada no própri
 ### 18.2 O que isso muda no que já foi decidido
 - **Web Speech API (antes citada nas seções 2 e 6):** sai como alternativa. No Chrome ela manda o áudio para servidores do Google. A voz fica só com Whisper (busca) e Piper (leitura).
 - **Vozes do Piper:** o Piper é aberto, mas cada voz tem a sua licença. Escolher uma voz pt-BR com licença que permita uso e redistribuição e registrar no README.
-- **Google Colab ou Kaggle (17):** são só a máquina emprestada para o treino. O código do treino (notebook em `scripts/treino/`) é do projeto e precisa rodar também em qualquer PC com GPU, sem depender de função exclusiva do Colab ou do Kaggle.
+- **Google Colab ou Kaggle (17):** agora são só reserva (seção 20); a máquina do treino é a RTX 4050. Se forem usados, são só a máquina emprestada. O código do treino (notebook em `scripts/treino/`) é do projeto e precisa rodar também em qualquer PC com GPU, sem depender de função exclusiva do Colab ou do Kaggle.
 - **Dados da Agência Câmara (17):** usados só no treino, nunca redistribuídos no repositório.
 
 ### 18.3 Licença do projeto (o grupo decide)
+**Situação:** o grupo vai discutir com o professor. Até lá, não criar `LICENSE` e não cobrar essa decisão nos relatórios.
+
 O repositório precisa de um arquivo `LICENSE`. Sugestões:
 - **AGPL-3.0:** quem usar o código num site também precisa abrir as mudanças. É a que mais protege a ideia de plataforma aberta.
 - **MIT:** mais simples e livre, mas permite que alguém feche uma cópia.
 O Claude Code não escolhe: só cria o `LICENSE` depois da decisão do grupo. Ao criar, colocar no README a lista de dependências e modelos com as licenças de cada um e os créditos da RoBERTaLexPT (Garcia et al., PROPOR 2024).
+
+---
+
+## 19. Decisões depois da Fase 3, parte 2 (01/11/2026)
+
+### 19.1 Centralização: descartada
+Piorou nos dois modos (híbrida 63% → 54%, vetorial 41% → 29%). Não adotar. `RAG_CENTRALIZAR` fica com padrão desligado e o código pode ficar, mas não entra em nenhum fluxo. Se o grupo confirmar com as consultas corrigidas, remover o comando, a variável e `instance/vetor_medio.npy` num commit separado.
+
+### 19.2 Busca: ainda sem decisão final
+A medida preliminar favorece a busca por palavras, porque as esperadas vieram de palavras nas ementas. A decisão entre híbrida e só palavras espera as consultas corrigidas (16.2). Enquanto isso:
+- O padrão continua `hibrida`.
+- Acrescentar à medição uma quinta opção: **RRF com peso**, com a lista de palavras pesando 1,0 e a vetorial 0,5 (`RAG_PESO_VETOR=0.5` em `Config`). A ideia é manter os acertos que só a híbrida achou ("vacinar idosos em casa") sem deixar o vetor derrubar os da busca por palavras ("piso salarial dos professores").
+- Na medida final, mostrar também quantos resultados fora do assunto aparecem nos 8 primeiros de cada opção (exemplo: vaquejada em "educação"), marcados à mão pelo grupo no mesmo arquivo.
+- Fine-tuning da RoBERTaLexPT para busca só se nenhuma opção passar de 70% com as consultas corrigidas.
+
+### 19.3 Correções no guia
+Feitas nesta versão: seção 0 (fase atual), seção 2 (modelo de embeddings x Roberta escritora, sem "a definir") e 16.7 movida para depois da 16.6.
+
+### 19.4 Ordem a partir de agora
+1. **Pode começar já:** Fase 3b, etapa 1 (`GeradorFrases`, na `fase-3-rag`). Ela não depende da carga nem da busca final. Isso adianta a 17.3, que pedia para esperar a 16.6 inteira.
+2. Junto: a opção de RRF com peso (19.2) e `.vscode/` no `.gitignore`.
+3. Noite com o PC ligado: carga de 3 meses e tramitações recentes (16.6, passo 3).
+4. Grupo corrige as 20 consultas; Claude Code mede as cinco opções e relata (19.2).
+5. Terça, 03/11: medição da `horaria` e merge do PR nº 2.
+6. Só depois: etapa 2 da Fase 3b (dataset).
+
+### 19.5 Decisões do Claude Code
+Aceitas: `.env` local com `HF_HUB_OFFLINE=1`; apagar a cópia antiga do modelo em `~/.cache/huggingface`; `trecho_rag` guardando o embedding original; correção das esperadas do rascunho. Não apagar nada fora do projeto de novo sem avisar antes no relatório.
+
+---
+
+## 20. GPU: usar a NVIDIA RTX 4050 (01/11/2026)
+
+### 20.1 Qual placa
+O PC do Lucas tem uma GPU integrada e a **GPU principal, NVIDIA GeForce RTX 4050**. Todo trabalho de IA que usar GPU usa **a RTX 4050**, nunca a integrada.
+- Conferir com `nvidia-smi` e `torch.cuda.get_device_name(0)` (precisa conter `4050`).
+- `CUDA_VISIBLE_DEVICES=0` e `torch.device("cuda:0")`.
+- Se o CUDA não aparecer, **parar e avisar o Lucas**. Não instalar, trocar nem configurar driver da NVIDIA ou `prime-select` por conta própria.
+
+### 20.2 O que muda
+- **PyTorch:** trocar o PyTorch só para CPU (16.5) pelo PyTorch com CUDA, no `.venv`. Registrar no README o comando e o tamanho novo do `.venv`. O `pyproject.toml` continua pedindo só `torch`.
+- **Configuração:** `IA_DISPOSITIVO` em `Config` e no `.env.example`: `auto` (padrão: usa `cuda:0` se existir, senão processador), `cuda` (exige a GPU e para com erro se não houver) ou `cpu`. Registrar no log qual dispositivo foi usado em cada execução.
+- **Embeddings e indexação (`flask ia indexar`):** usam a RTX 4050 pelo `IA_DISPOSITIVO`. Isso deve acelerar muito a indexação das tramitações (16.3). Medir o tempo com GPU e anotar no relatório. A 6.1 dizia "CPU": passa a ser "GPU quando houver; o código continua funcionando na CPU".
+- **Treino da Roberta escritora (17):** na RTX 4050, com os ajustes de memória de `docs/TREINAR_ROBERTA_ESCRITORA.md`, seção 3.
+- **API Flask:** continua sem carregar PyTorch nem a GPU (6.1).
+- **Testes:** continuam rodando sem GPU. Testes que precisam de CUDA são pulados quando ela não existe.
+
+### 20.3 Open source (seção 18)
+O driver e o CUDA da NVIDIA são da fabricante da placa, não do projeto. São aceitos como driver do computador. O código do Desperta continua todo aberto e precisa rodar também sem placa da NVIDIA (`IA_DISPOSITIVO=cpu`).
+
+### 20.4 Ordem
+Fazer 20.2 (PyTorch com CUDA e `IA_DISPOSITIVO`) junto com os itens 1 e 2 da 19.4, antes da noite da carga, para a indexação das tramitações já usar a GPU.
+
+---
+
+## 21. RoBERTaLexPT no pendrive e servidor no futuro (01/11/2026)
+
+### 21.1 O que o Lucas quer
+Por enquanto tudo roda no PC do Lucas. **Só a RoBERTaLexPT-base fica num pendrive, completa: a Roberta e os seus parâmetros** (pesos, configuração e tokenizador). Todo o resto fica na pasta do projeto, no disco do PC: banco, dataset, checkpoints, a Roberta escritora treinada (Fase 3b) e os modelos de voz (Fase 5). Depois, o projeto vai para um **servidor**, para funcionar sem depender do PC. O pendrive ainda não chegou: até lá, a RoBERTaLexPT continua em `instance/modelos`.
+
+### 21.2 Como configurar
+- **`MODELOS_DIR`** em `Config` e no `.env.example`: pasta dos modelos do projeto. Padrão e valor fixo no PC do Lucas: `instance/modelos`. Ali ficam `roberta-escritora/` (Fase 3b), `whisper-small/` e `piper/` (Fase 5).
+- **`ROBERTA_DIR`** em `Config` e no `.env.example`: pasta só da RoBERTaLexPT-base. Padrão: `<MODELOS_DIR>/roberta-lexpt-base`. Com o pendrive: por exemplo `ROBERTA_DIR=/media/<usuario>/DESPERTA/roberta-lexpt-base` (o Ubuntu monta o pendrive em `/media/<usuario>/<nome do pendrive>`; o pendrive deve se chamar `DESPERTA` para o caminho não mudar).
+- **O que vai para o pendrive, na pasta `ROBERTA_DIR`:** o modelo inteiro, sem faltar nada para carregar sem internet: os pesos (`model.safetensors`, os 125 milhões de parâmetros, cerca de 500 MB), a configuração (`config.json`) e o tokenizador (`tokenizer.json`, `tokenizer_config.json`, `vocab.json`, `merges.txt`, `special_tokens_map.json`, os que existirem). O `flask ia baixar-modelo` confere se todos estão lá e mostra a lista.
+- **Roberta escritora (Fase 3b):** fica no PC, em `ROBERTA_ESCRITORA_DIR` (padrão `<MODELOS_DIR>/roberta-escritora`). Por ser uma variável própria, dá para levá-la ao pendrive depois mudando só uma linha do `.env`, se o Lucas quiser.
+- **Pastas simples:** cada modelo salvo com `save_pretrained` (modelo e tokenizer) e carregado pelo caminho com `local_files_only=True`. Não usar o formato de cache do Hugging Face (pastas `blobs` e `snapshots` com links), porque pendrives em exFAT ou FAT32 não aceitam links. `HF_HOME` só serve, temporariamente, durante o download.
+- **`flask ia baixar-modelo`** baixa a RoBERTaLexPT, salva em `ROBERTA_DIR`, confere se carrega e mostra o caminho e o tamanho. Com `HF_HUB_OFFLINE=1`, nada é baixado sozinho em outro lugar.
+- **`flask ia mover-roberta --para <pasta>`** (novo): copia a RoBERTaLexPT para a nova pasta (o pendrive), confere se carrega de lá e mostra a linha para atualizar `ROBERTA_DIR` no `.env`. **Não apaga a cópia antiga**: apagar é decisão do Lucas, depois de conferir.
+- O treino da Fase 3b lê a RoBERTaLexPT de `ROBERTA_DIR` (pendrive) e salva o resultado em `ROBERTA_ESCRITORA_DIR` (PC).
+
+### 21.3 Se o pendrive não estiver conectado
+- **Coletor, API, testes e a Roberta escritora continuam funcionando**, porque não dependem da RoBERTaLexPT-base. (A Roberta escritora é um modelo separado, salvo no PC, com os seus próprios pesos.)
+- **Comandos que usam a RoBERTaLexPT-base** (`flask ia indexar`, `buscar`, `reconstruir`, `medir-busca` e o treino) conferem `ROBERTA_DIR` no começo. Se ela não existir ou estiver vazia, **param com uma mensagem clara** ("RoBERTaLexPT não encontrada em <caminho>. O pendrive está conectado?"), gravam um aviso em `log_sistema` e saem com erro, sem travar a coleta.
+- **Indexação depois de cada coleta:** sem o pendrive, a coleta termina normalmente e a indexação fica pendente. Ela roda na próxima vez, porque é incremental pelo `hash_texto`.
+- **Geração de notícias:** a busca do RAG precisa da RoBERTaLexPT para transformar a consulta em vetor. Sem o pendrive, usar só a busca por palavras (`trecho_fts`) naquela execução e gravar um aviso no log. Nunca deixar de gravar a `geracao_ia`.
+- **Nunca baixar a RoBERTaLexPT de novo para o disco do PC** só porque o pendrive não estava conectado.
+- Testes para os três casos: pasta existe, pasta não existe e pasta vazia.
+
+### 21.4 Servidor (futuro, não fazer agora)
+O plano para quando o portal sair do PC do Lucas (depois da Fase 6, ou antes se o grupo pedir):
+- Servidor Linux com software aberto: Gunicorn rodando o Flask, Nginx na frente com HTTPS (Let's Encrypt), o front-end Vue gerado com `npm run build` e servido pelo Nginx.
+- Coletor e indexação agendados no próprio servidor, com `systemd` ou `cron`, usando a trava de 13.6.
+- O banco continua em SQLite num servidor só. PostgreSQL só se houver mais de um servidor (11.1).
+- Os modelos ficam no disco do servidor: `MODELOS_DIR` e `ROBERTA_DIR` apontam para lá. Sem placa de vídeo, `IA_DISPOSITIVO=cpu` (seção 20).
+- **O treino continua na RTX 4050 do PC do Lucas.** Para o servidor vão só a Roberta escritora pronta e a RoBERTaLexPT-base.
+- Hoje, a única preparação é manter **todo caminho e todo endereço configurável por variável de ambiente** (`DATABASE_URL`, `MODELOS_DIR`, `ROBERTA_DIR`, `ROBERTA_ESCRITORA_DIR`, `AUDIO_DIR`, `CORS_ORIGINS`, `IA_DISPOSITIVO`), sem nenhum caminho do PC do Lucas escrito no código.
+
+### 21.5 Ordem
+Fazer 21.2 e 21.3 junto com a 20.2, com `ROBERTA_DIR` no padrão (`instance/modelos/roberta-lexpt-base`). Quando o pendrive chegar, o Lucas avisa e o Claude Code roda `flask ia mover-roberta` e atualiza o `.env`.
+
+---
+
+## 22. Decisões e trabalho de 03 a 05/11/2026
+
+### 22.1 Carga de 3 meses (03 e 04/11)
+Rodou de 03/08 a 03/11/2026, em 1 h 26 min, a partir do código da `fase-3-rag` (o coletor era igual ao da `main`). As proposições foram de 3.489 para 9.937, e as votações de 24 para 1.068. Em seguida, a indexação na RTX 4050 levou 2 minutos. Backup antes da carga: `instance/desperta-antes-carga-3meses.db`. Log: `instance/carga-3meses.log`.
+
+### 22.2 Fase 2b: campos que a API manda nulos
+A carga mostrou campos obrigatórios que a Câmara manda nulos. Decisão do Lucas: "a Câmara vai continuar fazendo isso, então tem que ser null".
+- **Migração `535ba879b66f` (PR nº 4):** `voto.tipo_voto` opcional. Na votação secreta (02/09/2026, PDL 995/2026, indicação ao TCU), a API registra só a presença. Confirmado com a API e com notícias.
+- **Migração `f8a2f7162512` (PR nº 5):** `proposicao.regime`, `proposicao.data_status`, `proposicao.url_inteiro_teor` e `tramitacao.regime` opcionais. As 17 proposições que tinham falhado foram recuperadas.
+- **Coletor:** votação com voto que falhou fica pendente e volta na `diaria`, como a proposição na 13.5.
+- Cada migração foi testada numa cópia do banco antes, com backup (`instance/desperta-antes-fase-2b.db` e `instance/desperta-antes-campos-opcionais.db`).
+
+### 22.3 Deputados repetidos na listagem (PR nº 6)
+A listagem `/deputados?idLegislatura=` traz o mesmo deputado uma vez por partido em que ele esteve, e o coletor alternava o partido a cada coleta (cerca de 200 "atualizados" sem mudança real). Agora, quando as linhas diferem, vale o detalhe `/deputados/{id}`. Na API real, a segunda coleta seguida deu 0 atualizados.
+
+### 22.4 Bateria de persistência (PR nº 6)
+- `flask banco verificar` (só leitura): integridade, chaves estrangeiras, 32 tabelas, versão do esquema, WAL, votos contra o placar da Câmara, referências sem FK, índices de busca, embeddings, datas, hashes e coletas interrompidas.
+- `flask banco testar-persistencia`: numa cópia feita pelo backup do SQLite, testa ida e volta, upsert sem duplicar, atualização no lugar, erro isolado, restrições e cascata. A cópia é apagada no fim.
+- Os dois aceitam `--relatorio arquivo.md`. Também: `invoke verificar-banco` e `invoke testar-persistencia`.
+- No banco real: 20 aprovados, 0 falhas e 0 avisos; persistência 8 de 8.
+- **Amostra para mostrar:** `instance/desperta-amostra.db` (15 MB), criada pelas migrações com uma parte coerente dos dados, sem o índice vetorial.
+
+### 22.5 Princípio: transparência total no portal
+Decisão do Lucas (05/11): o portal deve ser o mais claro e transparente possível e informar tudo.
+- **O banco guarda exatamente o que a API mandou** (por exemplo, o `"."` no `regime`). O código classifica e explica; não apagar a diferença no banco.
+- `desperta/proposicoes/services.py`: `""`, `"."`, `"-"` e nulo são "não informado pela Câmara" (`informado()` e `ou_nao_informado()`).
+- `desperta/votacoes/services.py`: `situacao_dos_votos()` classifica a votação em pendente, erro na coleta, secreta (com o placar escrito pela Câmara), simbólica, nominal ou inconsistente, com a explicação em texto.
+- Os trechos de votação que a Roberta lê e o `GeradorFrases` usam essas explicações. O corpo do rascunho mostra situação, regime e apreciação, ou que não foram informados.
+- Na Fase 4 e 5, o portal deve mostrar também: data da última coleta e aviso de dados desatualizados, como cada notícia foi feita (gerador, revisão e fontes) e avisos de erro aparente nos dados da Câmara.
+- **Em aberto (grupo):** as proposições sem tema (109 dos tipos acompanhados) não geram notícia. Opções: um tema especial "Sem tema oficial", marcado como criado pelo portal, ou tema opcional na notícia.
+- Coleta nº 6 (30/10): marcada como `erro`, com o motivo, e mantida no histórico.
+
+### 22.6 Análise da PEC com a Roberta original
+- **A Roberta original vem primeiro; o treino fica para depois**, e só se as rodadas mostrarem que é necessário, com a confirmação do grupo.
+- **PEC:** a 319/2004 (id 265999), com o texto completo em `instance/analise_pec/PEC_319_2004.txt`, dividido em 12 trechos numerados (EMENTA, P1 a P4 e J1 a J7). A interpretação do grupo usa `instance/analise_pec/interpretacao_modelo.json`, uma por pessoa, preenchida antes de ver qualquer resultado.
+- **Leitura com contexto:** cada parágrafo é lido junto com o seu contexto, metade dos 512 tokens para cada parte, com o contexto antes do texto (`<s> contexto </s></s> parágrafo </s>`). O vetor sai só dos tokens do parágrafo, para o contexto comum não deixar os parágrafos parecidos demais. Parágrafo maior que a metade é cortado com sobreposição.
+- **Modelos de contexto:** o grupo escreve modelos com chaves do JSON da API, por exemplo `{titulo}`, `{tema}`, `{ementa}` (no lugar do resumo, porque só 11% das proposições acompanhadas têm `ementaDetalhada`), `{palavras_chave}` e `{paragrafo_anterior}`. Na PEC 319/2004, tudo isso soma cerca de 190 tokens e cabe no contexto. **Cuidado:** o tema no contexto entrega o teste D, e as palavras-chave entregam o teste E. Nesses testes, usar modelos sem essas chaves.
+- **Rodadas:** cada configuração ou modelo é uma rodada, registrada em `instance/analise_pec/rodadas/`. Primeiro a base (Roberta original, sem contexto). O grupo define antes a meta de "preciso" e escolhe as PECs de conferência, que não são usadas nos ajustes.
+- Código em `scripts/analise_pec/`, ainda não escrito: espera a interpretação e os modelos.
+- Estudo completo em `docs/ESTUDO_ROBERTA_X_GRUPO.md`.
+
+### 22.7 Pendrive
+- Kingston de 115 GB, em FAT32, com o nome `KINGSTON` (e não `DESPERTA`), montado em `/run/media/olam/KINGSTON`.
+- No PC, `ROBERTA_DIR` aponta para `/run/media/olam/KINGSTON/Desperta_Brasil/instance/modelos/roberta-lexpt-base`. Sem o pendrive, os comandos de IA param com aviso, e dá para usar a cópia do PC só numa execução (`ROBERTA_DIR=instance/modelos/roberta-lexpt-base`).
+- No pendrive: `Desperta_Brasil/` (cópia completa, com `.env` que vale para qualquer PC), `Desperta_Brasil_leve/` (com a amostra como banco e sem o modelo), `desperta-amostra.db`, `COMO_RODAR_O_BANCO.md` e `LEIA-ME.md`. As cópias são retratos e precisam ser atualizadas à mão.
+
+### 22.8 Coautoria nos commits
+O trabalho é feito no PC do Lucas, e o Caio e o Rhuan participam. Todo commit de trabalho e todo merge leva, no fim da mensagem, depois de uma linha em branco:
+```text
+Co-authored-by: Caio Henrique de Oliveira <caioheriqueolive@gmail.com>
+Co-authored-by: Rhuan Santos Wolfgramm <srhuan35@gmail.com>
+```
+Commit que já foi para o GitHub não é reescrito. Os commits `7cd1e90` e `c052cab`, na `main`, ficaram com um e-mail errado do Caio. No merge pelo site, usar "Create a merge commit", para manter a coautoria.
+
+### 22.9 Cuidados operacionais
+- `flask db upgrade` e `flask db check` precisam rodar **a partir da pasta da branch certa**, porque a pasta `migrations/` é a da pasta atual.
+- Para copiar o banco, usar o backup do SQLite. Os arquivos `-wal` e `-shm` fazem parte do banco enquanto ele está em uso.
+- Antes de qualquer mudança no banco real: backup em `instance/desperta-antes-*.db` e teste numa cópia.
+- Parar coletas com `kill -TERM <PID>`, nunca `pkill -f` com o texto do comando.
+
+### 22.10 Ordem a partir de agora (substituída pela 23.8)
+1. Terça, 10/11: as duas medições da `horaria` que faltam (a primeira, em 04/11, bateu os 20 minutos) e o merge do PR nº 2.
+2. Grupo: interpretação da PEC, modelos de contexto, meta de "preciso" e PECs de conferência. Depois, o Claude Code escreve `scripts/analise_pec/` e roda as rodadas.
+3. Grupo: correção das 20 consultas da busca; depois, medir as 5 opções e decidir a busca (19.2).
+4. Claude Code: gerar rascunhos sozinho a partir de `itens_novos`, otimizar a `horaria` e agendar as rotinas, com o ok do Lucas.
+5. Merge da `fase-3-rag` na `main` e começo da Fase 4.
+6. Treino da Roberta (análise e escritora), só depois das rodadas e com a confirmação do grupo.
+
+---
+
+## 23. Decisões e trabalho de 05 a 08/11/2026
+
+### 23.1 Visualizador do banco (só desenvolvimento)
+- `invoke ver-banco` abre o banco no navegador com o **Datasette** (Apache 2.0), em modo só leitura, em `http://127.0.0.1:8001`; `--banco instance/desperta-amostra.db` abre a amostra. Dependência opcional `[ver]` (`datasette` e `datasette-template-sql`, ambos Apache 2.0). Não faz parte do portal.
+- Configuração gerada por `scripts/ver_banco/montar_metadata.py`: menu com busca rápida, tabelas por assunto, nomes no lugar dos ids, filtros e 15 consultas prontas.
+- **Visão geral** em `/visao-geral` (`scripts/ver_banco/templates/pages/visao-geral.html`): números principais, período, proposições, votações, o que a Câmara não informou, coletas, erros do log, IA e notícias.
+- Na página de resultado de uma consulta livre, o menu fica escondido, para o resultado aparecer no topo.
+
+### 23.2 Rascunhos automáticos (`flask ia gerar-novos`)
+- Item 4 da 22.10. Escolha do Lucas (07/11): viram rascunho **todas** as votações (Plenário e comissões) que afetam um tipo acompanhado, **todas** as mudanças de situação depois do dia da apresentação e **todas** as proposições novas dos tipos acompanhados. Votações primeiro.
+- Janela: `GERACAO_JANELA_DIAS` (padrão 3). Pula fato que já tem geração (inclusive notícia rejeitada e geração com erro, que só volta com `--refazer-erros`), proposição sem tema e fato pendente na coleta. Opções `--simular`, `--limite` e `--dias`; resumo em `log_sistema` (`acao = gerar_novos`). Código em `desperta/ia/automatico.py`; `invoke gerar-novos`.
+- A geração passou a ler a proposição antes de criar o gerador, para todo erro gravar a entrada completa.
+- **Achado:** a Câmara demora para dar tema às proposições novas (27 de 40 da semana de 31/10 sem tema). Como proposição sem tema não gera notícia, a maioria das novas passa da janela antes de ganhar tema. Isso deixa mais urgente a decisão em aberto da 22.5.
+
+### 23.3 Leitura encadeada da PEC (`docs/LEITURA_ENCADEADA.md`)
+Plano do grupo (07/11): a Roberta lê a PEC em pedaços e leva adiante, em texto, o que ela mesma escolheu (frase e palavras), sem treino. Decisões, registradas no documento:
+1. **Metade e metade:** 254 tokens de contexto e 254 de pedaço.
+2. **Frases:** o texto vira uma lista fixa e numerada de frases; o grupo cita sempre pelo código. Na PEC 319/2004 são 22 (F1 a F22).
+3. **Textos menores primeiro;** PECs maiores só quando a Roberta estiver precisa nas menores.
+4. **Corte no meio do texto é aceito:** o resto vai para a leitura seguinte.
+5. **Três camadas, nesta ordem:** a **planta padrão** (a estrutura que toda PEC tem), entendida por uma **leitura prévia** (cada bloco vira um vetor e cada frase é ligada ao bloco mais parecido; só o nome do bloco escolhido pela Roberta entra no contexto, nunca o do script); o **contexto inicial** (`{sigla}, de {autor}. Ementa: {ementa}`); e as **interpretações** da Roberta. A planta **não** é o contexto inicial.
+6. **Tudo o que é modelo é geral, para toda PEC** (planta, contexto inicial e formulário de interpretação); o que é de uma PEC só fica em arquivos com o nome dela.
+7. **Planta base do grupo:** parte normativa com 6 blocos (epígrafe, autoria, ementa, preâmbulo, artigo e nova redação) e justificação por função (objetivo, problemas, citação, solução e fecho), sem número de parágrafo; 274 tokens.
+8. **Teste D com duas notas:** `temas` (até 3) e `temas_tambem_aceitos`; nota exata e nota ampla.
+9. **Interpretações da PEC 319/2004:** a do Lucas (resumo e palavras-chave adotados da do Claude, depois de ler e concordar, então não contam como leitura independente; 5 frases e temas são escolha dele) e a do Claude (documento do claude.ai, completado pelo Claude Code em 08/11). A do Claude é um leitor a mais; a base é a interpretação humana.
+
+### 23.4 Arquivos da análise (`instance/analise_pec/`, fora do git)
+- Gerais: `modelos_contexto.json` (planta padrão, contexto inicial, rodadas), `interpretacao_modelo.json` (formulário).
+- Da PEC 319/2004: `PEC_319_2004.txt` (com códigos antigos EMENTA, P1 a P4, J1 a J7), `PEC_319_2004_pedacos.txt` (8 pedaços), `PEC_319_2004_frases.json` (F1 a F22, com `bloco_certo`), `PEC_319_2004_dados.txt`, `PEC_319_2004_interpretacao_e_planta.md` (documento do claude.ai), `interpretacao_PEC_319_2004.json` (para preencher), `interpretacao_PEC_319_2004_lucas.json` e `interpretacao_PEC_319_2004_claude.json`.
+- Tokenizador conferido: `<mask>` é o 50264; " demarcação" e " indígenas" são um token cada.
+
+### 23.5 Rodadas e o que é "Roberta perfeita"
+- **"Perfeita" não é 100%:** é concordar com o grupo tanto quanto as pessoas do grupo concordam entre si, e continuar assim em PECs que ela nunca viu. Lucas e Claude, por exemplo, não coincidem em nenhuma das 5 frases.
+- **Primeiras 5 rodadas na PEC 319** (cada uma pontuada contra todas as interpretações): (1) base, cada frase sozinha; (2) encadeada só com as interpretações; (3) + contexto inicial; (4) + planta; (5) controle com frases sorteadas no lugar das interpretações, com 5 sorteios. Opcional: de trás para frente.
+- **Regras dos ajustes:** combinar a meta antes; limite de ajustes (por exemplo, 10 rodadas); depois, a melhor configuração roda uma vez só nas PECs de conferência, sem mexer em nada.
+- **Falta para chegar lá:** interpretações do Caio e do Rhuan (teto e consenso); meta por teste (sugestão: A 3 de 5, B 70%, C entre as 3 primeiras de 30, D 2 de 3 na nota ampla, E 5 de 10, blocos 70% contra 36% do acaso); 2 ou 3 PECs de conferência curtas, com texto, frases e interpretações; decidir o teste C (comparar só ementas ou baixar o texto inteiro das outras PECs); treinos 1 e 2 do estudo só se as rodadas não chegarem na meta e com a confirmação do grupo; depois, PECs maiores e decidir para que a leitura da Roberta vai servir no portal.
+
+### 23.6 GPU e kernel
+O kernel 7.0.0-43 foi instalado sem o módulo da NVIDIA (`linux-modules-nvidia-595-open-7.0.0-43-generic` ainda não saiu). Até sair, para usar a RTX 4050: `sudo grub-reboot "Advanced options for Ubuntu>Ubuntu, with Linux 7.0.0-42-generic"` antes de reiniciar (vale um boot). Sem a placa, a IA roda no processador (`IA_DISPOSITIVO=auto`). Continua valendo a 20.1: o Claude Code não mexe no driver.
+
+### 23.7 Coleta e primeiros rascunhos reais (08/11)
+- Backups antes: `instance/desperta-antes-coleta-08-11.db` e `instance/desperta-antes-rascunhos-08-11.db`. Log: `instance/coleta-diaria-08-11.log`.
+- `diaria` em 6 min (2.400 requisições, 0 erro HTTP). A `diaria` não traz votações nem eventos novos, que são da `horaria` (ontem e hoje): depois de dias sem coleta, rodar também `flask coletar votacoes` e `eventos` na janela que faltou (aqui, 05 a 08/11: 12 votações, 11 no Plenário, todas de 05/11).
+- `flask ia indexar` em 17 s na RTX 4050: 1.720 trechos novos ou alterados e 269 removidos (tramitações com mais de 90 dias).
+- `flask ia gerar-novos` (janela desde 05/11) em 1 min 34 s: **626 rascunhos** (9 votações, 606 mudanças de situação e 11 proposições novas), 0 erro, 8 puladas sem tema. Rodar de novo não gera nada (626 já feitos). Verificação do banco: 20 aprovados, 0 falhas.
+- Proposições 10.512, tramitações 175.788, votações 1.218, trechos 30.410.
+
+### 23.8 Ordem a partir de agora
+1. ~~As 5 primeiras rodadas da PEC 319 (23.5), com relatório.~~ Feito, com 1.000 repetições e os 4 leitores (23.9).
+2. ~~Medições da `horaria`, merge do PR nº 2 e agendamento das rotinas.~~ Feito (23.10 e 23.11).
+3. Grupo: meta de "preciso", PECs de conferência, ok na planta e no contexto inicial, o que conta como frase importante (23.9), tema das proposições sem tema (22.5) e as 20 consultas da busca (19.2).
+4. Revisão dos rascunhos pela equipe (na Fase 4, pela área administrativa; eram 2.354 em 11/11, 23.12).
+5. Merge da `fase-3-rag` na `main` e começo da Fase 4.
+6. Treino da Roberta, só depois das rodadas e com a confirmação do grupo.
+
+### 23.9 Rodadas da PEC 319 com 4 leitores (08 e 09/11)
+- As 14 rodadas (7 formas de leitura, com e sem whitening) foram repetidas 1.000 vezes com dropout (`scripts/analise_pec/repeticoes.py`), primeiro com 2 leitores e depois com os 4 e o consenso (`--consenso lucas caio rhuan`). Resultado em `docs/LEITURA_ENCADEADA.md`, decisões 10 e 11, e no relatório (seções 4.5 e 4.6 da aba ABNT).
+- **Uma rodada única engana:** o mesmo leitor vai de 0,35 a 0,90 de AUC de uma leitura para outra. Toda configuração nova é avaliada por repetições.
+- **Contexto, memória, planta e RAG quase não mudam a leitura** (no máximo 0,07; a memória sorteada rende o mesmo que a verdadeira). **O whitening é o único ganho que se repete:** tema oficial de cerca de 20º para cerca de 9º.
+- **O grupo está dividido:** Caio e Claude ficam com o texto normativo, Lucas e Rhuan com o fim da justificação; Lucas e Caio, o único par independente (o Rhuan partiu do arquivo do Lucas), têm 1 frase em comum. O consenso de 2 das 3 pessoas é a própria escolha do Rhuan, e contra ele a Roberta fica no acaso.
+- **Decisão pendente do grupo:** combinar o que conta como frase importante (ou reunir mais leituras independentes) antes de fixar a meta de "preciso" ou de propor treino. Recomendação do Claude Code: deixar a análise da PEC como estudo por enquanto e seguir para a Fase 4; no portal, a RoBERTaLexPT entra pela busca e pela sugestão de tema.
+
+### 23.10 Medições da `horaria` em dia útil (10/11)
+- Rodadas a partir do código da `fase-2-horaria` (`93a471c`, `HORARIA_ORCAMENTO_MIN=20`, `HORARIA_RECONFERIR_HORAS=6`), no banco real, com sessão deliberativa no Plenário desde 13h55. A API da Câmara ficou fora (502, 503 e 504) até 15h25. Backup antes: `instance/desperta-antes-horaria-10-11.db`.
+
+| Medição | Hora | Duração | Requisições | Erros HTTP | Votações | Eventos | Proposições |
+|---|---|---|---|---|---|---|---|
+| 04/11 | 19h42 | 20 min (parou no limite) | — | — | — | — | — |
+| 10/11, nº 1 | 15h27 | 3 min 55 s | 1.178 | 0 | 0 | 344 | 5.598 |
+| 10/11, nº 2 | 18h32 | 3 min 7 s | 876 | 0 | 2 | 269 | 3.801 |
+
+- **As duas ficaram bem abaixo da meta de 20 minutos.** A segunda foi mais rápida porque pulou as proposições conferidas na primeira (regra das 6 horas). A de 04/11 foi a primeira `horaria` depois de dias sem coleta, um caso mais pesado que o normal.
+- Os "novos" da `coleta` contam também autores, temas, tramitações e proposições citadas por pauta (REQ, PRL, PAR…); as proposições no banco foram de 10.716 para 10.827.
+- **Limite do teste:** só 2 votações registradas até 18h32. Se a `horaria` da noite, com muitas votações, passar de 20 minutos, o orçamento fecha a coleta como `parcial` e o resto fica para a hora seguinte.
+- Os arquivos `instance/horaria-medicao-10-11-*.log` ficam vazios, porque o coletor não escreve no terminal; os números vêm da tabela `coleta` (ids 94 a 99).
+
+### 23.11 Agendador das rotinas (10/11)
+- **Sem otimizar a `horaria` por enquanto:** as medições (23.10) ficaram em 3 a 4 minutos, e o orçamento de 20 minutos já protege a noite com muitas votações. Voltar ao assunto só se o `agendador.log` mostrar coletas `parcial` por tempo.
+- **`flask coletar agendada <rotina>`:** roda a rotina e, **sob a mesma trava**, `flask ia indexar` e `flask ia gerar-novos`, para a coleta seguinte não entrar no meio. A `horaria` não espera trava (fica para a hora seguinte); `diaria`, `semanal` e `mensal` esperam até 180 minutos (`--esperar`). Erro na rotina não impede a IA de trabalhar com o que já foi gravado; o comando sai com erro e grava `rotina_agendada` em `log_sistema`. `--sem-ia` só coleta.
+- **Sem a RoBERTaLexPT** (pendrive fora), sem o PyTorch ou sem a placa pedida: não indexa (fica para a próxima vez) e escreve os rascunhos só com a busca por palavras, com aviso no log (21.3).
+- **Timers de usuário do `systemd`**, gerados por `scripts/agendador/agendador.py` com os caminhos da pasta do projeto e do Python do `.venv` (nada do PC escrito no código, 21.4): `horaria` a cada hora no minuto 5; `diaria` às 3h30; `semanal` domingo às 4h30; `mensal` dia 1 às 5h30. Os três últimos com `Persistent=true` (rodam quando o PC ligar, se ele estava desligado). Saída em `instance/agendador.log`. Comandos: `invoke agendar`, `invoke agenda` e `invoke desagendar`.
+- Timers de usuário só rodam com o Lucas logado (`Linger=no`); no servidor, `loginctl enable-linger`.
+- **Teste no banco real (10/11, 19h44, backup `instance/desperta-antes-agendador-10-11.db`):** 2 min 40 s no total. Coleta em 76 s (votações 8 itens, eventos 249, proposições 1.919; 457 requisições, 0 erro HTTP); indexação de 1.925 trechos e 1.396 removidos (tramitações com mais de 90 dias); **531 rascunhos novos** (4 votações, 518 mudanças de situação e 9 proposições novas, janela desde 07/11), 0 erro, 16 sem tema. Os rascunhos à espera de revisão passam de 1.100.
+
+### 23.12 Primeiro dia do agendador (11/11)
+- **Tudo rodou sozinho**, das 20h05 de 10/11 às 19h05 de 11/11: todas as execuções com `Result=success`, sem erro HTTP e sem "modelo indisponível" (pendrive conectado). Saída em `instance/agendador.log`.
+- **Primeira `diaria` automática (03h30):** 4 min 40 s. Proposições: 4.691 conferidas, 987 itens novos e 1.620 atualizados (1.484 requisições). Indexação de 687 trechos; 349 rascunhos novos (113 de votações, 229 de mudanças de situação e 7 de proposições novas). Eventos e votações sem pendentes.
+- **`horaria`:** de 3 min 20 s a 7 min 10 s (a mais longa às 03h05), bem abaixo dos 20 minutos.
+- **Rascunhos à espera de revisão:** 2.354.
+- **30 votações de 10/11 com HTTP 404 no detalhe:** aparecem na listagem `/votacoes`, mas `/votacoes/{id}` dá 404 (conferido de novo às 19h34). São registros do Plenário com a descrição "Alteração do Regime de Tramitação desta proposição…". Por causa delas, a coleta de votações de toda `horaria` fica `parcial`, com 30 erros no log por hora, até 10/11 sair da janela (ontem e hoje). O erro é da Câmara; nada muda no código. Se o problema voltar, avaliar com o grupo anotar os 404 para não tentar de novo na mesma janela, porque o `parcial` por esse motivo esconde o `parcial` por tempo que a 23.11 manda observar.

@@ -1,10 +1,47 @@
+import re
+import unicodedata
 from datetime import datetime, timedelta
 
 from desperta.ext.db import db
 
-from .models import Noticia
+from .models import Noticia, NoticiaFonte
 
 noticia_fts = db.table("noticia_fts", db.column("rowid"))
+
+TAMANHO_SLUG = 220
+
+
+def gerar_slug(titulo):
+    """Sem acento, minusculo e unico; depois de publicada, a noticia nao muda de slug."""
+    sem_acento = unicodedata.normalize("NFKD", titulo).encode("ascii", "ignore").decode("ascii")
+    base = re.sub(r"[^a-z0-9]+", "-", sem_acento.lower()).strip("-")[:TAMANHO_SLUG].rstrip("-") or "noticia"
+    slug = base
+    numero = 2
+    while db.session.scalar(db.select(Noticia.id).filter_by(slug=slug).limit(1)) is not None:
+        sufixo = f"-{numero}"
+        slug = base[: TAMANHO_SLUG - len(sufixo)].rstrip("-") + sufixo
+        numero += 1
+    return slug
+
+
+def criar_rascunho(titulo, resumo, corpo, cod_tema, fontes, origem="ia"):
+    """RF06: toda noticia gerada entra como rascunho; fontes sao (tipo, ref_id), a primeira e a principal."""
+    noticia = Noticia(
+        titulo=titulo,
+        slug=gerar_slug(titulo),
+        resumo=resumo,
+        corpo=corpo,
+        origem=origem,
+        cod_tema=cod_tema,
+        status="rascunho",
+    )
+    db.session.add(noticia)
+    db.session.flush()
+    db.session.add_all(
+        NoticiaFonte(noticia_id=noticia.id, tipo=tipo, ref_id=ref_id, ordem=ordem)
+        for ordem, (tipo, ref_id) in enumerate(fontes, start=1)
+    )
+    return noticia
 
 
 def _termo_para_match(termo):

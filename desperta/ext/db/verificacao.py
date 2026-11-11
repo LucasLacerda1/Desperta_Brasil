@@ -257,6 +257,25 @@ def _coletas():
     abertas = db.session.execute(
         text("SELECT id, recurso, iniciado_em FROM coleta WHERE finalizado_em IS NULL ORDER BY id")
     ).fetchall()
+    # Coleta interrompida ja explicada (status erro e mensagem): fica no historico, como informacao
+    registradas = (
+        db.session.execute(
+            text(
+                "SELECT id FROM coleta WHERE finalizado_em IS NULL AND status = 'erro' "
+                "AND mensagem_erro LIKE 'Interrompida%'"
+            )
+        )
+        .scalars()
+        .all()
+    )
+    abertas = [linha for linha in abertas if linha[0] not in registradas]
+    if registradas and not abertas and not trava:
+        return Resultado(
+            "Coerencia",
+            "Coletas sem horario de fim (interrompidas)",
+            INFO,
+            f"{len(registradas)} interrompida(s) e explicada(s) no historico: " + ", ".join(map(str, registradas)),
+        )
     if trava:
         detalhe = f"{len(abertas)} abertas, com uma coleta rodando agora"
         situacao = INFO
