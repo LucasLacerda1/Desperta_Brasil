@@ -8,7 +8,7 @@ um pedaco da senha_hash, que muda a cada troca.
 
 from functools import wraps
 
-from flask import g, session
+from flask import request, session
 
 from desperta.ext.db import db
 from desperta.ext.erros import AcessoNegado, NaoAutenticado
@@ -17,6 +17,8 @@ from .models import Administrador
 
 CHAVE_ID = "admin_id"
 CHAVE_SENHA = "admin_senha"
+# Guardado na propria requisicao (e nao no g, que pode durar mais que uma requisicao)
+CHAVE_NA_REQUISICAO = "desperta.admin_atual"
 
 
 def _marca_da_senha(admin):
@@ -24,6 +26,7 @@ def _marca_da_senha(admin):
 
 
 def entrar(admin):
+    request.environ.pop(CHAVE_NA_REQUISICAO, None)
     session.clear()
     session.permanent = True
     session[CHAVE_ID] = admin.id
@@ -31,13 +34,14 @@ def entrar(admin):
 
 
 def sair():
+    request.environ.pop(CHAVE_NA_REQUISICAO, None)
     session.clear()
 
 
 def admin_atual():
     """Quem esta logado, ou None. Sessao de quem foi desativado ou trocou a senha e apagada."""
-    if "admin_atual" in g:
-        return g.admin_atual
+    if CHAVE_NA_REQUISICAO in request.environ:
+        return request.environ[CHAVE_NA_REQUISICAO]
     admin = None
     admin_id = session.get(CHAVE_ID)
     if admin_id is not None:
@@ -45,7 +49,7 @@ def admin_atual():
         if admin is None or not admin.ativo or session.get(CHAVE_SENHA) != _marca_da_senha(admin):
             session.clear()
             admin = None
-    g.admin_atual = admin
+    request.environ[CHAVE_NA_REQUISICAO] = admin
     return admin
 
 

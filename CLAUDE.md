@@ -1716,3 +1716,24 @@ O kernel 7.0.0-43 foi instalado sem o módulo da NVIDIA (`linux-modules-nvidia-5
 - **10.4:** `excluir_noticia` em `desperta/noticias/services.py`: só `admin` ativo, só `rascunho` ou `rejeitada`; fontes e revisões vão junto, as `geracao_ia` ficam com `noticia_id` nulo e a exclusão é registrada em `log_sistema` (`acao = excluir_noticia`). `IntegrityError` e `AssertionError` viram 409, com `rollback`.
 - **10.5:** `CORS_ORIGINS` (padrão `http://localhost:5173`, separadas por vírgula) e CORS só para essas origens em `/api/*`, com `supports_credentials=True`. Cookie de sessão `HttpOnly`, `SameSite=Lax` e `Secure` por `SESSION_COOKIE_SECURE=1` em produção.
 - **O agendador roda o código da pasta do projeto,** então roda o que estiver na branch atual. Na Fase 4 isso não muda o coletor, mas não deixar a pasta numa branch quebrada à noite.
+
+### 24.2 Rotas da API (11/11/2026)
+Rotas finas em `routes.py`, regras nos `services.py`; auxiliares HTTP comuns em `desperta/ext/api/` (corpo JSON, parâmetros, páginas, datas). Datas do portal saem em UTC (`Z`); datas da Câmara, no horário de Brasília (`-03:00`), como o coletor grava. Listas vêm como `{itens, pagina, por_pagina, total, paginas}` (`?pagina=`, `?por_pagina=` até 100).
+
+| Rota | Quem | O que faz |
+|---|---|---|
+| `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/eu`, `POST /api/auth/eu/senha` | equipe | login (sessão Flask, limite de falhas), sair, quem está logado, trocar a própria senha |
+| `GET/POST /api/auth/equipe`, `PATCH /api/auth/equipe/<id>` | admin | listar, criar e editar ou desativar alguém da equipe (sempre sobra um admin ativo) |
+| `GET /api/noticias` (`?tema=`), `GET /api/noticias/principal` (`?por_tema=`), `GET /api/noticias/busca` (`?q=&dia=&mes=&ano=&tema=`), `GET /api/noticias/<slug>` | público | publicadas por tema, página principal por tema, busca com período em horário de Brasília, detalhe com fontes, "como foi feita" e +1 visualização |
+| `GET /api/noticias/admin` (`?status=&tema=&caso=&origem=`), `GET/PATCH /api/noticias/admin/<id>`, `POST /api/noticias/admin` | equipe | fila de revisão (mais antigas primeiro), detalhe com histórico e o que a IA usou, edição (slug acompanha o título até publicar), notícia escrita pela equipe (fontes conferidas) |
+| `POST /api/noticias/admin/<id>/<acao>`, `POST /api/noticias/admin/lote` | equipe | `aprovar` (rascunho → em_revisao), `publicar`, `rejeitar` (comentário obrigatório) e `arquivar`; em lote, até 200 por vez, com a lista do que falhou |
+| `DELETE /api/noticias/admin/<id>` | admin | apaga só rascunho ou rejeitada (10.4) |
+| `GET /api/proposicoes/<id>`, `GET /api/proposicoes/<id>/tramitacoes`, `GET /api/proposicoes/temas` | público | situação (ou "não informado pela Câmara"), autores, temas, 20 tramitações mais recentes, votações e notícias publicadas; andamento completo em páginas; temas com o número de notícias publicadas |
+| `GET /api/votacoes/<id>` | público | resultado, situação dos votos (22.5), voto de cada deputado e orientações em três grupos (10.1) |
+| `GET /api/sistema/situacao` | público | última coleta concluída e aviso de dados desatualizados (RNF05, `AVISO_DESATUALIZADO_HORAS=6`) |
+| `GET /api/sistema/coletas`, `GET /api/sistema/log` | admin | coletas e log, com filtros |
+
+- O primeiro admin é criado pelo terminal: `flask equipe criar-admin` (`flask equipe listar` mostra a equipe).
+- Slugs `admin`, `busca` e `principal` são reservados (viram `...-noticia`).
+- No banco real, todas as rotas de leitura responderam em menos de 60 ms (votação com 467 votos: 11 ms; proposição com 1.066 tramitações: 8 ms).
+- **Falta na Fase 4:** rotas do visitante (cookie, aceite e contagem por tema, RF13 e RF17) e a tarefa LGPD; limite de requisições nas rotas públicas; teste de carga (RNF01); as decisões do grupo sobre o volume de rascunhos e o tema das proposições sem tema.

@@ -2,10 +2,14 @@ import re
 from collections import Counter
 from dataclasses import dataclass, field
 
+from desperta.ext.api import iso_camara, url_camara
 from desperta.ext.db import db
+from desperta.ext.erros import NaoEncontrado
+from desperta.parlamentares.models import Deputado
+from desperta.proposicoes.models import Proposicao
 from desperta.sistema.models import LogSistema
 
-from .models import Voto
+from .models import Orientacao, Votacao, VotacaoProposicao, Voto
 
 # ----------------------------------------------------------
 # Transparencia (05/11/2026): o portal diz por que uma votacao nao tem o voto de cada deputado.
@@ -102,3 +106,100 @@ def situacao_dos_votos(votacao):
             votos,
         )
     return SituacaoDosVotos(NOMINAL, f"Votação nominal: {total} votos registrados.", placar, votos)
+
+
+# ======================================================
+# PORTAL: PAGINA DA VOTACAO (RF09)
+# ======================================================
+# Decisao 10.1: orientacao de bloco nao e ligada ao bloco; na exibicao, tres grupos
+LIDERANCAS_DE_GOVERNO = ("Governo", "Maioria", "Minoria", "Oposição")
+SEM_VOTO_INFORMADO = "não informado pela Câmara"
+
+
+def buscar_votacao(votacao_id):
+    votacao = db.session.get(Votacao, votacao_id)
+    if votacao is None:
+        raise NaoEncontrado("Votacao nao encontrada.")
+    return votacao
+
+
+def _resultado(aprovacao):
+    if aprovacao is None:
+        return "resultado não informado pela Câmara"
+    return "aprovada" if aprovacao else "rejeitada"
+
+
+def orientacoes_em_grupos(votacao_id):
+    grupos = {"partidos": [], "liderancas": [], "blocos": []}
+    for o in db.session.scalars(
+        db.select(Orientacao).filter_by(votacao_id=votacao_id).order_by(Orientacao.partido_bloco)
+    ):
+        item = {"nome": o.partido_bloco, "orientacao": o.orientacao.strip() or SEM_VOTO_INFORMADO}
+        if o.tipo_lideranca == "P":
+            item["partido_id"] = o.partido_id
+            grupos["partidos"].append(item)
+        elif o.partido_bloco in LIDERANCAS_DE_GOVERNO:
+            grupos["liderancas"].append(item)
+        else:
+            grupos["blocos"].append(item)
+    return grupos
+
+
+def como_dict(votacao):
+    """Resultado, situacao dos votos (22.5), voto de cada deputado e orientacoes (RF09)."""
+    situacao = situacao_dos_votos(votacao)
+    votos = db.session.execute(
+        db.select(Voto, Deputado)
+        .join(Deputado, Deputado.id == Voto.deputado_id)
+        .where(Voto.votacao_id == votacao.id)
+        .order_by(Deputado.nome)
+    ).all()
+    afetadas = db.session.scalars(
+        db.select(Proposicao)
+        .join(VotacaoProposicao, VotacaoProposicao.proposicao_id == Proposicao.id)
+        .where(VotacaoProposicao.votacao_id == votacao.id)
+        .order_by(Proposicao.id)
+    ).all()
+
+    def resumo(proposicao):
+        return {
+            "id": proposicao.id,
+            "sigla": f"{proposicao.sigla_tipo} {proposicao.numero}/{proposicao.ano}",
+            "ementa": proposicao.ementa,
+        }
+
+    objeto = db.session.get(Proposicao, votacao.proposicao_id) if votacao.proposicao_id else None
+    return {
+        "id": votacao.id,
+        "data": iso_camara(votacao.data),
+        "data_hora_registro": iso_camara(votacao.data_hora_registro),
+        "orgao": {
+            "id": votacao.orgao_id,
+            "sigla": votacao.sigla_orgao.strip() or (votacao.orgao.nome if votacao.orgao else None),
+        },
+        "evento_id": votacao.evento_id,
+        "descricao": votacao.descricao,
+        "aprovacao": votacao.aprovacao,
+        "resultado": _resultado(votacao.aprovacao),
+        "proposicao": resumo(objeto) if objeto else None,
+        "proposicoes_afetadas": [resumo(p) for p in afetadas],
+        "situacao_dos_votos": {
+            "codigo": situacao.codigo,
+            "explicacao": situacao.explicacao,
+            "placar_da_camara": situacao.placar_da_camara,
+        },
+        "total_por_tipo": {(tipo or SEM_VOTO_INFORMADO): total for tipo, total in situacao.votos.items()},
+        "votos": [
+            {
+                "deputado_id": deputado.id,
+                "nome": deputado.nome,
+                "sigla_partido": voto.sigla_partido,
+                "sigla_uf": deputado.sigla_uf,
+                "url_foto": deputado.url_foto,
+                "voto": voto.tipo_voto or SEM_VOTO_INFORMADO,
+            }
+            for voto, deputado in votos
+        ],
+        "orientacoes": orientacoes_em_grupos(votacao.id),
+        "url_dados_abertos": url_camara(f"votacoes/{votacao.id}"),
+    }

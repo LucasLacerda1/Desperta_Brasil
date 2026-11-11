@@ -211,7 +211,7 @@ def desativar(admin, por=None):
 def trocar_propria_senha(admin, senha_atual, senha_nova):
     if not isinstance(senha_atual, str) or not admin.confere_senha(senha_atual):
         raise DadosInvalidos("A senha atual nao confere.")
-    return editar_cadastro(admin, senha=senha_nova, por=admin)
+    return editar_cadastro(admin, senha=_senha_valida(senha_nova), por=admin)
 
 
 def excluir_administrador(admin):
