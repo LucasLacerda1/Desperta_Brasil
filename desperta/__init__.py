@@ -6,6 +6,7 @@ from .config import Config
 from .ext.cli import init_app as init_cli
 from .ext.cors import init_app as init_cors
 from .ext.db import init_app as init_db
+from .ext.erros import init_app as init_erros
 from .ext.db import register_models
 from .ia import init_app as init_ia
 from .noticias import init_app as init_noticias
@@ -32,6 +33,7 @@ def create_app(config_class=Config):
     # ----------------------------------------------------------
     init_db(app)
     init_cors(app)
+    init_erros(app)
     init_cli(app)
     init_coletor(app)
 

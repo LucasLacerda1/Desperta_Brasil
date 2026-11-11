@@ -2,13 +2,19 @@ import re
 import unicodedata
 from datetime import datetime, timedelta
 
+from sqlalchemy.exc import IntegrityError
+
 from desperta.ext.db import db
+from desperta.ext.erros import AcessoNegado, Conflito
+from desperta.sistema.models import LogSistema
 
 from .models import Noticia, NoticiaFonte
 
 noticia_fts = db.table("noticia_fts", db.column("rowid"))
 
 TAMANHO_SLUG = 220
+# Decisao 10.4: o fluxo normal e arquivar; apagar de verdade so estes, e so o admin
+STATUS_QUE_PODEM_SER_APAGADOS = ("rascunho", "rejeitada")
 
 
 def gerar_slug(titulo):
@@ -42,6 +48,41 @@ def criar_rascunho(titulo, resumo, corpo, cod_tema, fontes, origem="ia"):
         for ordem, (tipo, ref_id) in enumerate(fontes, start=1)
     )
     return noticia
+
+
+def excluir_noticia(noticia, admin):
+    """
+    Apaga um rascunho ou uma noticia rejeitada (decisao 10.4). Fontes e revisoes vao junto
+    (cascade do ORM); as geracoes da IA ficam, com noticia_id nulo, para o registro da IA
+    continuar completo (RF15). Qualquer outro caso vira 409, nunca erro 500.
+    """
+    if admin.papel != "admin" or not admin.ativo:
+        raise AcessoNegado("So um admin ativo pode apagar noticias.")
+    if noticia.status not in STATUS_QUE_PODEM_SER_APAGADOS:
+        raise Conflito(
+            f"Noticia com status '{noticia.status}' nao e apagada. "
+            "Use arquivar; apagar so vale para rascunho ou rejeitada."
+        )
+    noticia_id, titulo = noticia.id, noticia.titulo
+    try:
+        for geracao in list(noticia.geracoes):
+            geracao.noticia_id = None
+        db.session.delete(noticia)
+        db.session.add(
+            LogSistema(
+                nivel="info",
+                modulo="admin",
+                acao="excluir_noticia",
+                descricao=f"Noticia apagada: {titulo}",
+                admin_id=admin.id,
+                entidade="noticia",
+                entidade_id=str(noticia_id),
+            )
+        )
+        db.session.commit()
+    except (IntegrityError, AssertionError) as erro:
+        db.session.rollback()
+        raise Conflito(f"A noticia {noticia_id} esta em uso e nao foi apagada.") from erro
 
 
 def _termo_para_match(termo):

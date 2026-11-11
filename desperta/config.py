@@ -8,6 +8,13 @@ class Config:
     SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
     DEBUG = True
 
+    # Decisao 10.5: CORS so para o front-end conhecido, com o cookie de sessao
+    CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",") if o.strip()]
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    # Em producao (HTTPS), SESSION_COOKIE_SECURE=1
+    SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "0") == "1"
+
     # Fases seguintes (ja deixar declarado)
     CAMARA_API_URL = os.getenv("CAMARA_API_URL", "https://dadosabertos.camara.leg.br/api/v2")
     CAMARA_TIMEOUT = int(os.getenv("CAMARA_TIMEOUT", "30"))

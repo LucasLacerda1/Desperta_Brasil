@@ -1,13 +1,13 @@
 # Desperta Brasil — guia do projeto para o Claude Code
 
 > Coloque este arquivo na **raiz do repositório** com o nome `CLAUDE.md`. O Claude Code lê esse arquivo sozinho no início de cada sessão.
-> Última atualização: 11/11/2026 (Fases 1, 1.5, 2 e 2b concluídas; Fase 3 em andamento; decisões nas seções 10 a 23; ajuste físico do banco em `docs/AJUSTE_BANCO_SISTEMA.md`; treino da Roberta escritora em `docs/TREINAR_ROBERTA_ESCRITORA.md`; leitura encadeada da PEC em `docs/LEITURA_ENCADEADA.md`).
+> Última atualização: 11/11/2026 (Fases 1, 1.5, 2, 2b e 3 concluídas; Fase 4 em andamento; decisões nas seções 10 a 23; ajuste físico do banco em `docs/AJUSTE_BANCO_SISTEMA.md`; treino da Roberta escritora em `docs/TREINAR_ROBERTA_ESCRITORA.md`; leitura encadeada da PEC em `docs/LEITURA_ENCADEADA.md`).
 
 ## 0. Como trabalhar neste projeto (leia primeiro)
 
 - **Idioma:** responda, comente o código e escreva mensagens de commit em **português do Brasil**.
 - **Padrão obrigatório:** o código segue a estrutura do projeto **TaskFlow**, usado como exemplo pelo professor da disciplina (Programação Web Avançada, UVV). A seção 3 descreve esse padrão. Não invente outra organização, não troque o Flask-SQLAlchemy por outro ORM e não use outro estilo de modelo.
-- **Ordem do trabalho:** o projeto é construído por fases (seção 7). **As Fases 1 (banco), 1.5 (ajuste físico do banco, `docs/AJUSTE_BANCO_SISTEMA.md`), 2 (coletor) e 2b (campos opcionais, com 2 migrações, 22.2) estão concluídas, e o banco tem a bateria de persistência (22.4). O ajuste da `horaria` (PR nº 2) foi medido em 10/11, abaixo da meta (23.10), e está na `main`; as rotinas rodam sozinhas pelo agendador (23.11). A fase atual é a 3 (IA e RAG, branch `fase-3-rag`): antes da Roberta escritora (3b), vem a análise da PEC com a Roberta original (22.6). Siga a ordem de 23.8.** Princípio do portal: transparência total (22.5). Não comece as rotas da API ou o front-end antes da fase anterior estar pronta e testada, a não ser que o grupo peça. Antes de mudar código, leia as seções 10 a 23 (decisões tomadas depois de cada relatório).
+- **Ordem do trabalho:** o projeto é construído por fases (seção 7). **As Fases 1 (banco), 1.5 (ajuste físico do banco, `docs/AJUSTE_BANCO_SISTEMA.md`), 2 (coletor) e 2b (campos opcionais, com 2 migrações, 22.2) estão concluídas, e o banco tem a bateria de persistência (22.4). O ajuste da `horaria` (PR nº 2) foi medido em 10/11, abaixo da meta (23.10), e está na `main`; as rotinas rodam sozinhas pelo agendador (23.11). A Fase 3 (IA e RAG) entrou na `main` pelo PR nº 3 em 11/11. A fase atual é a 4 (API REST e área administrativa, branch `fase-4-api`), começando pelas decisões 10.4, 10.5 e 11.3 (24.1). A análise da PEC e a Roberta escritora (3b) esperam as decisões do grupo (23.9). Siga a ordem de 23.8.** Princípio do portal: transparência total (22.5). Não comece as rotas da API ou o front-end antes da fase anterior estar pronta e testada, a não ser que o grupo peça. Antes de mudar código, leia as seções 10 a 23 (decisões tomadas depois de cada relatório).
 - **Git:** a `main` no GitHub é a versão estável. Cada fase é feita numa branch própria (`fase-2-coletor`, `fase-3-ia`…), com commits pequenos ao fim de cada passo e mensagem em português; ao terminar a fase, abrir um pull request para a `main`. Quem faz o merge é o Lucas, depois de revisar (Caio e Rhuan revisam quando puderem). Não fazer push direto na `main`. Nunca versione `.venv/`, `instance/`, `.env` nem arquivos `*.db`, `*.db-wal`, `*.db-shm`.
 - **O modelo do banco já foi decidido pelo grupo** (32 tabelas, seção 5). Não acrescente, remova nem renomeie tabelas ou colunas por conta própria. A única exceção são as colunas técnicas, índices e configurações listados em `docs/AJUSTE_BANCO_SISTEMA.md` (camada física: controle de sincronização, índices, FTS5, migrações), que não mudam o modelo lógico. Se achar um problema no modelo, aponte e pergunte antes de mudar.
 - **Ao terminar cada passo:** rode os testes (`invoke test`) e mostre o resultado.
@@ -1667,7 +1667,7 @@ O kernel 7.0.0-43 foi instalado sem o módulo da NVIDIA (`linux-modules-nvidia-5
 2. ~~Medições da `horaria`, merge do PR nº 2 e agendamento das rotinas.~~ Feito (23.10 e 23.11).
 3. Grupo: meta de "preciso", PECs de conferência, ok na planta e no contexto inicial, o que conta como frase importante (23.9), tema das proposições sem tema (22.5) e as 20 consultas da busca (19.2).
 4. Revisão dos rascunhos pela equipe (na Fase 4, pela área administrativa; eram 2.354 em 11/11, 23.12).
-5. Merge da `fase-3-rag` na `main` e começo da Fase 4.
+5. ~~Merge da `fase-3-rag` na `main`~~ (PR nº 3, 11/11) e começo da Fase 4 (seção 24).
 6. Treino da Roberta, só depois das rodadas e com a confirmação do grupo.
 
 ### 23.9 Rodadas da PEC 319 com 4 leitores (08 e 09/11)
@@ -1705,3 +1705,14 @@ O kernel 7.0.0-43 foi instalado sem o módulo da NVIDIA (`linux-modules-nvidia-5
 - **`horaria`:** de 3 min 20 s a 7 min 10 s (a mais longa às 03h05), bem abaixo dos 20 minutos.
 - **Rascunhos à espera de revisão:** 2.354.
 - **30 votações de 10/11 com HTTP 404 no detalhe:** aparecem na listagem `/votacoes`, mas `/votacoes/{id}` dá 404 (conferido de novo às 19h34). São registros do Plenário com a descrição "Alteração do Regime de Tramitação desta proposição…". Por causa delas, a coleta de votações de toda `horaria` fica `parcial`, com 30 erros no log por hora, até 10/11 sair da janela (ontem e hoje). O erro é da Câmara; nada muda no código. Se o problema voltar, avaliar com o grupo anotar os 404 para não tentar de novo na mesma janela, porque o `parcial` por esse motivo esconde o `parcial` por tempo que a 23.11 manda observar.
+
+---
+
+## 24. Fase 4: API REST e área administrativa (a partir de 11/11/2026)
+
+### 24.1 Antes do login (decisões 10.4, 10.5 e 11.3)
+- **Erros dos services viram JSON** (`desperta/ext/erros/`): `DadosInvalidos` (400), `AcessoNegado` (403), `NaoEncontrado` (404) e `Conflito` (409), com resposta `{"erro": "mensagem"}`. As rotas não tratam erro; registro em uso nunca vira 500.
+- **11.3:** `administrador.atualizado_em` sem `onupdate` (sem migração: o `onupdate` era só do Python). `desperta/auth/services.py`: `criar_administrador`, `editar_cadastro` (muda `atualizado_em` só se algo mudou de verdade), `registrar_acesso` (só `ultimo_acesso`), `desativar` e `excluir_administrador` (sempre 409). Confere nome (100), e-mail (formato, 254, sem repetir, em minúsculas), papel e senha (mínimo de 8 caracteres) antes de gravar.
+- **10.4:** `excluir_noticia` em `desperta/noticias/services.py`: só `admin` ativo, só `rascunho` ou `rejeitada`; fontes e revisões vão junto, as `geracao_ia` ficam com `noticia_id` nulo e a exclusão é registrada em `log_sistema` (`acao = excluir_noticia`). `IntegrityError` e `AssertionError` viram 409, com `rollback`.
+- **10.5:** `CORS_ORIGINS` (padrão `http://localhost:5173`, separadas por vírgula) e CORS só para essas origens em `/api/*`, com `supports_credentials=True`. Cookie de sessão `HttpOnly`, `SameSite=Lax` e `Secure` por `SESSION_COOKIE_SECURE=1` em produção.
+- **O agendador roda o código da pasta do projeto,** então roda o que estiver na branch atual. Na Fase 4 isso não muda o coletor, mas não deixar a pasta numa branch quebrada à noite.

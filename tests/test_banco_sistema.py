@@ -351,15 +351,15 @@ def test_tema_sem_icone_grava_article(db):
     assert db.session.scalar(db.select(Tema)).icone == "article"
 
 
-def test_atualizado_em_do_administrador_muda_ao_alterar_o_nome(db):
+def test_atualizado_em_do_administrador_nao_muda_sozinho(db):
+    # Decisao 11.3: quem preenche e o service do cadastro (tests/test_auth_services.py)
     admin = fabricas.administrador(atualizado_em=ANTIGO)
     db.session.add(admin)
     db.session.commit()
-    assert admin.atualizado_em == ANTIGO
-    admin.nome = "Outro nome"
+    admin.ultimo_acesso = datetime(2026, 11, 11, 20, 0)
     db.session.commit()
     db.session.expire_all()
-    assert admin.atualizado_em > ANTIGO
+    assert admin.atualizado_em == ANTIGO
 
 
 # ======================================================
