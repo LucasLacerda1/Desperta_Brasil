@@ -1454,6 +1454,8 @@ O repositório precisa de um arquivo `LICENSE`. Sugestões:
 - **MIT:** mais simples e livre, mas permite que alguém feche uma cópia.
 O Claude Code não escolhe: só cria o `LICENSE` depois da decisão do grupo. Ao criar, colocar no README a lista de dependências e modelos com as licenças de cada um e os créditos da RoBERTaLexPT (Garcia et al., PROPOR 2024).
 
+**Dependências AGPL (decisão do Lucas, 11/11/2026):** o PyMuPDF (`pymupdf`, extrator do inteiro teor das PECs) é AGPL-3.0 e pode ser usado, inclusive no portal se um dia for preciso. Como o projeto já é aberto, isso não muda o sistema: basta manter o código público, com link "Código-fonte" no portal, e os avisos de licença. Consequência para esta seção: com o PyMuPDF no portal, o conjunto que roda no servidor segue a AGPL, o que reforça a sugestão AGPL-3.0 acima. A licença do projeto continua com o grupo e o professor.
+
 ---
 
 ## 19. Decisões depois da Fase 3, parte 2 (01/11/2026)
