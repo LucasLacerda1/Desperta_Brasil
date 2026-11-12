@@ -2,17 +2,40 @@
 
 Portal de notícias sobre a atividade da Câmara dos Deputados, com dados abertos e IA (Flask + Vue 3).
 
-Fase atual: coletor da API da Câmara. O guia completo do projeto está em `CLAUDE.md`.
+Fase atual: API REST e área administrativa (Fase 4). O guia completo do projeto está em `CLAUDE.md`.
 
 ## Como instalar
+
+Todas as dependências estão no `pyproject.toml`, e o `invoke install` instala tudo o que o projeto usa hoje (desenvolvimento, testes, IA, `ver-banco` e scripts de análise):
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install invoke
-invoke install
+invoke install          # = pip install -e ".[tudo]"
 cp .env.example .env
 ```
+
+- **O PyTorch é escolhido antes**, porque o `pyproject.toml` não sabe qual placa o PC tem. Sem isso, o `pip` baixa a versão padrão, que funciona em qualquer PC, mas é bem maior. Rode **um** destes comandos antes do `invoke install` (ver também a seção RAG):
+
+  ```bash
+  pip install torch --index-url https://download.pytorch.org/whl/cpu      # sem placa NVIDIA (cerca de 1,3 GB no .venv)
+  pip install "torch==2.15.0+cu132" --index-url https://download.pytorch.org/whl/cu132 --extra-index-url https://pypi.org/simple   # RTX 4050 do PC do Lucas
+  ```
+
+- `invoke install --leve` instala só desenvolvimento e testes, sem o PyTorch. Os testes de IA são pulados.
+- A voz (`.[voz]`, Whisper e Piper) fica de fora até a Fase 5.
+
+| Grupo (`pip install -e ".[grupo]"`) | Pacotes | Para quê |
+|---|---|---|
+| (sempre) | Flask, Flask-SQLAlchemy, Flask-Migrate, Flask-CORS, python-dotenv, requests; `tzdata` só no Windows | API, banco e coletor |
+| `dev` | ipython, flask-shell-ipython, Flask-DebugToolbar, invoke, black, flake8 | Desenvolvimento |
+| `test` | pytest, pytest-cov, pytest-flask | Testes |
+| `ia` | torch, transformers, sqlite-vec, numpy | RAG, rascunhos e análises da RoBERTaLexPT |
+| `ver` | datasette, datasette-template-sql | `invoke ver-banco` |
+| `analise` | pymupdf (AGPL-3.0), snowballstemmer | Leitura dos PDFs das PECs e medição da busca |
+| `voz` | faster-whisper, piper-tts | Fase 5 |
+| `tudo` | `dev`, `test`, `ia`, `ver` e `analise` | `invoke install` |
 
 ## Como rodar
 
@@ -71,7 +94,7 @@ Cada coleta grava uma linha em `coleta` e os erros em `log_sistema`. Um registro
 
 ## RAG (Fase 3)
 
-A RoBERTaLexPT roda só neste módulo; a API Flask não carrega o modelo. Precisa das dependências de IA:
+A RoBERTaLexPT roda só neste módulo; a API Flask não carrega o modelo. As dependências de IA já vêm no `invoke install`; o PyTorch certo para a placa é instalado antes:
 
 ```bash
 # Com a RTX 4050 do PC do Lucas (driver 595, CUDA 13.2); o .venv fica com cerca de 5,7 GB.
@@ -79,7 +102,7 @@ A RoBERTaLexPT roda só neste módulo; a API Flask não carrega o modelo. Precis
 pip install "torch==2.15.0+cu132" --index-url https://download.pytorch.org/whl/cu132 --extra-index-url https://pypi.org/simple
 # Sem placa da NVIDIA; o .venv fica com cerca de 1,3 GB
 pip install torch --index-url https://download.pytorch.org/whl/cpu
-pip install -e ".[ia]"
+invoke install                     # ou só a IA: pip install -e ".[ia]"
 ```
 
 ```bash

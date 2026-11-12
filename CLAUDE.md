@@ -162,7 +162,7 @@ TASKFLOW/
    - comentário de cabeçalho `# === Classe (descricao) ===` antes de cada classe; blocos de colunas e de relacionamentos separados por comentários `# ----` / `# ====` com o nome do grupo em maiúsculas; método `__repr__` no fim, em bloco `# REPRESENTACAO`;
    - comentários em português, sem acento (como no TaskFlow).
    - Não copie o erro de digitação do TaskFlow (`create_at`): use os nomes do modelo do Desperta.
-7. **Empacotamento** com `pyproject.toml` (PEP 621, setuptools) e instalação editável: `pip install -e ".[dev,test]"`.
+7. **Empacotamento** com `pyproject.toml` (PEP 621, setuptools) e instalação editável: `pip install -e ".[dev,test]"` (no Desperta, `invoke install` usa `".[tudo]"`, ver 24.3).
 8. **Automação com Invoke** em `tasks.py` (`invoke install`, `run`, `test`, `lint`, `format`).
 9. **Testes com pytest + pytest-flask + pytest-cov**, em `tests/`, com `conftest.py` e fixture `app` que chama `create_app()`.
 10. **Validação no `flask shell`:** depois de criar os modelos, testar no shell com banco em memória (`sqlite:///:memory:`), `db.create_all()`, inserir, consultar com `db.session.scalar(db.select(...))` e conferir restrições (tentativa de duplicar e `rollback()`).
@@ -418,9 +418,13 @@ from invoke import task
 
 
 @task
-def install(c):
-    """Instala o projeto em modo editavel com dependencias de desenvolvimento e teste."""
-    c.run('pip install -e ".[dev,test]"', echo=True)
+def install(c, leve=False):
+    """Instala o projeto com todas as dependencias (desenvolvimento, testes, IA, ver-banco e analises).
+
+    --leve instala so desenvolvimento e testes, sem o PyTorch.
+    """
+    extras = "dev,test" if leve else "tudo"
+    c.run(f'pip install -e ".[{extras}]"', echo=True)
 
 
 @task
@@ -1737,3 +1741,12 @@ Rotas finas em `routes.py`, regras nos `services.py`; auxiliares HTTP comuns em 
 - Slugs `admin`, `busca` e `principal` são reservados (viram `...-noticia`).
 - No banco real, todas as rotas de leitura responderam em menos de 60 ms (votação com 467 votos: 11 ms; proposição com 1.066 tramitações: 8 ms).
 - **Falta na Fase 4:** rotas do visitante (cookie, aceite e contagem por tema, RF13 e RF17) e a tarefa LGPD; limite de requisições nas rotas públicas; teste de carga (RNF01); as decisões do grupo sobre o volume de rascunhos e o tema das proposições sem tema.
+
+### 24.3 Todas as dependências no `pyproject.toml` (12/11/2026)
+Pedido do Lucas, para quem pega o projeto pelo GitHub instalar tudo com um comando só:
+- Novo grupo `tudo` (`dev`, `test`, `ia`, `ver` e `analise`), e o `invoke install` passa a instalar `".[tudo]"`. `invoke install --leve` instala só `dev` e `test`, sem o PyTorch.
+- O grupo `analise` (`pymupdf` e `snowballstemmer`), que estava só na `busca-rag`, também entra aqui, com o mesmo texto, para os dois ramos se juntarem sem conflito.
+- `tzdata` só no Windows, porque o `zoneinfo` (horário de Brasília) não acha os fusos ali sem ele.
+- A voz (`voz`) fica de fora do `tudo` até a Fase 5 (o Piper e o faster-whisper podem não ter pacote para o Python 3.14, seção 9).
+- O PyTorch continua pedido só como `torch` (20.2). Quem quer a versão para processador ou para uma placa específica instala o PyTorch antes do `invoke install`, como no README.
+- Toda dependência nova entra num grupo do `pyproject.toml`, e não num `pip install` avulso no README.

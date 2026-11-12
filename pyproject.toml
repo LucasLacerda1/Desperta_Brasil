@@ -15,6 +15,8 @@ dependencies = [
     "Flask-CORS>=4.0",
     "python-dotenv",
     "requests",
+    # O Windows nao tem a base de fusos horarios que o zoneinfo usa (horario de Brasilia)
+    "tzdata; sys_platform == 'win32'",
 ]
 
 [project.optional-dependencies]
@@ -24,6 +26,10 @@ ia = ["torch", "transformers", "sqlite-vec", "numpy"]
 voz = ["faster-whisper", "piper-tts"]
 # So para ver o banco no navegador durante o desenvolvimento; nao faz parte do portal
 ver = ["datasette", "datasette-template-sql"]
+# Scripts de analise (scripts/analise_pec e scripts/analise_busca): PyMuPDF (AGPL-3.0, 18.3) e snowballstemmer (BSD-3)
+analise = ["pymupdf", "snowballstemmer"]
+# Tudo o que o projeto usa hoje, num comando so (invoke install). A voz fica de fora ate a Fase 5
+tudo = ["desperta[dev,test,ia,ver,analise]"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

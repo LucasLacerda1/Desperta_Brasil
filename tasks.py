@@ -4,9 +4,13 @@ from invoke import task
 
 
 @task
-def install(c):
-    """Instala o projeto em modo editavel com dependencias de desenvolvimento e teste."""
-    c.run('pip install -e ".[dev,test]"', echo=True)
+def install(c, leve=False):
+    """Instala o projeto com todas as dependencias (desenvolvimento, testes, IA, ver-banco e analises).
+
+    --leve instala so desenvolvimento e testes, sem o PyTorch.
+    """
+    extras = "dev,test" if leve else "tudo"
+    c.run(f'pip install -e ".[{extras}]"', echo=True)
 
 
 @task
