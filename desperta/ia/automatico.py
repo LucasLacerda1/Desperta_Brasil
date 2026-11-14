@@ -5,6 +5,9 @@ Decisao do Lucas (07/11/2026): entram todas as votacoes (Plenario e comissoes) q
 um tipo acompanhado, todas as mudancas de situacao e todas as proposicoes novas dos tipos
 acompanhados. Os fatos sao procurados numa janela de dias (GERACAO_JANELA_DIAS), e o que
 ja tem geracao e pulado, entao rodar de novo nao duplica nada.
+
+Decisao 25.1 (14/11/2026): mudanca de situacao e a situacao ser outra, e nao a data do
+status ter andado (a Camara muda essa data a cada passo do andamento).
 """
 
 from collections import Counter
@@ -15,6 +18,7 @@ from flask import current_app
 
 from desperta.ext.db import db
 from desperta.proposicoes.models import Proposicao, ProposicaoTema
+from desperta.proposicoes.services import situacao_mudou
 from desperta.sistema.models import LogSistema
 from desperta.votacoes.models import Votacao, VotacaoProposicao
 
@@ -68,13 +72,14 @@ def _votacoes(inicio):
 
 
 def _proposicoes(inicio):
-    """Situacao que mudou depois do dia da apresentacao, e proposicao apresentada na janela."""
+    """Situacao que mudou de verdade (25.1) depois do dia da apresentacao, e proposicao apresentada na janela."""
     momento = datetime.combine(inicio, time.min)
     linhas = db.session.execute(
         db.select(
             Proposicao.id,
             Proposicao.data_apresentacao,
             Proposicao.data_status,
+            Proposicao.cod_situacao,
             Proposicao.filhos_sincronizados_em,
         )
         .where(
@@ -89,6 +94,7 @@ def _proposicoes(inicio):
             linha.data_status
             and linha.data_status >= momento
             and (linha.data_status.date() > linha.data_apresentacao.date())
+            and situacao_mudou(linha.id, linha.cod_situacao, linha.data_status)
         ):
             # A situacao do dia da apresentacao ja aparece na noticia da proposicao nova
             situacoes.append(linha)

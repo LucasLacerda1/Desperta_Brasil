@@ -20,7 +20,8 @@ def banco(app, db):
     """
     Janela de 3 dias antes de 16/05/2024 (desde 13/05):
     - PL 1234 (2310837) apresentado em 14/05, com tema: proposicao nova e votacao 2310837-8;
-    - PEC 2 apresentada em 2023 e com situacao nova em 15/05: mudanca de situacao;
+    - PEC 2 apresentada em 2023; em 15/05 a situacao passou de "Aguardando Parecer" (915)
+      para "Pronta para Pauta" (924): mudanca de situacao;
     - PL 3 apresentado em 15/05 sem tema: pulado;
     - PL 4 apresentado em 15/05 ainda pendente na coleta, com a votacao 4-1 tambem pendente;
     - REQ 5 apresentado em 15/05 (tipo nao acompanhado) e a votacao 5-1 so sobre ele: fora;
@@ -42,6 +43,7 @@ def banco(app, db):
                 ementa="Altera o art. 1º da Constituição Federal.",
                 data_apresentacao=datetime(2023, 1, 10, 10, 0),
                 data_status=datetime(2024, 5, 15, 11, 0),
+                cod_situacao=924,
                 situacao="Pronta para Pauta",
                 filhos_sincronizados_em=SINCRONIZADO,
             ),
@@ -79,6 +81,20 @@ def banco(app, db):
             ProposicaoTema(proposicao_id=2310837, cod_tema=46, relevancia=1),
             ProposicaoTema(proposicao_id=2, cod_tema=46, relevancia=1),
             VotacaoProposicao(votacao_id="2310837-8", proposicao_id=2310837),
+            fabricas.tramitacao(
+                proposicao_id=2,
+                sequencia=1,
+                data_hora=datetime(2024, 5, 10, 9, 0),
+                cod_situacao=915,
+                situacao="Aguardando Parecer",
+            ),
+            fabricas.tramitacao(
+                proposicao_id=2,
+                sequencia=2,
+                data_hora=datetime(2024, 5, 15, 11, 0),
+                cod_situacao=924,
+                situacao="Pronta para Pauta",
+            ),
             TrechoRAG(
                 tipo="proposicao",
                 ref_id="2310837",
@@ -137,11 +153,57 @@ def test_rodar_de_novo_nao_duplica_nem_refaz_a_rejeitada(banco):
     assert _contar(banco, Noticia) == 3
 
 
-def test_mudanca_de_situacao_depois_gera_de_novo(banco):
+def test_situacao_que_muda_de_verdade_gera_de_novo(banco):
     _rodar()
-    banco.session.get(fabricas.Proposicao, 2).data_status = datetime(2024, 5, 16, 10, 0)
+    pec = banco.session.get(fabricas.Proposicao, 2)
+    pec.data_status, pec.cod_situacao, pec.situacao = datetime(2024, 5, 16, 10, 0), 923, "Aguardando Deliberação"
     banco.session.commit()
     assert dict(_rodar().gerados) == {"situacao": 1}
+
+
+def test_so_a_data_do_status_andar_nao_e_mudanca_de_situacao(banco):
+    # Decisao 25.1: a Camara muda a data do status a cada passo; com a mesma situacao, nao ha rascunho novo
+    _rodar()
+    banco.session.get(fabricas.Proposicao, 2).data_status = datetime(2024, 5, 16, 10, 0)
+    banco.session.add(
+        fabricas.tramitacao(
+            proposicao_id=2,
+            sequencia=3,
+            data_hora=datetime(2024, 5, 16, 10, 0),
+            descricao="Abertura de Prazo",
+            cod_situacao=924,
+            situacao="Pronta para Pauta",
+        )
+    )
+    banco.session.commit()
+    resumo = _rodar()
+    assert sum(resumo.gerados.values()) == 0
+    assert (resumo.candidatos, resumo.ja_feitos) == (5, 2)
+    assert _contar(banco, Noticia) == 3
+
+
+def test_proposicao_sem_situacao_na_camara_nao_e_mudanca_de_situacao(banco):
+    # Decisao 25.1: o passo novo anda a data, mas a Camara nao informou situacao nenhuma
+    pec = banco.session.get(fabricas.Proposicao, 2)
+    pec.cod_situacao, pec.situacao = None, None
+    banco.session.commit()
+    assert dict(_rodar().gerados) == {"votacao": 1, "nova": 1}
+
+
+def test_situacao_mudou_compara_com_a_ultima_situacao_informada(banco):
+    from desperta.proposicoes.services import situacao_mudou
+
+    dia = datetime(2024, 5, 15, 11, 0)
+    assert situacao_mudou(2, 924, dia) is True  # antes era 915
+    assert situacao_mudou(2, 915, dia) is False  # a mesma de antes
+    assert situacao_mudou(2, None, dia) is False  # a Camara nao informou
+    assert situacao_mudou(2, 924, None) is False  # sem data do status
+    # Sem nenhuma tramitacao anterior com situacao: e a primeira que a Camara informa
+    assert situacao_mudou(6, 924, datetime(2020, 3, 2, 9, 0)) is True
+    # Passo anterior sem situacao nao conta como "situacao de antes"
+    banco.session.add(fabricas.tramitacao(proposicao_id=2, sequencia=9, data_hora=datetime(2024, 5, 14, 9, 0)))
+    banco.session.commit()
+    assert situacao_mudou(2, 915, dia) is False
 
 
 def test_pendente_entra_quando_a_coleta_completa(banco):

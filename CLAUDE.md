@@ -1,7 +1,7 @@
 # Desperta Brasil — guia do projeto para o Claude Code
 
 > Coloque este arquivo na **raiz do repositório** com o nome `CLAUDE.md`. O Claude Code lê esse arquivo sozinho no início de cada sessão.
-> Última atualização: 11/11/2026 (Fases 1, 1.5, 2, 2b e 3 concluídas; Fase 4 em andamento; decisões nas seções 10 a 23; ajuste físico do banco em `docs/AJUSTE_BANCO_SISTEMA.md`; treino da Roberta escritora em `docs/TREINAR_ROBERTA_ESCRITORA.md`; leitura encadeada da PEC em `docs/LEITURA_ENCADEADA.md`).
+> Última atualização: 14/11/2026 (Fases 1, 1.5, 2, 2b e 3 concluídas; Fase 4 em andamento; decisões nas seções 10 a 25; ajuste físico do banco em `docs/AJUSTE_BANCO_SISTEMA.md`; treino da Roberta escritora em `docs/TREINAR_ROBERTA_ESCRITORA.md`; leitura encadeada da PEC em `docs/LEITURA_ENCADEADA.md`).
 
 ## 0. Como trabalhar neste projeto (leia primeiro)
 
@@ -1750,3 +1750,14 @@ Pedido do Lucas, para quem pega o projeto pelo GitHub instalar tudo com um coman
 - A voz (`voz`) fica de fora do `tudo` até a Fase 5 (o Piper e o faster-whisper podem não ter pacote para o Python 3.14, seção 9).
 - O PyTorch continua pedido só como `torch` (20.2). Quem quer a versão para processador ou para uma placa específica instala o PyTorch antes do `invoke install`, como no README.
 - Toda dependência nova entra num grupo do `pyproject.toml`, e não num `pip install` avulso no README.
+
+---
+
+## 25. Decisões e trabalho de 14/11/2026
+
+### 25.1 Mudança de situação é a situação ser outra
+- **O erro:** o `flask ia gerar-novos` tratava como mudança de situação toda proposição cuja `data_status` tinha andado. A Câmara muda essa data a cada passo do andamento (despacho, prazo, recebimento), mesmo quando a situação continua igual. Dos 3.699 rascunhos de "mudança de situação" feitos de 08 a 14/11, 2.288 (62%) tinham a mesma situação de antes, 567 (15%) eram de proposição sem situação na Câmara (o texto chamava a descrição do passo de "situação") e só 844 (23%) tinham mudado de verdade.
+- **A regra:** `situacao_mudou()` em `desperta/proposicoes/services.py`. Há mudança quando a Câmara informa uma situação (`cod_situacao`) e ela é diferente da última informada nas tramitações anteriores ao dia do status. Sem nenhuma anterior, é a primeira situação informada. Sem situação informada, não há mudança. `fatos_da_janela` (`desperta/ia/automatico.py`) usa essa regra. Não muda o banco.
+- **O texto:** se a situação não foi informada (geração manual com `flask ia gerar`), o `GeradorFrases` conta o último passo e escreve "A situação do PL … não foi informada pela Câmara". A descrição de um passo nunca aparece como situação.
+- **Efeito medido no banco real (só leitura):** na janela desde 05/11, os fatos de situação caem de 2.765 para 552. 734 testes.
+- **Em aberto (grupo):** o que fazer com os 2.855 rascunhos antigos com o texto errado (arquivar ou excluir pede um admin; não publicar) e as regras de seleção propostas na análise de 14/11 (marcos, votação de mérito no Plenário, agrupamento por proposição e limite diário), que mudam a escolha de 07/11 (23.2).

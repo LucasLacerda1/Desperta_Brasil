@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import List, Optional
 
-from desperta.proposicoes.services import ou_nao_informado
+from desperta.proposicoes.services import informado, ou_nao_informado
 
 # Decisao 17.2: GeradorFrases e o plano B e o padrao do MVP; GeradorRoberta so entra depois da Fase 3b.
 
@@ -235,6 +235,13 @@ def _nome_com_artigo(proposicao):
     return f"A proposição {_identificacao(proposicao)}"
 
 
+def _de_nome(proposicao):
+    """ "do PL 1/2024", "da PEC 2/2023"; fora dos tipos acompanhados, "da proposicao REQ 1/2024"."""
+    if proposicao.sigla in TIPOS:
+        return f"d{_tipo(proposicao)[1]} {_identificacao(proposicao)}"
+    return f"da proposição {_identificacao(proposicao)}"
+
+
 def _no_dia(data):
     """A noticia pode sair dias depois: nada de "nesta terca-feira", que ficaria errado."""
     artigo = "no" if data.weekday() >= 5 else "na"
@@ -316,7 +323,9 @@ class GeradorFrases(Gerador):
 
     def _situacao(self, dados):
         proposicao = dados.proposicao
-        situacao = self._situacao_atual(dados)
+        situacao = informado(proposicao.situacao)
+        if situacao is None:
+            return self._sem_situacao(dados)
         if situacao.lower() in SITUACOES_DE_AVANCO:
             titulo = f"{_identificacao(proposicao)} avança na Câmara"
         else:
@@ -358,12 +367,22 @@ class GeradorFrases(Gerador):
     def _autoria(self, proposicao):
         return f"{proposicao.autor} e outros" if proposicao.mais_autores else proposicao.autor
 
-    def _situacao_atual(self, dados):
-        if dados.proposicao.situacao:
-            return dados.proposicao.situacao.strip()
-        if dados.tramitacoes:
-            return dados.tramitacoes[-1].descricao.strip()
-        raise ValueError("A proposicao nao tem situacao nem tramitacao.")
+    def _sem_situacao(self, dados):
+        """
+        Decisao 25.1: quando a Camara nao informa a situacao, a noticia conta o ultimo passo
+        do andamento e diz que a situacao nao foi informada; a descricao do passo nunca e
+        apresentada como se fosse a situacao.
+        """
+        if not dados.tramitacoes:
+            raise ValueError("A proposicao nao tem situacao nem tramitacao.")
+        proposicao = dados.proposicao
+        passo = dados.tramitacoes[-1]
+        titulo = f"{_identificacao(proposicao)}: {passo.descricao.strip()}"
+        resumo = (
+            f"{_tramitacao_em_frase(passo)} "
+            f"A situação {_de_nome(proposicao)} não foi informada pela Câmara."
+        )
+        return titulo, resumo
 
     def _corpo(self, dados):
         proposicao = dados.proposicao

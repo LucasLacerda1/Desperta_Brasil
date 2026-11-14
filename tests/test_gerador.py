@@ -237,14 +237,30 @@ def test_titulo_de_situacao_mostra_a_situacao_como_a_camara_escreve():
     assert texto.titulo == 'PL 1234/2024: situação agora é "Aguardando Designação de Relator(a)"'
 
 
-def test_situacao_nula_usa_a_ultima_tramitacao():
+def test_situacao_nula_conta_o_ultimo_passo_sem_chama_lo_de_situacao():
+    # Decisao 25.1: a descricao de um passo do andamento nunca aparece como "situacao"
     texto = _escrever(
         CASO_SITUACAO,
         proposicao=_proposicao(situacao=None),
         tramitacoes=[_passo(descricao="Designado relator", despacho="")],
     )
-    assert "Designado relator" in texto.resumo
+    assert texto.titulo == "PL 1234/2024: Designado relator"
+    assert texto.resumo == (
+        "Em 03/06/2024, em CCJC: Designado relator. A situação do PL 1234/2024 não foi informada pela Câmara."
+    )
+    assert "situação agora" not in texto.titulo and "está com a situação" not in texto.resumo
     assert "Em 03/06/2024, em CCJC: Designado relator." in texto.corpo
+
+
+def test_situacao_que_a_camara_manda_vazia_tambem_e_nao_informada():
+    # A API usa "." quando nao ha informacao (22.5)
+    texto = _escrever(
+        CASO_SITUACAO,
+        proposicao=_proposicao(sigla="PEC", numero=2, ano=2023, situacao="."),
+        tramitacoes=[_passo(descricao="Prorrogação de Prazo", despacho="")],
+    )
+    assert texto.titulo == "PEC 2/2023: Prorrogação de Prazo"
+    assert texto.resumo.endswith("A situação da PEC 2/2023 não foi informada pela Câmara.")
 
 
 def test_sem_situacao_e_sem_tramitacao_nao_escreve():

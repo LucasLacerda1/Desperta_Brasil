@@ -1,3 +1,5 @@
+from datetime import datetime, time
+
 from desperta.ext.api import iso, iso_camara, url_camara
 from desperta.ext.db import db
 from desperta.ext.erros import NaoEncontrado
@@ -26,6 +28,31 @@ def informado(valor):
 
 def ou_nao_informado(valor, feminino=False):
     return informado(valor) or (NAO_INFORMADA if feminino else NAO_INFORMADO)
+
+
+# ----------------------------------------------------------
+# A situacao mudou de verdade? (decisao 25.1)
+# A Camara muda a data do status a cada passo do andamento, mesmo quando a situacao
+# continua igual. So ha mudanca quando a Camara informa uma situacao e ela e diferente
+# da ultima informada antes do dia do status.
+# ----------------------------------------------------------
+def situacao_mudou(proposicao_id, cod_situacao, data_status):
+    if cod_situacao is None or data_status is None:
+        # Sem situacao informada pela Camara nao ha mudanca de situacao para contar
+        return False
+    inicio_do_dia = datetime.combine(data_status.date(), time.min)
+    anterior = db.session.scalar(
+        db.select(Tramitacao.cod_situacao)
+        .where(
+            Tramitacao.proposicao_id == proposicao_id,
+            Tramitacao.data_hora < inicio_do_dia,
+            Tramitacao.cod_situacao.is_not(None),
+        )
+        .order_by(Tramitacao.data_hora.desc(), Tramitacao.sequencia.desc())
+        .limit(1)
+    )
+    # Sem nenhuma anterior, esta e a primeira situacao que a Camara informa
+    return anterior != cod_situacao
 
 
 # ======================================================
