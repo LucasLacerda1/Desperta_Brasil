@@ -1,0 +1,98 @@
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--fundo);
+  color: var(--texto);
+  font-family: 'Roboto', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+a { color: var(--link); }
+a:hover { color: var(--link-hover); }
+
+:focus-visible { outline: 3px solid var(--foco); outline-offset: 2px; }
+
+h1, h2, h3 { line-height: 1.2; }
+
+.serifa { font-family: 'Source Serif 4 Variable', Georgia, serif; }
+
+.icone {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 20px;
+  line-height: 1;
+  display: inline-block;
+  vertical-align: middle;
+  white-space: nowrap;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+}
+
+.so-leitor {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.conteudo {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-inline: 24px;
+}
+@media (max-width: 600px) {
+  .conteudo { padding-inline: 16px; }
+}
+
+.cartao {
+  background: var(--superficie);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+/* Botoes: alvo de 44 px */
+.botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 20px;
+  border-radius: 22px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+}
+.botao-principal { background: var(--principal); color: var(--sobre-principal); }
+.botao-principal:hover { color: var(--sobre-principal); filter: brightness(1.1); }
+.botao-contorno { background: transparent; color: var(--link); border-color: var(--principal); }
+.botao-destaque { background: transparent; color: var(--destaque); border-color: var(--destaque-forte); }
+.botao-perigo { background: transparent; color: var(--erro); border-color: var(--erro); }
+.botao:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.etiqueta-tema {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--destaque);
+  font-weight: 700;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.texto-2 { color: var(--texto-2); }
+
+.carregando { padding: 48px 0; text-align: center; color: var(--texto-2); }
+
+/* Rodape sempre no fim da janela, mesmo em pagina curta */
+#app { display: flex; flex-direction: column; min-height: 100vh; }
+#app > main { flex: 1; }

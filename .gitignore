@@ -13,3 +13,6 @@ dist/
 .coverage
 .pytest_cache/
 .vscode/
+
+# Front-end (prototipo)
+node_modules/
