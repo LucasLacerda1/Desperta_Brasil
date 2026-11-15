@@ -89,12 +89,43 @@ def test_legislaturas(db, api, cliente):
     assert legislaturas.id_atual(cliente, date(2026, 10, 30)) == 57
 
 
-def test_temas_convertem_o_codigo_e_usam_o_icone_padrao(db, api, cliente):
+def test_temas_convertem_o_codigo_e_usam_o_icone_padrao(db, api, cliente, monkeypatch):
+    # Tema que nao esta no mapa (um tema novo da Camara, por exemplo) fica com o icone padrao
+    monkeypatch.delitem(ICONES_TEMA, 34)
     api.responder("referencias/proposicoes/codTema", carregar("temas"))
     temas.coletar(cliente)
     tema = db.session.get(Tema, 34)
     assert tema.nome == "Administração Pública"
     assert tema.icone == "article"
+
+
+# Os 32 codigos de /referencias/proposicoes/codTema (conferidos no banco real em 14/11/2026)
+TEMAS_OFICIAIS = {
+    34, 35, 37, 39, 40, 41, 42, 43, 44, 46, 48, 51, 52, 53, 54, 55,
+    56, 57, 58, 60, 61, 62, 64, 66, 67, 68, 70, 72, 74, 76, 85, 86,
+}  # fmt: skip
+
+
+def test_todo_tema_oficial_tem_icone_proprio(db, api, cliente):
+    # Decisao 25.2: cada tema da Camara tem o seu icone Material Symbols, sem repetir
+    assert set(ICONES_TEMA) == TEMAS_OFICIAIS
+    assert "article" not in ICONES_TEMA.values()
+    assert len(set(ICONES_TEMA.values())) == len(TEMAS_OFICIAIS)
+    api.responder("referencias/proposicoes/codTema", carregar("temas"))
+    temas.coletar(cliente)
+    gravados = db.session.scalars(db.select(Tema)).all()
+    assert gravados and all(tema.icone == ICONES_TEMA[tema.cod_tema] for tema in gravados)
+
+
+def test_icone_novo_atualiza_o_tema_ja_gravado(db, api, cliente, monkeypatch):
+    # O banco real tinha os temas com "article": a coleta seguinte precisa trocar pelo icone do mapa
+    monkeypatch.delitem(ICONES_TEMA, 34)
+    api.responder("referencias/proposicoes/codTema", carregar("temas"))
+    temas.coletar(cliente)
+    assert db.session.get(Tema, 34).icone == "article"
+    monkeypatch.setitem(ICONES_TEMA, 34, "domain")
+    temas.coletar(cliente)
+    assert db.session.get(Tema, 34).icone == "domain"
 
 
 def test_temas_usam_o_mapa_de_icones(db, api, cliente, monkeypatch):

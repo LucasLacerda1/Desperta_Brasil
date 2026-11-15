@@ -7,7 +7,8 @@ from desperta.ext.db import db
 from desperta.noticias.models import Noticia
 from desperta.noticias.services import criar_rascunho
 from desperta.orgaos.models import Orgao
-from desperta.proposicoes.models import Proposicao, ProposicaoAutor, ProposicaoTema, Tramitacao
+from desperta.proposicoes.models import Proposicao, ProposicaoAutor, Tramitacao
+from desperta.proposicoes.services import tema_principal
 from desperta.sistema.models import LogSistema
 from desperta.votacoes.models import Votacao, VotacaoProposicao
 from desperta.votacoes.services import situacao_dos_votos
@@ -120,13 +121,8 @@ def _ler_origem(caso, ref):
 
 
 def _tema_principal(proposicao):
-    """A noticia precisa de um tema (RF05): o de maior relevancia entre os que a API mandou."""
-    cod_tema = db.session.scalar(
-        db.select(ProposicaoTema.cod_tema)
-        .filter_by(proposicao_id=proposicao.id)
-        .order_by(ProposicaoTema.relevancia.desc(), ProposicaoTema.cod_tema)
-        .limit(1)
-    )
+    """A noticia precisa de um tema (RF05): o principal da proposicao (decisao 25.2)."""
+    cod_tema = tema_principal(proposicao.id)
     if cod_tema is None:
         raise ErroDeGeracao(f"A proposicao {proposicao.id} nao tem tema.")
     return cod_tema

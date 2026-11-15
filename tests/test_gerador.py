@@ -371,8 +371,9 @@ def banco(app, db):
     db.session.flush()
     db.session.add_all(
         [
+            # Como na API: relevancia 0 e o tema principal, 1 o segundo (25.2)
             ProposicaoTema(proposicao_id=2310837, cod_tema=46, relevancia=1),
-            ProposicaoTema(proposicao_id=2310837, cod_tema=47, relevancia=5),
+            ProposicaoTema(proposicao_id=2310837, cod_tema=47, relevancia=0),
             ProposicaoAutor(
                 proposicao_id=2310837, ordem=1, nome="Fulana", cod_tipo=1, tipo="Deputado(a)", proponente=True
             ),

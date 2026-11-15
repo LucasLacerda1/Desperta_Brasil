@@ -55,6 +55,50 @@ def situacao_mudou(proposicao_id, cod_situacao, data_status):
     return anterior != cod_situacao
 
 
+# ----------------------------------------------------------
+# Tema principal (decisao 25.2)
+# Na API, a relevancia e a posicao do tema na lista da Camara: 0 e o primeiro, o principal,
+# e os seguintes vem com 1, 2, 3... A Camara ordena assim desde julho de 2026; proposicao
+# mais antiga vem com todos os temas em 0, sem ordem.
+# ----------------------------------------------------------
+def _taxa_de_tema_principal():
+    """
+    Para cada tema, a parte das proposicoes ordenadas pela Camara em que ele e o principal.
+    A suavizacao (+1 e +2) evita que um tema visto poucas vezes fique com 0% ou 100%.
+    """
+    ordenadas = db.select(ProposicaoTema.proposicao_id).where(ProposicaoTema.relevancia > 0)
+    linhas = db.session.execute(
+        db.select(
+            ProposicaoTema.cod_tema,
+            db.func.count(),
+            db.func.sum(db.case((ProposicaoTema.relevancia == 0, 1), else_=0)),
+        )
+        .where(ProposicaoTema.proposicao_id.in_(ordenadas))
+        .group_by(ProposicaoTema.cod_tema)
+    ).all()
+    return {cod_tema: (principal + 1) / (presente + 2) for cod_tema, presente, principal in linhas}
+
+
+def tema_principal(proposicao_id):
+    """
+    O tema principal da proposicao, ou None se ela nao tem tema.
+    Com a ordem da Camara, e o de relevancia 0. Sem ordem (todos em 0), vale o tema que a
+    Camara mais costuma por em primeiro lugar nas proposicoes que ela ordena.
+    """
+    temas = db.session.execute(
+        db.select(ProposicaoTema.cod_tema, ProposicaoTema.relevancia)
+        .filter_by(proposicao_id=proposicao_id)
+        .order_by(ProposicaoTema.relevancia, ProposicaoTema.cod_tema)
+    ).all()
+    if not temas:
+        return None
+    if len(temas) == 1 or temas[-1].relevancia > 0:
+        return temas[0].cod_tema
+    taxas = _taxa_de_tema_principal()
+    # Tema que nunca apareceu numa proposicao ordenada fica no meio (0,5); empate, o menor codigo
+    return max(temas, key=lambda tema: (taxas.get(tema.cod_tema, 0.5), -tema.cod_tema)).cod_tema
+
+
 # ======================================================
 # PORTAL: PAGINA DA PROPOSICAO (RF09)
 # ======================================================
@@ -140,7 +184,8 @@ def como_dict(proposicao):
         ],
         "temas": [
             {"cod_tema": t.cod_tema, "nome": t.tema.nome, "icone": t.tema.icone, "relevancia": t.relevancia}
-            for t in sorted(proposicao.temas, key=lambda t: -t.relevancia)
+            # Relevancia 0 e o tema principal (25.2)
+            for t in sorted(proposicao.temas, key=lambda t: (t.relevancia, t.cod_tema))
         ],
         "tramitacoes": {"itens": [como_tramitacao(t) for t in recentes], "total": total},
         "votacoes": [
