@@ -317,7 +317,8 @@ TAMANHO_TITULO = 200
 TAMANHO_RESUMO = 500
 TAMANHO_COMENTARIO = 2000
 LOTE_MAXIMO = 200
-CASOS_DA_IA = ("votacao", "situacao", "nova")
+# relatorio_semanal: RF07 (desperta/ia/relatorio.py)
+CASOS_DA_IA = ("votacao", "situacao", "nova", "relatorio_semanal")
 # acao da rota: (status de onde pode sair, status novo, acao gravada em noticia_revisao)
 TRANSICOES = {
     "aprovar": (("rascunho",), "em_revisao", "aprovou"),
