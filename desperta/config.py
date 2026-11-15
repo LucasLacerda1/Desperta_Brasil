@@ -34,6 +34,8 @@ class Config:
     # Decisoes 14.2 e 15.3: limites da rotina horaria
     HORARIA_ORCAMENTO_MIN = int(os.getenv("HORARIA_ORCAMENTO_MIN", "20"))
     HORARIA_RECONFERIR_HORAS = int(os.getenv("HORARIA_RECONFERIR_HORAS", "6"))
+    # Decisao 25.8: item que deu 404 na Camara so e pedido de novo depois disto (0 desliga)
+    COLETOR_AUSENTE_HORAS = int(os.getenv("COLETOR_AUSENTE_HORAS", "24"))
     EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "eduagarcia/RoBERTaLexPT-base")
     # Decisao 21.2: modelos em pastas simples; so a RoBERTaLexPT-base pode ficar no pendrive
     MODELOS_DIR = os.getenv("MODELOS_DIR", "instance/modelos")

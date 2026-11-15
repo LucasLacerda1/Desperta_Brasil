@@ -1,6 +1,8 @@
 import json
 import logging
+from datetime import timedelta
 
+from flask import current_app
 from sqlalchemy.exc import IntegrityError, StatementError
 
 from desperta.ext.db import db
@@ -15,6 +17,8 @@ NOVO = "novo"
 ATUALIZADO = "atualizado"
 IGUAL = "igual"
 MAX_FALHAS_API_SEGUIDAS = 5
+# O detalhe do proprio item deu 404: a Camara nao tem mais o registro (23.12). Nao e falha da coleta.
+ACAO_AUSENTE = "nao_encontrado_na_camara"
 
 
 # === Execucao (uma coleta: grava registros, conta e registra erros) ===
@@ -23,6 +27,9 @@ class Execucao:
         self.cliente = cliente
         self.inicio = agora_utc()
         self.falhas = 0
+        self.ausentes = 0
+        self.ausentes_pulados = 0
+        self._ausentes_recentes = {}
         self._falhas_api_seguidas = 0
         self._requisicoes_antes = cliente.requisicoes
         self._erros_http_antes = cliente.erros_http
@@ -177,12 +184,23 @@ class Execucao:
         """
         Processa um item pai: erro de API desse item nao derruba a coleta, mas
         varias falhas seguidas indicam que a API caiu, e a coleta para.
+        Item que a Camara nao tem mais (404 no proprio detalhe) vira aviso, nao falha,
+        e fica sem ser pedido de novo por COLETOR_AUSENTE_HORAS.
         Devolve True se o item terminou sem erro de API.
         """
+        if _id_texto(chave) in self._ausentes_desde_ha_pouco(tabela):
+            self.ausentes_pulados += 1
+            return False
         try:
             funcao()
         except ErroAPI as erro:
             db.session.rollback()
+            if _item_nao_existe(erro, chave):
+                self._registrar_ausente(tabela, chave, erro)
+                # A API respondeu: nao conta como queda
+                self._falhas_api_seguidas = 0
+                self.concluir_item()
+                return False
             self.registrar_falha(tabela, chave, erro)
             self._falhas_api_seguidas += 1
             self.concluir_item()
@@ -192,6 +210,32 @@ class Execucao:
         self._falhas_api_seguidas = 0
         self.concluir_item()
         return True
+
+    def _ausentes_desde_ha_pouco(self, tabela):
+        """Ids desta tabela que deram 404 dentro do prazo; lido uma vez por coleta."""
+        if tabela not in self._ausentes_recentes:
+            horas = current_app.config.get("COLETOR_AUSENTE_HORAS", 24)
+            if horas <= 0:
+                self._ausentes_recentes[tabela] = set()
+            else:
+                desde = agora_utc() - timedelta(hours=horas)
+                self._ausentes_recentes[tabela] = set(
+                    db.session.scalars(
+                        db.select(LogSistema.entidade_id).where(
+                            LogSistema.acao == ACAO_AUSENTE,
+                            LogSistema.entidade == tabela,
+                            LogSistema.data_hora >= desde,
+                        )
+                    )
+                )
+        return self._ausentes_recentes[tabela]
+
+    def _registrar_ausente(self, tabela, chave, erro):
+        self.ausentes += 1
+        horas = current_app.config.get("COLETOR_AUSENTE_HORAS", 24)
+        descricao = f"{erro}: a Camara nao tem este registro; nova tentativa depois de {horas} h"
+        self.log("aviso", ACAO_AUSENTE, descricao, entidade=tabela, entidade_id=chave)
+        logger.warning("%s %s: %s", tabela, chave, descricao)
 
     def concluir_item(self):
         """Fecha a transacao a cada item, para nao segurar o SQLite durante as chamadas HTTP."""
@@ -214,9 +258,23 @@ class Execucao:
                 f"{self.coleta.recurso}: status={self.coleta.status} total={self.coleta.total_itens} "
                 f"novos={self.coleta.itens_novos} atualizados={self.coleta.itens_atualizados} "
                 f"requisicoes={self.coleta.requisicoes} erros_http={self.coleta.erros_http} falhas={self.falhas}"
+                + (
+                    f" nao_encontrados_na_camara={self.ausentes} pulados_por_404_recente={self.ausentes_pulados}"
+                    if self.ausentes or self.ausentes_pulados
+                    else ""
+                )
             ),
         )
         db.session.commit()
+
+
+def _item_nao_existe(erro, chave):
+    """404 no detalhe do proprio item (a URL termina no id), e nao num filho como /pauta ou /votos."""
+    return (
+        erro.status == 404
+        and not isinstance(chave, (tuple, dict))
+        and erro.url.split("?")[0].rstrip("/").endswith(f"/{chave}")
+    )
 
 
 def _id_texto(chave):
