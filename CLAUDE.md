@@ -1578,7 +1578,7 @@ Decisão do Lucas (05/11): o portal deve ser o mais claro e transparente possív
 - `desperta/votacoes/services.py`: `situacao_dos_votos()` classifica a votação em pendente, erro na coleta, secreta (com o placar escrito pela Câmara), simbólica, nominal ou inconsistente, com a explicação em texto.
 - Os trechos de votação que a Roberta lê e o `GeradorFrases` usam essas explicações. O corpo do rascunho mostra situação, regime e apreciação, ou que não foram informados.
 - Na Fase 4 e 5, o portal deve mostrar também: data da última coleta e aviso de dados desatualizados, como cada notícia foi feita (gerador, revisão e fontes) e avisos de erro aparente nos dados da Câmara.
-- **Em aberto (grupo):** as proposições sem tema (109 dos tipos acompanhados) não geram notícia. Opções: um tema especial "Sem tema oficial", marcado como criado pelo portal, ou tema opcional na notícia.
+- ~~**Em aberto (grupo):** as proposições sem tema não geram notícia.~~ **Decidido em 25.6:** viram notícia num tema especial criado pelo portal, e o texto diz que a Câmara não informou o tema.
 - Coleta nº 6 (30/10): marcada como `erro`, com o motivo, e mantida no histórico.
 
 ### 22.6 Análise da PEC com a Roberta original
@@ -1795,3 +1795,11 @@ Pedido do Lucas, para quem pega o projeto pelo GitHub instalar tudo com um coman
 - **Medido no banco real (semana de 8 a 14/11/2026):** 158 votações no Plenário (10 de projetos, todos aprovados) e 442 em comissões; 73 avanços (4 para a sanção, 17 para o Senado e 52 prontas para a pauta); 279 proposições novas (208 PDL, 56 PL, 14 PLP e 1 MPV), das quais só 19 já tinham tema.
 - **Fica para depois:** os relatórios por evento e por legislatura, que o RF07 também cita.
 - 785 testes.
+
+### 25.6 Proposição sem tema da Câmara vira notícia, e a falta de tema é informada
+- **Decisão do Lucas (15/11):** "a incompetência da Câmara tem que ser noticiada". A Câmara demora a classificar as proposições novas (na semana de 8 a 14/11, só 19 de 279 tinham tema), e por isso a maioria delas ficava sem notícia. Agora: com tema, vale o tema principal (25.2); sem tema, a notícia é gravada e diz que o tema não foi informado.
+- **Tema especial criado pelo portal:** código 0, "Sem tema informado pela Câmara", ícone `help` (`TEMA_SEM_CLASSIFICACAO` em `desperta/proposicoes/models.py`). O código 0 não existe na lista da Câmara, e a coleta de temas nunca apaga tema. A linha é criada na primeira vez que for preciso (`tema_sem_classificacao()`), com um `hash_origem` próprio que marca a origem. Não muda o modelo: é uma linha a mais na tabela `tema`, como a 22.5 já previa. Ele aparece na lista de temas e na página principal, o que deixa a falta de classificação visível no portal.
+- **O texto:** a notícia termina com "Quando este texto foi escrito, a Câmara ainda não tinha informado o tema do PL …". A frase continua verdadeira depois que a Câmara classificar. A API da proposição sem tema traz `aviso_tema`: "A Câmara ainda não informou o tema desta proposição."
+- **Quando a Câmara classifica:** no começo de cada `gerar-novos`, as notícias no tema especial (rascunho, em revisão ou publicada) cuja proposição ganhou tema passam para o tema principal, com uma linha no log (`tema_atualizado`). Arquivada fica como está.
+- **No banco real:** a `horaria` das 14h05 de 15/11 já rodou com este código, antes do commit (o agendador usa a pasta do projeto, 24.1): 233 notícias novas no tema especial, verificação do banco com 22 aprovados. Ficam 374 proposições acompanhadas sem tema no banco (219 PDL, 125 PL, 29 PLP e 1 PEC); só as da janela de 3 dias viram notícia.
+- 792 testes.

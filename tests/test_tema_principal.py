@@ -69,3 +69,40 @@ def test_api_mostra_os_temas_na_ordem_da_camara(app, banco):
     _temas(banco, 1, (ADMINISTRACAO, 2), (SAUDE, 0), (EDUCACAO, 1))
     temas = app.test_client().get("/api/proposicoes/1").get_json()["temas"]
     assert [tema["cod_tema"] for tema in temas] == [SAUDE, EDUCACAO, ADMINISTRACAO]
+
+
+# ======================================================
+# DECISAO 25.6: PROPOSICAO SEM TEMA DA CAMARA
+# ======================================================
+def test_tema_da_noticia_usa_o_tema_especial_e_cria_uma_vez_so(banco):
+    from desperta.proposicoes.models import TEMA_SEM_CLASSIFICACAO, Tema
+    from desperta.proposicoes.services import HASH_DO_PORTAL, tema_da_noticia
+
+    _temas(banco, 1, (SAUDE, 0))
+    assert tema_da_noticia(1) == (SAUDE, True)
+    assert banco.session.get(Tema, TEMA_SEM_CLASSIFICACAO) is None
+    assert tema_da_noticia(2) == (TEMA_SEM_CLASSIFICACAO, False)
+    assert tema_da_noticia(3) == (TEMA_SEM_CLASSIFICACAO, False)
+    banco.session.commit()
+    especial = banco.session.get(Tema, TEMA_SEM_CLASSIFICACAO)
+    assert especial.nome == "Sem tema informado pela Câmara" and especial.hash_origem == HASH_DO_PORTAL
+    # O hash passa na verificacao do banco (SHA-256 em hexadecimal)
+    assert len(HASH_DO_PORTAL) == 64 and int(HASH_DO_PORTAL, 16) >= 0
+
+
+def test_api_da_proposicao_avisa_quando_nao_ha_tema(app, banco):
+    _temas(banco, 1, (SAUDE, 0))
+    cliente = app.test_client()
+    assert cliente.get("/api/proposicoes/1").get_json()["aviso_tema"] is None
+    assert cliente.get("/api/proposicoes/2").get_json()["aviso_tema"] == (
+        "A Câmara ainda não informou o tema desta proposição."
+    )
+
+
+def test_tema_especial_aparece_na_lista_de_temas_do_portal(app, banco):
+    from desperta.proposicoes.services import tema_sem_classificacao
+
+    tema_sem_classificacao()
+    banco.session.commit()
+    nomes = [t["nome"] for t in app.test_client().get("/api/proposicoes/temas").get_json()["itens"]]
+    assert "Sem tema informado pela Câmara" in nomes

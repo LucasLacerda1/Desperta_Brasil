@@ -147,6 +147,8 @@ class DadosProposicao:
     situacao: Optional[str] = None
     regime: Optional[str] = None
     apreciacao: Optional[str] = None
+    # Decisao 25.6: False quando a Camara ainda nao informou o tema da proposicao
+    tem_tema: bool = True
 
 
 @dataclass
@@ -298,6 +300,14 @@ class GeradorFrases(Gerador):
             dados.caso
         ](dados)
         corpo = self._corpo(dados)
+        if not dados.proposicao.tem_tema:
+            # A frase continua verdadeira mesmo depois que a Camara classificar a proposicao
+            aviso = (
+                "Quando este texto foi escrito, a Câmara ainda não tinha informado "
+                f"o tema {_de_nome(dados.proposicao)}."
+            )
+            resumo = f"{resumo} {aviso}" if len(resumo) + len(aviso) < LIMITE_RESUMO else resumo
+            corpo = f"{corpo}\n\n{aviso}"
         return TextoGerado(
             titulo=_cortar(titulo, LIMITE_TITULO),
             resumo=_cortar(resumo, LIMITE_RESUMO),

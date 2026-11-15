@@ -13,6 +13,12 @@ if TYPE_CHECKING:
     from desperta.visitantes.models import VisitanteTema
     from desperta.votacoes.models import Votacao, VotacaoProposicao
 
+# Decisao 25.6: proposicao que a Camara nao classificou vira noticia neste tema, criado pelo portal.
+# O codigo 0 nao existe na lista da Camara; a coleta de temas nunca apaga tema, entao ele fica.
+TEMA_SEM_CLASSIFICACAO = 0
+TEMA_SEM_CLASSIFICACAO_NOME = "Sem tema informado pela Câmara"
+TEMA_SEM_CLASSIFICACAO_ICONE = "help"
+
 # Mapa cod_tema -> icone Material Symbols (decisao 25.2); quem nao esta aqui usa o padrao "article".
 # O coletor de temas grava o icone no banco (tema.icone), na rotina semanal ou com `flask coletar temas`.
 ICONES_TEMA = {

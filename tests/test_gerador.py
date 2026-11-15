@@ -481,12 +481,19 @@ def test_erro_grava_geracao_sem_noticia_e_log(banco, caso, ref, mensagem):
     assert banco.session.scalar(banco.select(banco.func.count()).select_from(Noticia)) == 0
 
 
-def test_proposicao_sem_tema_vira_erro_e_nao_noticia(banco):
+def test_proposicao_sem_tema_vira_noticia_que_diz_isso(banco):
+    # Decisao 25.6: a falta de tema e informada, em vez de a proposicao ficar sem noticia
     banco.session.add(fabricas.proposicao(id=7, numero=7))
     banco.session.commit()
-    geracao, _ = _gerar(ref=7)
-    assert geracao.status == "erro"
-    assert "nao tem tema" in geracao.erro
+    geracao, nova = _gerar(ref=7)
+    assert geracao.status == "ok" and nova is True
+    assert geracao.noticia.cod_tema == 0
+    assert "a Câmara ainda não tinha informado o tema do PL 7/2024" in geracao.noticia.corpo
+
+
+def test_tema_informado_nao_ganha_o_aviso(banco):
+    geracao, _ = _gerar()
+    assert "informado o tema" not in geracao.noticia.corpo + geracao.noticia.resumo
 
 
 def test_falha_do_gerador_nao_deixa_noticia_pela_metade(banco):

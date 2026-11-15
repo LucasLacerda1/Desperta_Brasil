@@ -19,7 +19,9 @@ from flask import current_app
 from desperta.ext.db import db
 from desperta.ext.db.busca import conferir_busca_raiz
 from desperta.proposicoes.models import Proposicao, ProposicaoTema
-from desperta.proposicoes.services import situacao_mudou
+from desperta.noticias.models import Noticia, NoticiaFonte
+from desperta.proposicoes.models import TEMA_SEM_CLASSIFICACAO
+from desperta.proposicoes.services import situacao_mudou, tema_principal
 from desperta.sistema.models import LogSistema
 from desperta.votacoes.models import Votacao, VotacaoProposicao
 
@@ -36,7 +38,10 @@ class Resumo:
     gerados: Counter = field(default_factory=Counter)
     erros: int = 0
     ja_feitos: int = 0
+    # Decisao 25.6: gerados no tema especial, porque a Camara ainda nao informou o tema
     sem_tema: int = 0
+    # Noticias que sairam do tema especial porque a Camara classificou a proposicao
+    temas_atualizados: int = 0
     pendentes: int = 0
     nao_feitos_pelo_limite: int = 0
     # Na simulacao: os (caso, ref) que seriam gerados
@@ -46,7 +51,8 @@ class Resumo:
         gerados = ", ".join(f"{caso}={total}" for caso, total in sorted(self.gerados.items())) or "nenhum"
         return (
             f"desde {self.inicio:%d/%m/%Y}: candidatos={self.candidatos} gerados=({gerados}) erros={self.erros} "
-            f"ja_feitos={self.ja_feitos} sem_tema={self.sem_tema} pendentes_na_coleta={self.pendentes} "
+            f"ja_feitos={self.ja_feitos} sem_tema_da_camara={self.sem_tema} temas_atualizados={self.temas_atualizados} "
+            f"pendentes_na_coleta={self.pendentes} "
             f"deixados_pelo_limite={self.nao_feitos_pelo_limite}"
         )
 
@@ -132,6 +138,49 @@ def _tem_tema(proposicao_id):
     return db.session.scalar(db.select(ProposicaoTema.cod_tema).filter_by(proposicao_id=proposicao_id).limit(1))
 
 
+def atualizar_temas():
+    """
+    Decisao 25.6: noticia no tema especial cuja proposicao ja ganhou tema da Camara passa para
+    o tema principal (25.2). O texto nao muda: ele diz que, quando foi escrito, nao havia tema.
+    Devolve quantas noticias mudaram de tema; cada mudanca fica no log.
+    """
+    linhas = db.session.execute(
+        db.select(Noticia, NoticiaFonte.ref_id)
+        .join(NoticiaFonte, NoticiaFonte.noticia_id == Noticia.id)
+        .where(
+            Noticia.cod_tema == TEMA_SEM_CLASSIFICACAO,
+            Noticia.status.in_(("rascunho", "em_revisao", "publicada")),
+            NoticiaFonte.tipo == "proposicao",
+        )
+        .order_by(Noticia.id, NoticiaFonte.ordem)
+    ).all()
+    mudaram = 0
+    vistas = set()
+    for noticia, ref_id in linhas:
+        if noticia.id in vistas or not ref_id.isdigit():
+            continue
+        vistas.add(noticia.id)
+        cod_tema = tema_principal(int(ref_id))
+        if cod_tema is None:
+            continue
+        noticia.cod_tema = cod_tema
+        db.session.add(
+            LogSistema(
+                nivel="info",
+                modulo="IA",
+                acao="tema_atualizado",
+                descricao=(
+                    f"A Camara informou o tema da proposicao {ref_id}: a noticia saiu de 'sem tema' para {cod_tema}."
+                ),
+                entidade="noticia",
+                entidade_id=str(noticia.id),
+            )
+        )
+        mudaram += 1
+    db.session.commit()
+    return mudaram
+
+
 def gerar_novos(modelo, dias=None, limite=None, simular=False, refazer_erros=False, hoje=None):
     """
     Gera os rascunhos dos fatos da janela. modelo None: so busca por palavras (21.3).
@@ -141,6 +190,8 @@ def gerar_novos(modelo, dias=None, limite=None, simular=False, refazer_erros=Fal
     inicio = (hoje or date.today()) - timedelta(days=dias)
     resumo = Resumo(inicio=inicio)
     feitas = _entradas_feitas(refazer_erros)
+    if not simular:
+        resumo.temas_atualizados = atualizar_temas()
     if not simular and conferir_busca_raiz(db.session.connection()):
         # Decisao 25.3: havia noticia fora do indice das raizes (gravada por outra versao do codigo)
         db.session.add(
@@ -164,10 +215,7 @@ def gerar_novos(modelo, dias=None, limite=None, simular=False, refazer_erros=Fal
         if entrada in feitas:
             resumo.ja_feitos += 1
             continue
-        if not _tem_tema(proposicao.id):
-            # Decisao em aberto na 22.5: proposicao sem tema nao gera noticia
-            resumo.sem_tema += 1
-            continue
+        sem_tema = not _tem_tema(proposicao.id)
         if limite is not None and sum(resumo.gerados.values()) + resumo.erros >= limite:
             resumo.nao_feitos_pelo_limite += 1
             continue
@@ -175,10 +223,13 @@ def gerar_novos(modelo, dias=None, limite=None, simular=False, refazer_erros=Fal
         if simular:
             resumo.simulados.append((caso, ref))
             resumo.gerados[caso] += 1
+            resumo.sem_tema += sem_tema
             continue
         geracao, _ = gerar_noticia(modelo, caso, ref)
         if geracao.status == "ok":
             resumo.gerados[caso] += 1
+            # Decisao 25.6: a proposicao sem tema da Camara vira noticia no tema especial
+            resumo.sem_tema += sem_tema
         else:
             resumo.erros += 1
 

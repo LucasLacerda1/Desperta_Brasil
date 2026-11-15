@@ -1,3 +1,4 @@
+import hashlib
 from datetime import datetime, time
 
 from desperta.ext.api import iso, iso_camara, url_camara
@@ -6,7 +7,15 @@ from desperta.ext.erros import NaoEncontrado
 from desperta.noticias.models import Noticia, NoticiaFonte
 from desperta.votacoes.models import Votacao, VotacaoProposicao
 
-from .models import Proposicao, ProposicaoTema, Tema, Tramitacao
+from .models import (
+    TEMA_SEM_CLASSIFICACAO,
+    TEMA_SEM_CLASSIFICACAO_ICONE,
+    TEMA_SEM_CLASSIFICACAO_NOME,
+    Proposicao,
+    ProposicaoTema,
+    Tema,
+    Tramitacao,
+)
 
 # ----------------------------------------------------------
 # Transparencia (05/11/2026): campo que a Camara nao informou aparece como tal no portal.
@@ -106,6 +115,37 @@ TRAMITACOES_NO_DETALHE = 20
 URL_PAGINA = "https://www.camara.leg.br/propostas-legislativas/{}"
 
 
+# ----------------------------------------------------------
+# Proposicao sem tema da Camara (decisao 25.6)
+# ----------------------------------------------------------
+AVISO_SEM_TEMA = "A Câmara ainda não informou o tema desta proposição."
+# Tema criado pelo portal: o hash marca a origem e passa na verificacao do banco (SHA-256)
+HASH_DO_PORTAL = hashlib.sha256(b"tema criado pelo portal: sem tema informado pela Camara").hexdigest()
+
+
+def tema_sem_classificacao():
+    """O codigo do tema especial; cria a linha na primeira vez que for preciso."""
+    if db.session.get(Tema, TEMA_SEM_CLASSIFICACAO) is None:
+        db.session.add(
+            Tema(
+                cod_tema=TEMA_SEM_CLASSIFICACAO,
+                nome=TEMA_SEM_CLASSIFICACAO_NOME,
+                icone=TEMA_SEM_CLASSIFICACAO_ICONE,
+                hash_origem=HASH_DO_PORTAL,
+            )
+        )
+        db.session.flush()
+    return TEMA_SEM_CLASSIFICACAO
+
+
+def tema_da_noticia(proposicao_id):
+    """(cod_tema, a Camara informou?): o tema principal, ou o tema especial quando nao ha nenhum."""
+    cod_tema = tema_principal(proposicao_id)
+    if cod_tema is None:
+        return tema_sem_classificacao(), False
+    return cod_tema, True
+
+
 def sigla_completa(proposicao):
     return f"{proposicao.sigla_tipo} {proposicao.numero}/{proposicao.ano}"
 
@@ -187,6 +227,8 @@ def como_dict(proposicao):
             # Relevancia 0 e o tema principal (25.2)
             for t in sorted(proposicao.temas, key=lambda t: (t.relevancia, t.cod_tema))
         ],
+        # Transparencia (25.6): a falta de tema e dita, e nao so uma lista vazia
+        "aviso_tema": None if proposicao.temas else AVISO_SEM_TEMA,
         "tramitacoes": {"itens": [como_tramitacao(t) for t in recentes], "total": total},
         "votacoes": [
             {
