@@ -20,6 +20,10 @@ class Config:
     # RNF10: depois destas falhas na janela, o login responde 429 (por e-mail e, x4, por IP)
     LOGIN_TENTATIVAS = int(os.getenv("LOGIN_TENTATIVAS", "5"))
     LOGIN_JANELA_MIN = int(os.getenv("LOGIN_JANELA_MIN", "15"))
+    # Limite de requisicoes por endereco (IP) nas rotas da API (RNF10, decisao 25.4); 0 desliga
+    LIMITE_JANELA_S = int(os.getenv("LIMITE_JANELA_S", "60"))
+    LIMITE_GERAL = int(os.getenv("LIMITE_GERAL", "600"))
+    LIMITE_BUSCA = int(os.getenv("LIMITE_BUSCA", "60"))
     # RNF05: sem coleta concluida ha mais que isto, o portal avisa que os dados podem estar desatualizados
     AVISO_DESATUALIZADO_HORAS = int(os.getenv("AVISO_DESATUALIZADO_HORAS", "6"))
 

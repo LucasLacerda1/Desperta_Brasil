@@ -44,8 +44,16 @@ class Conflito(ErroDoPortal):
 class MuitasTentativas(ErroDoPortal):
     codigo = 429
 
+    def __init__(self, mensagem, esperar_s=None):
+        super().__init__(mensagem)
+        # Segundos ate poder tentar de novo: vira o cabecalho Retry-After
+        self.esperar_s = esperar_s
+
 
 def init_app(app):
     @app.errorhandler(ErroDoPortal)
     def _responder(erro):
-        return {"erro": erro.mensagem}, erro.codigo
+        cabecalhos = {}
+        if getattr(erro, "esperar_s", None):
+            cabecalhos["Retry-After"] = str(erro.esperar_s)
+        return {"erro": erro.mensagem}, erro.codigo, cabecalhos

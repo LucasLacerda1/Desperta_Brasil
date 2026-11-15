@@ -1778,3 +1778,11 @@ Pedido do Lucas, para quem pega o projeto pelo GitHub instalar tudo com um coman
 - **Migração `19b825043af5`:** cria `noticia_fts_raiz` e indexa as notícias que já existiam. Testada na cópia do protótipo e aplicada no banco real em 14/11 (backup `instance/desperta-antes-busca-raiz.db`). `flask banco verificar` ganhou as duas conferências novas: 22 aprovados, 0 falhas.
 - **Medição (mesmas 20 consultas, notas do Claude Code, só a busca por palavras dos trechos):** 68 respostas nas 160 posições, igual ao experimento da raiz (antes, 52 na busca de então). Com as consultas digitadas sem acento: 67 (só com a raiz com acento cairia para 65). A busca do portal não pôde ser medida: o banco real ainda não tem notícia publicada.
 - 762 testes.
+
+### 25.4 Limite de requisições nas rotas da API (RNF10)
+- **O que faz:** conta as requisições de cada endereço (IP) em `/api/*` numa janela de tempo. Acima do limite, a API responde **429** com `{"erro": "Muitas requisições. Tente de novo em N segundos."}` e o cabeçalho `Retry-After`, sem processar o pedido. Pedido recusado não entra na conta.
+- **Dois limites, em `Config` e no `.env.example`:** `LIMITE_GERAL=600` e `LIMITE_BUSCA=60` por `LIMITE_JANELA_S=60` segundos; 0 desliga. A busca (`/api/noticias/busca`) tem conta própria, por ser a rota mais pesada: estourar a busca não tira o resto do portal do ar para aquele endereço. O valor geral é alto de propósito, porque uma rede inteira (um laboratório da faculdade) pode sair pelo mesmo IP.
+- **Quem não entra na conta:** quem está logado na área da equipe (o cookie de sessão é assinado) e o preflight do CORS (`OPTIONS`). O login continua com o limite próprio de tentativas (24.2).
+- **Onde fica:** `desperta/ext/limite/`, escrito no projeto, sem biblioteca nova (18.1) e sem Redis. A contagem fica na memória do processo, como a do login: com vários processos do Gunicorn, cada um conta as suas.
+- **No servidor (21.4):** atrás do Nginx, o Flask precisa do `ProxyFix` para enxergar o IP do visitante em vez do IP do Nginx. Sem isso, todos os visitantes dividiriam a mesma conta.
+- Com isso, do RNF10 só falta o HTTPS, que é do servidor. 770 testes.
