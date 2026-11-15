@@ -206,6 +206,20 @@ def test_situacao_mudou_compara_com_a_ultima_situacao_informada(banco):
     assert situacao_mudou(2, 915, dia) is False
 
 
+def test_gerar_novos_refaz_o_indice_das_raizes_incompleto(banco):
+    # Decisao 25.3: noticia gravada por uma versao do codigo que nao mantinha o indice das raizes
+    _rodar()
+    banco.session.execute(banco.text("DELETE FROM noticia_fts_raiz"))
+    banco.session.commit()
+    _rodar()
+    assert banco.session.execute(banco.text("SELECT COUNT(*) FROM noticia_fts_raiz_docsize")).scalar() == 3
+    avisos = banco.select(banco.func.count()).select_from(LogSistema).filter_by(acao="busca_raiz_refeita")
+    assert banco.session.scalar(avisos) == 1
+    # Com o indice completo, a execucao seguinte nao refaz nem avisa de novo
+    _rodar()
+    assert banco.session.scalar(avisos) == 1
+
+
 def test_pendente_entra_quando_a_coleta_completa(banco):
     _rodar()
     banco.session.add(ProposicaoTema(proposicao_id=4, cod_tema=46, relevancia=1))

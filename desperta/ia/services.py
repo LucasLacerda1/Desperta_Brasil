@@ -66,6 +66,7 @@ def _remover_sobras(sobras):
             mantidos += 1
             continue
         vetores.remover(trecho_id)
+        palavras.remover(trecho_id)
         db.session.execute(db.delete(TrechoRAG).where(TrechoRAG.id == trecho_id))
         removidos += 1
     db.session.commit()

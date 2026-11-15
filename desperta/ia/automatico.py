@@ -17,6 +17,7 @@ from datetime import date, datetime, time, timedelta
 from flask import current_app
 
 from desperta.ext.db import db
+from desperta.ext.db.busca import conferir_busca_raiz
 from desperta.proposicoes.models import Proposicao, ProposicaoTema
 from desperta.proposicoes.services import situacao_mudou
 from desperta.sistema.models import LogSistema
@@ -140,6 +141,17 @@ def gerar_novos(modelo, dias=None, limite=None, simular=False, refazer_erros=Fal
     inicio = (hoje or date.today()) - timedelta(days=dias)
     resumo = Resumo(inicio=inicio)
     feitas = _entradas_feitas(refazer_erros)
+    if not simular and conferir_busca_raiz(db.session.connection()):
+        # Decisao 25.3: havia noticia fora do indice das raizes (gravada por outra versao do codigo)
+        db.session.add(
+            LogSistema(
+                nivel="aviso",
+                modulo="IA",
+                acao="busca_raiz_refeita",
+                descricao="O indice da busca pela raiz das palavras nao tinha todas as noticias e foi refeito.",
+            )
+        )
+        db.session.commit()
 
     for caso, ref, pendente in fatos_da_janela(inicio):
         resumo.candidatos += 1

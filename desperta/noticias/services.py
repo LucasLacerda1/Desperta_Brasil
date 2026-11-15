@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from desperta.auth.models import Administrador
 from desperta.ext.api import iso, url_camara
 from desperta.ext.db import db
+from desperta.ext.db.busca import grupos_de_raizes
 from desperta.ext.erros import AcessoNegado, Conflito, DadosInvalidos, ErroDoPortal, NaoEncontrado
 from desperta.orgaos.models import Evento, Orgao
 from desperta.parlamentares.models import Deputado, Partido
@@ -27,7 +28,8 @@ from .models import (
     NoticiaRevisao,
 )
 
-noticia_fts = db.table("noticia_fts", db.column("rowid"))
+# Indice das raizes das palavras (25.3); noticia_fts, com as palavras como estao, continua existindo
+noticia_fts_raiz = db.table("noticia_fts_raiz", db.column("rowid"))
 
 TAMANHO_SLUG = 220
 # Caminhos fixos das rotas de /api/noticias: uma noticia nao pode ter um destes como slug
@@ -107,9 +109,13 @@ def excluir_noticia(noticia, admin):
 
 
 def _termo_para_match(termo):
-    """Cada palavra vira uma frase entre aspas, para nao quebrar a sintaxe do MATCH."""
-    palavras = (termo or "").split()
-    return " ".join('"' + palavra.replace('"', '""') + '"' for palavra in palavras)
+    """
+    Decisao 25.3: a busca compara raizes ("professores" acha "professor" e "professora").
+    Todas as palavras precisam aparecer, cada uma por qualquer das suas raizes (com ou sem acento);
+    as aspas evitam quebrar a sintaxe do MATCH.
+    """
+    grupos = ("(" + " OR ".join(f'"{raiz}"' for raiz in grupo) + ")" for grupo in grupos_de_raizes(termo))
+    return " AND ".join(grupos)
 
 
 def buscar_noticias(termo, inicio=None, fim=None, cod_tema=None):
@@ -123,8 +129,8 @@ def buscar_noticias(termo, inicio=None, fim=None, cod_tema=None):
 
     consulta = (
         db.select(Noticia)
-        .join(noticia_fts, noticia_fts.c.rowid == Noticia.id)
-        .where(db.text("noticia_fts MATCH :termo").bindparams(termo=match))
+        .join(noticia_fts_raiz, noticia_fts_raiz.c.rowid == Noticia.id)
+        .where(db.text("noticia_fts_raiz MATCH :termo").bindparams(termo=match))
         .where(Noticia.status == "publicada")
     )
     if inicio is not None:
@@ -137,7 +143,7 @@ def buscar_noticias(termo, inicio=None, fim=None, cod_tema=None):
     if cod_tema is not None:
         consulta = consulta.where(Noticia.cod_tema == cod_tema)
 
-    consulta = consulta.order_by(db.func.bm25(db.literal_column("noticia_fts")), Noticia.publicado_em.desc())
+    consulta = consulta.order_by(db.func.bm25(db.literal_column("noticia_fts_raiz")), Noticia.publicado_em.desc())
     return list(db.session.scalars(consulta))
 
 

@@ -28,7 +28,7 @@ cp .env.example .env
 
 | Grupo (`pip install -e ".[grupo]"`) | Pacotes | Para quê |
 |---|---|---|
-| (sempre) | Flask, Flask-SQLAlchemy, Flask-Migrate, Flask-CORS, python-dotenv, requests; `tzdata` só no Windows | API, banco e coletor |
+| (sempre) | Flask, Flask-SQLAlchemy, Flask-Migrate, Flask-CORS, python-dotenv, requests, snowballstemmer (BSD-3); `tzdata` só no Windows | API, banco, coletor e busca pela raiz das palavras |
 | `dev` | ipython, flask-shell-ipython, Flask-DebugToolbar, invoke, black, flake8 | Desenvolvimento |
 | `test` | pytest, pytest-cov, pytest-flask | Testes |
 | `ia` | torch, transformers, sqlite-vec, numpy | RAG, rascunhos e análises da RoBERTaLexPT |

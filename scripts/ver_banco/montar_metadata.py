@@ -139,8 +139,12 @@ COLUNAS = {
 }
 
 OCULTAS = (
-    [f"{base}_{sufixo}" for base in ("noticia_fts", "trecho_fts") for sufixo in ("config", "data", "docsize", "idx")]
-    + ["noticia_fts", "trecho_fts", "sqlite_sequence"]
+    [
+        f"{base}_{sufixo}"
+        for base in ("noticia_fts", "trecho_fts", "noticia_fts_raiz", "trecho_fts_raiz")
+        for sufixo in ("config", "content", "data", "docsize", "idx")
+    ]
+    + ["noticia_fts", "trecho_fts", "noticia_fts_raiz", "trecho_fts_raiz", "sqlite_sequence"]
     + [f"vec_trecho_{sufixo}" for sufixo in ("chunks", "info", "rowids", "vector_chunks00", "auxiliary")]
     + ["vec_trecho"]
 )

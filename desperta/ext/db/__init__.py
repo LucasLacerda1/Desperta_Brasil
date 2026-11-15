@@ -5,6 +5,8 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import MetaData, event
 from sqlalchemy.engine import Engine
 
+from .busca import registrar_funcoes
+
 # ----------------------------------------------------------
 # Nomes fixos para indices e restricoes (necessario para o Alembic)
 # ----------------------------------------------------------
@@ -38,6 +40,8 @@ def _configurar_sqlite(dbapi_connection, connection_record):
         cursor.execute("PRAGMA busy_timeout=5000")
         cursor.execute("PRAGMA synchronous=NORMAL")
         cursor.close()
+        # Os gatilhos dos indices de busca chamam raiz() (decisao 25.3)
+        registrar_funcoes(dbapi_connection)
 
 
 def register_models():
