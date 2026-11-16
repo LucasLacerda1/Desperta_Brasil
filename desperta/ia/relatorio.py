@@ -460,7 +460,10 @@ def gerar_relatorio_semanal(fim=None, hoje=None):
         db.session.commit()
         return geracao, True
     except Exception as erro:
-        return _registrar_erro(CASO, f"{inicio}/{fim}", consulta, entrada, GERADOR, GERADOR, erro, comeco), False
+        return (
+            _registrar_erro(CASO, f"{inicio}/{fim}", consulta, entrada, GERADOR, GERADOR, erro, comeco, SEM_BUSCA),
+            False,
+        )
 
 
 def em_texto(geracao, novo):

@@ -26,6 +26,8 @@ from .gerador import (
 from .models import GeracaoIA, GeracaoTrecho
 
 TAMANHO_CONSULTA = 300
+# Sem o modelo da busca (21.3): o campo modelo_embedding de geracao_ia diz que a busca foi so por palavras
+SO_PALAVRAS = "nenhum (busca so por palavras)"
 
 
 class ErroDeGeracao(Exception):
@@ -156,12 +158,17 @@ def _fontes(proposicao, votacao):
     return fontes
 
 
-def _registrar_erro(caso, ref, consulta, entrada, gerador_nome, versao, erro, inicio):
+def _modelo_da_busca(modelo):
+    """Decisao 25.10 e transparencia (22.5): o modelo que fez a busca de verdade, ou que foi so por palavras."""
+    return modelo.nome if modelo is not None else SO_PALAVRAS
+
+
+def _registrar_erro(caso, ref, consulta, entrada, gerador_nome, versao, erro, inicio, modelo_embedding):
     db.session.rollback()
     config = current_app.config
     geracao = GeracaoIA(
         modelo_geracao=gerador_nome,
-        modelo_embedding=config["EMBEDDING_MODEL"],
+        modelo_embedding=modelo_embedding,
         consulta=consulta,
         top_k=config["RAG_TOP_K"],
         versao_prompt=versao,
@@ -187,7 +194,7 @@ def _registrar_erro(caso, ref, consulta, entrada, gerador_nome, versao, erro, in
 def gerar_noticia(modelo, caso, ref, gerador=None):
     """
     Secao 6: toda execucao grava geracao_ia, mesmo com erro; a noticia entra como rascunho (RF06).
-    modelo None: sem a RoBERTaLexPT (21.3), busca so por palavras. Devolve (geracao, nova).
+    modelo e o de RAG_MODELO (25.10); None: sem ele (21.3), busca so por palavras. Devolve (geracao, nova).
     """
     config = current_app.config
     inicio = time.monotonic()
@@ -225,7 +232,7 @@ def gerar_noticia(modelo, caso, ref, gerador=None):
         geracao = GeracaoIA(
             noticia_id=noticia.id,
             modelo_geracao=gerador.nome,
-            modelo_embedding=config["EMBEDDING_MODEL"],
+            modelo_embedding=_modelo_da_busca(modelo),
             consulta=consulta,
             top_k=config["RAG_TOP_K"],
             versao_prompt=gerador.versao_prompt,
@@ -259,4 +266,7 @@ def gerar_noticia(modelo, caso, ref, gerador=None):
         db.session.commit()
         return geracao, True
     except Exception as erro:
-        return _registrar_erro(caso, ref, consulta, entrada, nome, versao, erro, inicio), True
+        return (
+            _registrar_erro(caso, ref, consulta, entrada, nome, versao, erro, inicio, _modelo_da_busca(modelo)),
+            True,
+        )

@@ -43,6 +43,9 @@ class ModeloFalso:
         self.embutidos.extend(textos)
         return [self._vetor(texto) for texto in textos]
 
+    def embutir_consulta(self, consulta):
+        return self.embutir([consulta])[0]
+
     def _vetor(self, texto):
         vetor = [0.0] * 768
         for palavra in texto.lower().split():
@@ -141,7 +144,7 @@ def test_indexar_grava_trecho_embedding_e_indice(origem, modelo):
     assert trecho.modelo_embedding == MODELO
     assert trecho.hash_texto == hashlib.sha256(trecho.texto.encode()).hexdigest()
     assert trecho.tokens == len(trecho.texto.split())
-    assert vetores.buscar(trecho.embedding, 1)[0][0] == trecho.id
+    assert vetores.buscar(MODELO, trecho.embedding, 1)[0][0] == trecho.id
 
 
 def test_indexar_em_varios_lotes_com_varias_votacoes(origem, modelo, monkeypatch):
@@ -175,7 +178,7 @@ def test_texto_alterado_atualiza_o_mesmo_trecho_e_o_indice(origem, modelo):
     assert resumo["indexados"] == 1
     assert (depois.id, "previdencia" in depois.texto) == (id_antes, True)
     assert depois.embedding != embedding_antes
-    assert vetores.buscar(depois.embedding, 1) == [(id_antes, pytest.approx(0, abs=1e-5))]
+    assert vetores.buscar(MODELO, depois.embedding, 1) == [(id_antes, pytest.approx(0, abs=1e-5))]
 
 
 def test_texto_longo_vira_varias_partes_com_sobreposicao(app, origem, modelo):
@@ -205,7 +208,7 @@ def test_parte_e_registro_que_sumiram_saem_do_indice(app, origem, modelo):
 
     assert resumo["removidos"] == 1
     assert _trecho(origem, "evento", "70001") is None
-    assert id_trecho not in [achado[0] for achado in vetores.buscar(embedding, 5)]
+    assert id_trecho not in [achado[0] for achado in vetores.buscar(MODELO, embedding, 5)]
 
 
 def test_trecho_usado_por_geracao_fica_para_o_historico(origem, modelo):
@@ -459,7 +462,7 @@ def test_centralizar_grava_o_vetor_medio_e_nao_muda_trecho_rag(app, origem, mode
     centralizado = centralizacao.transformador()(original)
     assert centralizado != original
     assert math.sqrt(sum(valor * valor for valor in _vetor(centralizado))) == pytest.approx(1.0, abs=1e-5)
-    assert vetores.buscar(centralizado, 1)[0][0] == trecho.id
+    assert vetores.buscar(MODELO, centralizado, 1)[0][0] == trecho.id
 
 
 def test_consulta_e_trechos_novos_tambem_sao_centralizados(app, origem, modelo, tmp_path):
@@ -536,13 +539,17 @@ class CarregadorFalso:
 
     pastas = []
 
-    def __init__(self, nome, pasta=None, dispositivo="cpu"):
+    def __init__(self, nome, pasta=None, dispositivo="cpu", **prefixos):
         CarregadorFalso.pastas.append(pasta)
         self.nome = nome
         self.dispositivo = dispositivo
+        self.prefixos = prefixos
 
     def embutir(self, textos):
         return [bytes(3072) for _ in textos]
+
+    def embutir_consulta(self, consulta):
+        return bytes(3072)
 
 
 @pytest.fixture
@@ -604,10 +611,45 @@ def test_sem_a_roberta_para_com_mensagem_e_aviso_no_log(app, db, tmp_path, criar
 
 def test_comandos_que_usam_a_roberta_saem_com_erro_sem_ela(app, db, tmp_path):
     app.config["ROBERTA_DIR"] = str(tmp_path / "pendrive")
-    for comando in (["ia", "indexar"], ["ia", "buscar", "x"], ["ia", "medir-busca"]):
+    comandos = (["ia", "indexar", "--modelo", "roberta"], ["ia", "buscar", "x", "--modelo", "roberta"])
+    for comando in comandos + (["ia", "medir-busca", "--modelo", "roberta"],):
         resultado = app.test_cli_runner().invoke(args=comando)
         assert resultado.exit_code != 0
         assert "O pendrive está conectado" in resultado.output
+
+
+def test_sem_o_e5_os_comandos_dizem_como_baixar(app, db, tmp_path):
+    app.config["E5_DIR"] = str(tmp_path / "e5")
+    for comando in (["ia", "buscar", "x"], ["ia", "medir-busca"]):
+        resultado = app.test_cli_runner().invoke(args=comando)
+        assert resultado.exit_code != 0
+        assert "flask ia baixar-modelo --modelo e5" in resultado.output
+    assert db.session.scalar(db.select(LogSistema).filter_by(acao="e5_ausente"))
+
+
+def test_indexar_sem_a_roberta_indexa_so_o_e5(app, db, tmp_path, monkeypatch, modelo):
+    """Decisao 25.10: sem o pendrive, o e5 (que fica no PC) continua indexando."""
+    app.config["ROBERTA_DIR"] = str(tmp_path / "pendrive")
+    monkeypatch.setattr("desperta.ia.services.carregar_modelo", _so_o_e5(modelo))
+    resultado = app.test_cli_runner().invoke(args=["ia", "indexar"])
+    assert resultado.exit_code == 0, resultado.output
+    assert "roberta: RoBERTaLexPT" in resultado.output and "e5: indexados=0" in resultado.output
+
+
+def test_indexar_sem_nenhum_modelo_sai_com_erro(app, db, tmp_path):
+    app.config.update(ROBERTA_DIR=str(tmp_path / "pendrive"), E5_DIR=str(tmp_path / "e5"))
+    resultado = app.test_cli_runner().invoke(args=["ia", "indexar"])
+    assert resultado.exit_code != 0
+    assert "Nenhum modelo disponível" in resultado.output
+
+
+def _so_o_e5(modelo):
+    def carregar(qual="roberta"):
+        if qual == "roberta":
+            raise embeddings.RobertaAusente("RoBERTaLexPT não encontrada. O pendrive está conectado?")
+        return modelo
+
+    return carregar
 
 
 def test_com_a_pasta_carrega_dela_e_registra_o_dispositivo(app, db, carregador, tmp_path):
@@ -624,17 +666,42 @@ def test_baixar_modelo_salva_em_roberta_dir_online_e_sem_deixar_cache(app, carre
     app.config["HF_HUB_OFFLINE"] = "1"
     chamadas = []
 
-    def salvar(nome, pasta, cache):
-        chamadas.append((nome, pasta, os.environ["HF_HUB_OFFLINE"]))
+    def salvar(nome, pasta, cache, com_cabeca):
+        chamadas.append((nome, pasta, os.environ["HF_HUB_OFFLINE"], com_cabeca))
         _pasta_de_modelo(tmp_path / "modelos" / "roberta")
 
     monkeypatch.setattr("desperta.ia.embeddings.salvar_modelo", salvar)
     resultado = app.test_cli_runner().invoke(args=["ia", "baixar-modelo"])
     assert resultado.exit_code == 0, resultado.output
-    assert chamadas == [(app.config["EMBEDDING_MODEL"], str(destino), "0")]
+    assert chamadas == [(app.config["EMBEDDING_MODEL"], str(destino), "0", True)]
     assert "model.safetensors" in resultado.output and "(2 MB)" in resultado.output
     assert sorted(os.listdir(tmp_path / "modelos")) == ["roberta"]
     assert carregador.pastas == [str(destino)]
+
+
+def test_baixar_o_e5_salva_em_e5_dir_sem_a_cabeca_e_com_os_prefixos(app, carregador, monkeypatch, tmp_path):
+    destino = tmp_path / "modelos" / "e5"
+    app.config.update(MODELOS_DIR=str(tmp_path / "modelos"), E5_DIR=str(destino))
+    chamadas = []
+
+    def salvar(nome, pasta, cache, com_cabeca):
+        chamadas.append((nome, pasta, com_cabeca))
+        _pasta_de_modelo(destino)
+
+    monkeypatch.setattr("desperta.ia.embeddings.salvar_modelo", salvar)
+    resultado = app.test_cli_runner().invoke(args=["ia", "baixar-modelo", "--modelo", "e5"])
+    assert resultado.exit_code == 0, resultado.output
+    assert chamadas == [(app.config["E5_MODEL"], str(destino), False)]
+    assert carregador.pastas == [str(destino)]
+
+
+def test_e5_carrega_com_os_prefixos_e_registra_o_modelo(app, db, carregador, tmp_path):
+    app.config.update(E5_DIR=str(_pasta_de_modelo(tmp_path)), IA_DISPOSITIVO="cpu")
+    modelo = services.carregar_modelo("e5")
+    assert modelo.nome == app.config["E5_MODEL"]
+    assert modelo.prefixos == {"prefixo_documento": "passage: ", "prefixo_consulta": "query: "}
+    log = db.session.scalar(db.select(LogSistema).filter_by(acao="carregar_modelo"))
+    assert f"modelo={app.config['E5_MODEL']}" in log.descricao
 
 
 def test_baixar_modelo_nao_baixa_de_novo_se_a_pasta_esta_completa(app, carregador, monkeypatch, tmp_path):
@@ -737,28 +804,167 @@ def test_reconstruir_o_indice_a_partir_de_trecho_rag(origem, modelo):
     id_trecho, embedding = trecho.id, trecho.embedding
     vetores.remover(id_trecho)
     origem.session.commit()
-    assert id_trecho not in [achado[0] for achado in vetores.buscar(embedding, 5)]
+    assert id_trecho not in [achado[0] for achado in vetores.buscar(MODELO, embedding, 5)]
 
     assert services.reconstruir_indice(MODELO) == 5
-    assert vetores.buscar(embedding, 1)[0][0] == id_trecho
+    assert vetores.buscar(MODELO, embedding, 1)[0][0] == id_trecho
 
 
 def test_indice_nao_entra_nas_32_tabelas(db):
-    vetores.criar_indice()
+    vetores.criar_indice(MODELO)
+    vetores.criar_indice(E5)
     db.session.commit()
-    assert "vec_trecho" not in db.metadata.tables
+    assert not {"vec_trecho", "vec_trecho_e5"} & set(db.metadata.tables)
     assert len(db.metadata.tables) == 32
 
 
 def test_drop_db_tira_os_indices(app, db):
-    vetores.criar_indice()
+    vetores.criar_indice(MODELO)
+    vetores.criar_indice(E5)
     palavras.criar_indice()
     db.session.commit()
     resultado = app.test_cli_runner().invoke(args=["drop-db"])
     assert resultado.exit_code == 0, resultado.output
-    for nome in ("vec_trecho", "trecho_fts"):
+    for nome in ("vec_trecho", "vec_trecho_e5", "trecho_fts"):
         assert db.session.execute(db.text(f"SELECT 1 FROM sqlite_master WHERE name = '{nome}'")).first() is None
     db.create_all()
+
+
+# ======================================================
+# DOIS MODELOS LADO A LADO: ROBERTA E E5 (DECISAO 25.10)
+# ======================================================
+E5 = "intfloat/multilingual-e5-base"
+
+
+class ModeloFalsoE5(ModeloFalso):
+    """Como o e5: outro espaco de vetores (a palavra cai em outra posicao) e outro nome."""
+
+    nome = E5
+
+    def _vetor(self, texto):
+        return ModeloFalso._vetor(self, " ".join(f"e5{palavra}" for palavra in texto.split()))
+
+
+@pytest.fixture
+def os_dois(origem, modelo):
+    e5 = ModeloFalsoE5()
+    services.indexar(modelo)
+    services.indexar(e5)
+    return modelo, e5
+
+
+def _ids_no_indice(db, tabela):
+    return {linha[0] for linha in db.session.execute(db.text(f"SELECT trecho_id FROM {tabela}"))}
+
+
+def test_cada_modelo_tem_os_seus_trechos_e_o_seu_indice(origem, os_dois):
+    roberta, e5 = os_dois
+    por_modelo = {
+        nome: {t.id for t in origem.session.scalars(db_select_trechos(origem, nome))} for nome in (MODELO, E5)
+    }
+    assert len(por_modelo[MODELO]) == len(por_modelo[E5]) == 5
+    assert _ids_no_indice(origem, "vec_trecho") == por_modelo[MODELO]
+    assert _ids_no_indice(origem, "vec_trecho_e5") == por_modelo[E5]
+    # Indexar de novo nao mexe no do outro modelo
+    assert services.indexar(e5)["indexados"] == 0 and services.indexar(roberta)["indexados"] == 0
+
+
+def db_select_trechos(db, nome):
+    return db.select(TrechoRAG).filter_by(modelo_embedding=nome)
+
+
+@pytest.mark.parametrize("modo", ["hibrida", "palavras", "vetorial"])
+def test_busca_so_devolve_trechos_do_modelo_dela(origem, os_dois, modo):
+    roberta, e5 = os_dois
+    for modelo in (roberta, e5):
+        achados = services.buscar(modelo, "merenda escolar", top_k=10, modo=modo)
+        assert achados and {achado.trecho.modelo_embedding for achado in achados} == {modelo.nome}
+        # O mesmo texto nao aparece duas vezes
+        textos = [(achado.trecho.tipo, achado.trecho.ref_id) for achado in achados]
+        assert len(textos) == len(set(textos))
+
+
+def test_busca_por_palavras_sem_modelo_usa_os_trechos_de_rag_modelo(app, origem, os_dois):
+    achados = services.buscar(None, "merenda", modo="palavras")
+    assert {achado.trecho.modelo_embedding for achado in achados} == {app.config["E5_MODEL"]}
+    achados = services.buscar(None, "merenda", modo="palavras", nome_modelo=MODELO)
+    assert {achado.trecho.modelo_embedding for achado in achados} == {MODELO}
+
+
+def test_modo_com_vetor_sem_modelo_e_erro(origem):
+    with pytest.raises(ValueError, match="precisa de um modelo"):
+        services.buscar(None, "merenda", modo="hibrida")
+
+
+def test_filtro_por_tipo_vale_para_os_trechos_do_e5(origem, os_dois):
+    _, e5 = os_dois
+    achados = services.buscar(e5, "merenda", tipos=["votacao"])
+    assert _referencias(achados) == [("votacao", "2310837-8")]
+    assert achados[0].trecho.modelo_embedding == E5
+
+
+def test_trecho_que_sumiu_sai_so_do_indice_do_seu_modelo(app, origem, os_dois):
+    roberta, e5 = os_dois
+    antes_roberta = _ids_no_indice(origem, "vec_trecho")
+    app.config["RAG_TRAMITACAO_DIAS"] = 0
+    services.indexar(e5)
+    assert _ids_no_indice(origem, "vec_trecho") == antes_roberta
+    assert len(_ids_no_indice(origem, "vec_trecho_e5")) == 4
+
+
+def test_reconstruir_refaz_o_indice_de_cada_modelo(origem, os_dois):
+    origem.session.execute(origem.text("DELETE FROM vec_trecho_e5"))
+    origem.session.commit()
+    assert services.reconstruir_indice(E5) == 5
+    assert services.reconstruir_indice(MODELO) == 5
+    assert len(_ids_no_indice(origem, "vec_trecho_e5")) == len(_ids_no_indice(origem, "vec_trecho")) == 5
+
+
+def test_centralizacao_nao_vale_para_o_e5(app, origem, tmp_path, monkeypatch):
+    monkeypatch.setattr(app, "instance_path", str(tmp_path))
+    app.config["RAG_CENTRALIZAR"] = True
+    e5 = ModeloFalsoE5()
+    services.indexar(e5)
+    trecho = origem.session.scalar(db_select_trechos(origem, E5).filter_by(tipo="votacao"))
+    assert vetores.buscar(E5, trecho.embedding, 1) == [(trecho.id, pytest.approx(0, abs=1e-5))]
+
+
+def test_verificacao_confere_cada_indice_com_os_trechos_do_seu_modelo(app, origem, os_dois):
+    from desperta.ext.db import verificacao
+
+    resultados = {r.nome: r for r in verificacao._indices_de_busca()}
+    assert resultados["Indice vetorial dos trechos da RoBERTaLexPT (sqlite-vec)"].situacao == verificacao.OK
+    assert resultados["Indice vetorial dos trechos do e5 (sqlite-vec)"].situacao == verificacao.OK
+    menor = min(_ids_no_indice(origem, "vec_trecho_e5"))
+    origem.session.execute(origem.text("DELETE FROM vec_trecho_e5 WHERE trecho_id = :id"), {"id": menor})
+    origem.session.commit()
+    resultados = {r.nome: r for r in verificacao._indices_de_busca()}
+    assert resultados["Indice vetorial dos trechos do e5 (sqlite-vec)"].situacao == verificacao.FALHA
+
+
+def test_prefixos_do_e5_vao_no_trecho_e_na_consulta(monkeypatch):
+    modelo = ModeloEmbedding(E5, tokenizador=object(), modelo=object(), **embeddings.PREFIXOS_E5)
+    vistos = []
+    monkeypatch.setattr(modelo, "_embutir_lote", lambda textos: vistos.extend(textos) or [b"x"] * len(textos))
+    modelo.embutir(["Institui o dia da merenda"])
+    modelo.embutir_consulta("merenda escolar")
+    assert vistos == ["passage: Institui o dia da merenda", "query: merenda escolar"]
+
+
+def test_roberta_continua_sem_prefixo(monkeypatch):
+    modelo = ModeloEmbedding(MODELO, tokenizador=object(), modelo=object())
+    vistos = []
+    monkeypatch.setattr(modelo, "_embutir_lote", lambda textos: vistos.extend(textos) or [b"x"] * len(textos))
+    modelo.embutir(["texto"])
+    modelo.embutir_consulta("consulta")
+    assert vistos == ["texto", "consulta"]
+
+
+def test_nome_do_modelo(app):
+    assert services.nome_do_modelo("roberta") == app.config["EMBEDDING_MODEL"]
+    assert services.nome_do_modelo("e5") == app.config["E5_MODEL"]
+    with pytest.raises(ValueError):
+        services.nome_do_modelo("outro")
 
 
 # ======================================================
@@ -766,7 +972,7 @@ def test_drop_db_tira_os_indices(app, db):
 # ======================================================
 @pytest.fixture
 def comandos(app, monkeypatch, modelo):
-    monkeypatch.setattr("desperta.ia.cli._modelo", lambda: modelo)
+    monkeypatch.setattr("desperta.ia.cli._modelo", lambda qual="roberta": modelo)
     app.config["EMBEDDING_MODEL"] = MODELO
     return app.test_cli_runner()
 

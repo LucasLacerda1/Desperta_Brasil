@@ -145,8 +145,12 @@ OCULTAS = (
         for sufixo in ("config", "content", "data", "docsize", "idx")
     ]
     + ["noticia_fts", "trecho_fts", "noticia_fts_raiz", "trecho_fts_raiz", "sqlite_sequence"]
-    + [f"vec_trecho_{sufixo}" for sufixo in ("chunks", "info", "rowids", "vector_chunks00", "auxiliary")]
-    + ["vec_trecho"]
+    + [
+        f"{tabela}_{sufixo}"
+        for tabela in ("vec_trecho", "vec_trecho_e5")
+        for sufixo in ("chunks", "info", "rowids", "vector_chunks00", "auxiliary")
+    ]
+    + ["vec_trecho", "vec_trecho_e5"]
 )
 
 CONTAGEM = " UNION ALL ".join(

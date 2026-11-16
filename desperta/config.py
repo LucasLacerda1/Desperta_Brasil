@@ -42,6 +42,11 @@ class Config:
     ROBERTA_DIR_PADRAO = os.path.join(MODELOS_DIR, "roberta-lexpt-base")
     ROBERTA_DIR = os.getenv("ROBERTA_DIR", ROBERTA_DIR_PADRAO)
     ROBERTA_ESCRITORA_DIR = os.getenv("ROBERTA_ESCRITORA_DIR", os.path.join(MODELOS_DIR, "roberta-escritora"))
+    # Decisao 25.10: o e5 (multilingual-e5-base, MIT) indexa ao lado da RoBERTaLexPT e fica no disco do PC
+    E5_MODEL = os.getenv("E5_MODEL", "intfloat/multilingual-e5-base")
+    E5_DIR = os.getenv("E5_DIR", os.path.join(MODELOS_DIR, "multilingual-e5-base"))
+    # Qual dos dois modelos a escrita dos rascunhos usa na busca: e5 ou roberta
+    RAG_MODELO = os.getenv("RAG_MODELO", "e5")
     HF_HUB_OFFLINE = os.getenv("HF_HUB_OFFLINE", "0")
     # Decisao 20.2: auto usa a RTX 4050 se existir; cuda exige a placa; cpu nunca a usa
     IA_DISPOSITIVO = os.getenv("IA_DISPOSITIVO", "auto")
@@ -69,3 +74,5 @@ class TestConfig(Config):
     TESTING = True
     DEBUG = False
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
+    # Os testes nunca carregam o e5 de verdade (1,1 GB), mesmo que ele esteja na pasta do projeto
+    E5_DIR = os.path.join("instance", "modelos-de-teste", "multilingual-e5-base")
