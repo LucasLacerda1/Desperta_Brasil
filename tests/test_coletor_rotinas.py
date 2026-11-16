@@ -756,6 +756,31 @@ def test_agendada_sem_ia_so_coleta(comandos, api, ia_falsa, monkeypatch):
     assert ia_falsa == []
 
 
+def test_so_a_agendada_semanal_escreve_o_relatorio_da_semana(comandos, db, api, ia_falsa, monkeypatch):
+    """RF07 (decisao 25.5): o relatorio sai na rotina semanal, depois da coleta e ainda com a trava."""
+    from desperta.ia import relatorio
+
+    chamadas = []
+
+    def gerar_relatorio_semanal():
+        chamadas.append(os.path.exists(comandos.caminho_trava))
+        return None, False
+
+    monkeypatch.setattr(relatorio, "gerar_relatorio_semanal", gerar_relatorio_semanal)
+    for rotina in ("horaria", "diaria", "mensal", "semanal"):
+        monkeypatch.setitem(modulo_cli.ROTINAS_AGENDADAS, rotina, lambda cliente: None)
+    for rotina in ("horaria", "diaria", "mensal"):
+        resultado = comandos.invoke(args=["coletar", "agendada", rotina])
+        assert resultado.exit_code == 0 and "relatorio da semana" not in resultado.output
+    assert chamadas == []
+    resultado = comandos.invoke(args=["coletar", "agendada", "semanal"])
+    assert resultado.exit_code == 0, resultado.output
+    assert chamadas == [True]
+    assert "relatorio da semana: semana sem movimento, nada foi gerado" in resultado.output
+    sem_ia = comandos.invoke(args=["coletar", "agendada", "semanal", "--sem-ia"])
+    assert sem_ia.exit_code == 0 and chamadas == [True]
+
+
 def test_agendada_horaria_nao_espera_outra_coleta(comandos, db, api, ia_falsa):
     assert trava.adquirir(comandos.caminho_trava)
     resultado = comandos.invoke(args=["coletar", "agendada", "horaria"])

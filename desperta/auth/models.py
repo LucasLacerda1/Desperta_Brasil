@@ -34,9 +34,8 @@ class Administrador(db.Model):
     papel: Mapped[str] = mapped_column(db.String(20), nullable=False, default="editor")
     ativo: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=True)
     criado_em: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=db.func.now())
-    atualizado_em: Mapped[datetime] = mapped_column(
-        db.DateTime, nullable=False, server_default=db.func.now(), onupdate=db.func.now()
-    )
+    # So edicao de cadastro (nome, e-mail, papel, ativo, senha), preenchida pelo service (decisao 11.3)
+    atualizado_em: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=db.func.now())
     ultimo_acesso: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
 
     # ------------------------------------------------------

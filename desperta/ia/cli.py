@@ -7,7 +7,7 @@ import click
 from flask import current_app
 from flask.cli import AppGroup
 
-from . import automatico, centralizacao, embeddings, geracao, services
+from . import automatico, centralizacao, embeddings, geracao, relatorio, services
 from .gerador import CASOS
 from .models import TRECHO_RAG_TIPOS
 
@@ -160,6 +160,27 @@ def gerar_novos(dias, limite, simular, refazer_erros):
             click.echo(f"  {caso} {ref}")
         click.echo("Simulação: nada foi gravado.")
     click.echo(resumo.em_texto())
+
+
+@ia.command("relatorio-semanal")
+@click.option("--ate", callback=_data, help="Ultimo dia da semana (AAAA-MM-DD); padrao: ontem.")
+@click.option("--simular", is_flag=True, help="So mostra o relatorio, sem gravar nada.")
+def relatorio_semanal(ate, simular):
+    """RF07: relatorio dos sete dias ate a data, como rascunho do tipo relatorio."""
+    if simular:
+        dados, titulo, resumo, corpo = relatorio.previa(ate)
+        if dados.vazia():
+            click.echo("Semana sem movimento: nada seria gerado.")
+            return
+        click.echo(titulo)
+        click.echo(resumo)
+        click.echo(corpo)
+        click.echo("Simulação: nada foi gravado.")
+        return
+    registro, novo = relatorio.gerar_relatorio_semanal(ate)
+    if registro is not None and registro.status == "erro":
+        raise click.ClickException(f"Geracao {registro.id} com erro: {registro.erro}")
+    click.echo(relatorio.em_texto(registro, novo))
 
 
 @ia.command("centralizar")

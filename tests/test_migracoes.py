@@ -15,6 +15,7 @@ from desperta.ext.db import db
 from desperta.noticias.services import buscar_noticias
 
 MIGRACOES = Path(__file__).parent.parent / "migrations"
+# Decisao 25.3: o indice das raizes (noticia_fts_raiz) nao tem gatilho; quem o mantem e o codigo
 GATILHOS = {"noticia_fts_ai", "noticia_fts_ad", "noticia_fts_au"}
 
 MIGRACAO_NULLABLE = """
@@ -127,6 +128,31 @@ def test_busca_funciona_no_banco_migrado(app_arquivo):
     db.session.add(noticia)
     db.session.commit()
     assert buscar_noticias("saude") == [noticia]
+
+
+def test_migracao_da_raiz_indexa_as_noticias_que_ja_existiam(app_arquivo):
+    """Decisao 25.3: o banco real ja tinha noticias quando o indice das raizes foi criado."""
+    from desperta.ext.db.busca import remover_busca_raiz
+
+    flask_migrate.upgrade(directory=str(MIGRACOES), revision="f8a2f7162512")
+    # Como o banco estava antes da migracao: so o indice das palavras como estao
+    with db.engine.begin() as conexao:
+        remover_busca_raiz(conexao)
+    fabricas.popular(db)
+    noticia = fabricas.noticia(slug="antiga", titulo="Piso das professoras", status="publicada")
+    db.session.add(noticia)
+    db.session.commit()
+    noticia_id, modelo = noticia.id, type(noticia)
+    db.session.remove()
+
+    _upgrade()
+    assert _gatilhos() == GATILHOS
+    assert buscar_noticias("professores") == [db.session.get(modelo, noticia_id)]
+    # Voltar a migracao nao pode quebrar o banco: o indice das palavras como estao continua la
+    db.session.remove()
+    flask_migrate.downgrade(directory=str(MIGRACOES), revision="f8a2f7162512")
+    assert "noticia_fts" in set(inspect(db.engine).get_table_names())
+    assert _gatilhos() == GATILHOS
 
 
 def test_batch_em_tabelas_com_dados_e_filhas(app_arquivo, tmp_path):

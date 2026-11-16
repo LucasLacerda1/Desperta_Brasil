@@ -237,14 +237,30 @@ def test_titulo_de_situacao_mostra_a_situacao_como_a_camara_escreve():
     assert texto.titulo == 'PL 1234/2024: situação agora é "Aguardando Designação de Relator(a)"'
 
 
-def test_situacao_nula_usa_a_ultima_tramitacao():
+def test_situacao_nula_conta_o_ultimo_passo_sem_chama_lo_de_situacao():
+    # Decisao 25.1: a descricao de um passo do andamento nunca aparece como "situacao"
     texto = _escrever(
         CASO_SITUACAO,
         proposicao=_proposicao(situacao=None),
         tramitacoes=[_passo(descricao="Designado relator", despacho="")],
     )
-    assert "Designado relator" in texto.resumo
+    assert texto.titulo == "PL 1234/2024: Designado relator"
+    assert texto.resumo == (
+        "Em 03/06/2024, em CCJC: Designado relator. A situação do PL 1234/2024 não foi informada pela Câmara."
+    )
+    assert "situação agora" not in texto.titulo and "está com a situação" not in texto.resumo
     assert "Em 03/06/2024, em CCJC: Designado relator." in texto.corpo
+
+
+def test_situacao_que_a_camara_manda_vazia_tambem_e_nao_informada():
+    # A API usa "." quando nao ha informacao (22.5)
+    texto = _escrever(
+        CASO_SITUACAO,
+        proposicao=_proposicao(sigla="PEC", numero=2, ano=2023, situacao="."),
+        tramitacoes=[_passo(descricao="Prorrogação de Prazo", despacho="")],
+    )
+    assert texto.titulo == "PEC 2/2023: Prorrogação de Prazo"
+    assert texto.resumo.endswith("A situação da PEC 2/2023 não foi informada pela Câmara.")
 
 
 def test_sem_situacao_e_sem_tramitacao_nao_escreve():
@@ -355,8 +371,9 @@ def banco(app, db):
     db.session.flush()
     db.session.add_all(
         [
+            # Como na API: relevancia 0 e o tema principal, 1 o segundo (25.2)
             ProposicaoTema(proposicao_id=2310837, cod_tema=46, relevancia=1),
-            ProposicaoTema(proposicao_id=2310837, cod_tema=47, relevancia=5),
+            ProposicaoTema(proposicao_id=2310837, cod_tema=47, relevancia=0),
             ProposicaoAutor(
                 proposicao_id=2310837, ordem=1, nome="Fulana", cod_tipo=1, tipo="Deputado(a)", proponente=True
             ),
@@ -464,12 +481,19 @@ def test_erro_grava_geracao_sem_noticia_e_log(banco, caso, ref, mensagem):
     assert banco.session.scalar(banco.select(banco.func.count()).select_from(Noticia)) == 0
 
 
-def test_proposicao_sem_tema_vira_erro_e_nao_noticia(banco):
+def test_proposicao_sem_tema_vira_noticia_que_diz_isso(banco):
+    # Decisao 25.6: a falta de tema e informada, em vez de a proposicao ficar sem noticia
     banco.session.add(fabricas.proposicao(id=7, numero=7))
     banco.session.commit()
-    geracao, _ = _gerar(ref=7)
-    assert geracao.status == "erro"
-    assert "nao tem tema" in geracao.erro
+    geracao, nova = _gerar(ref=7)
+    assert geracao.status == "ok" and nova is True
+    assert geracao.noticia.cod_tema == 0
+    assert "a Câmara ainda não tinha informado o tema do PL 7/2024" in geracao.noticia.corpo
+
+
+def test_tema_informado_nao_ganha_o_aviso(banco):
+    geracao, _ = _gerar()
+    assert "informado o tema" not in geracao.noticia.corpo + geracao.noticia.resumo
 
 
 def test_falha_do_gerador_nao_deixa_noticia_pela_metade(banco):

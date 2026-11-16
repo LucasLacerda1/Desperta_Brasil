@@ -1,13 +1,13 @@
 # Desperta Brasil — guia do projeto para o Claude Code
 
 > Coloque este arquivo na **raiz do repositório** com o nome `CLAUDE.md`. O Claude Code lê esse arquivo sozinho no início de cada sessão.
-> Última atualização: 11/11/2026 (Fases 1, 1.5, 2 e 2b concluídas; Fase 3 em andamento; decisões nas seções 10 a 23; ajuste físico do banco em `docs/AJUSTE_BANCO_SISTEMA.md`; treino da Roberta escritora em `docs/TREINAR_ROBERTA_ESCRITORA.md`; leitura encadeada da PEC em `docs/LEITURA_ENCADEADA.md`).
+> Última atualização: 14/11/2026 (Fases 1, 1.5, 2, 2b e 3 concluídas; Fase 4 em andamento; decisões nas seções 10 a 25; ajuste físico do banco em `docs/AJUSTE_BANCO_SISTEMA.md`; treino da Roberta escritora em `docs/TREINAR_ROBERTA_ESCRITORA.md`; leitura encadeada da PEC em `docs/LEITURA_ENCADEADA.md`).
 
 ## 0. Como trabalhar neste projeto (leia primeiro)
 
 - **Idioma:** responda, comente o código e escreva mensagens de commit em **português do Brasil**.
 - **Padrão obrigatório:** o código segue a estrutura do projeto **TaskFlow**, usado como exemplo pelo professor da disciplina (Programação Web Avançada, UVV). A seção 3 descreve esse padrão. Não invente outra organização, não troque o Flask-SQLAlchemy por outro ORM e não use outro estilo de modelo.
-- **Ordem do trabalho:** o projeto é construído por fases (seção 7). **As Fases 1 (banco), 1.5 (ajuste físico do banco, `docs/AJUSTE_BANCO_SISTEMA.md`), 2 (coletor) e 2b (campos opcionais, com 2 migrações, 22.2) estão concluídas, e o banco tem a bateria de persistência (22.4). O ajuste da `horaria` (PR nº 2) foi medido em 10/11, abaixo da meta (23.10), e está na `main`; as rotinas rodam sozinhas pelo agendador (23.11). A fase atual é a 3 (IA e RAG, branch `fase-3-rag`): antes da Roberta escritora (3b), vem a análise da PEC com a Roberta original (22.6). Siga a ordem de 23.8.** Princípio do portal: transparência total (22.5). Não comece as rotas da API ou o front-end antes da fase anterior estar pronta e testada, a não ser que o grupo peça. Antes de mudar código, leia as seções 10 a 23 (decisões tomadas depois de cada relatório).
+- **Ordem do trabalho:** o projeto é construído por fases (seção 7). **As Fases 1 (banco), 1.5 (ajuste físico do banco, `docs/AJUSTE_BANCO_SISTEMA.md`), 2 (coletor) e 2b (campos opcionais, com 2 migrações, 22.2) estão concluídas, e o banco tem a bateria de persistência (22.4). O ajuste da `horaria` (PR nº 2) foi medido em 10/11, abaixo da meta (23.10), e está na `main`; as rotinas rodam sozinhas pelo agendador (23.11). A Fase 3 (IA e RAG) entrou na `main` pelo PR nº 3 em 11/11. A fase atual é a 4 (API REST e área administrativa, branch `fase-4-api`), começando pelas decisões 10.4, 10.5 e 11.3 (24.1). O estudo da leitura da PEC foi encerrado (25.7); a Roberta escritora (3b) espera as decisões do grupo. Siga a ordem de 23.8.** Princípio do portal: transparência total (22.5). Não comece as rotas da API ou o front-end antes da fase anterior estar pronta e testada, a não ser que o grupo peça. Antes de mudar código, leia as seções 10 a 23 (decisões tomadas depois de cada relatório).
 - **Git:** a `main` no GitHub é a versão estável. Cada fase é feita numa branch própria (`fase-2-coletor`, `fase-3-ia`…), com commits pequenos ao fim de cada passo e mensagem em português; ao terminar a fase, abrir um pull request para a `main`. Quem faz o merge é o Lucas, depois de revisar (Caio e Rhuan revisam quando puderem). Não fazer push direto na `main`. Nunca versione `.venv/`, `instance/`, `.env` nem arquivos `*.db`, `*.db-wal`, `*.db-shm`.
 - **O modelo do banco já foi decidido pelo grupo** (32 tabelas, seção 5). Não acrescente, remova nem renomeie tabelas ou colunas por conta própria. A única exceção são as colunas técnicas, índices e configurações listados em `docs/AJUSTE_BANCO_SISTEMA.md` (camada física: controle de sincronização, índices, FTS5, migrações), que não mudam o modelo lógico. Se achar um problema no modelo, aponte e pergunte antes de mudar.
 - **Ao terminar cada passo:** rode os testes (`invoke test`) e mostre o resultado.
@@ -162,7 +162,7 @@ TASKFLOW/
    - comentário de cabeçalho `# === Classe (descricao) ===` antes de cada classe; blocos de colunas e de relacionamentos separados por comentários `# ----` / `# ====` com o nome do grupo em maiúsculas; método `__repr__` no fim, em bloco `# REPRESENTACAO`;
    - comentários em português, sem acento (como no TaskFlow).
    - Não copie o erro de digitação do TaskFlow (`create_at`): use os nomes do modelo do Desperta.
-7. **Empacotamento** com `pyproject.toml` (PEP 621, setuptools) e instalação editável: `pip install -e ".[dev,test]"`.
+7. **Empacotamento** com `pyproject.toml` (PEP 621, setuptools) e instalação editável: `pip install -e ".[dev,test]"` (no Desperta, `invoke install` usa `".[tudo]"`, ver 24.3).
 8. **Automação com Invoke** em `tasks.py` (`invoke install`, `run`, `test`, `lint`, `format`).
 9. **Testes com pytest + pytest-flask + pytest-cov**, em `tests/`, com `conftest.py` e fixture `app` que chama `create_app()`.
 10. **Validação no `flask shell`:** depois de criar os modelos, testar no shell com banco em memória (`sqlite:///:memory:`), `db.create_all()`, inserir, consultar com `db.session.scalar(db.select(...))` e conferir restrições (tentativa de duplicar e `rollback()`).
@@ -418,9 +418,13 @@ from invoke import task
 
 
 @task
-def install(c):
-    """Instala o projeto em modo editavel com dependencias de desenvolvimento e teste."""
-    c.run('pip install -e ".[dev,test]"', echo=True)
+def install(c, leve=False):
+    """Instala o projeto com todas as dependencias (desenvolvimento, testes, IA, ver-banco e analises).
+
+    --leve instala so desenvolvimento e testes, sem o PyTorch.
+    """
+    extras = "dev,test" if leve else "tudo"
+    c.run(f'pip install -e ".[{extras}]"', echo=True)
 
 
 @task
@@ -1574,7 +1578,7 @@ Decisão do Lucas (05/11): o portal deve ser o mais claro e transparente possív
 - `desperta/votacoes/services.py`: `situacao_dos_votos()` classifica a votação em pendente, erro na coleta, secreta (com o placar escrito pela Câmara), simbólica, nominal ou inconsistente, com a explicação em texto.
 - Os trechos de votação que a Roberta lê e o `GeradorFrases` usam essas explicações. O corpo do rascunho mostra situação, regime e apreciação, ou que não foram informados.
 - Na Fase 4 e 5, o portal deve mostrar também: data da última coleta e aviso de dados desatualizados, como cada notícia foi feita (gerador, revisão e fontes) e avisos de erro aparente nos dados da Câmara.
-- **Em aberto (grupo):** as proposições sem tema (109 dos tipos acompanhados) não geram notícia. Opções: um tema especial "Sem tema oficial", marcado como criado pelo portal, ou tema opcional na notícia.
+- ~~**Em aberto (grupo):** as proposições sem tema não geram notícia.~~ **Decidido em 25.6:** viram notícia num tema especial criado pelo portal, e o texto diz que a Câmara não informou o tema.
 - Coleta nº 6 (30/10): marcada como `erro`, com o motivo, e mantida no histórico.
 
 ### 22.6 Análise da PEC com a Roberta original
@@ -1667,7 +1671,7 @@ O kernel 7.0.0-43 foi instalado sem o módulo da NVIDIA (`linux-modules-nvidia-5
 2. ~~Medições da `horaria`, merge do PR nº 2 e agendamento das rotinas.~~ Feito (23.10 e 23.11).
 3. Grupo: meta de "preciso", PECs de conferência, ok na planta e no contexto inicial, o que conta como frase importante (23.9), tema das proposições sem tema (22.5) e as 20 consultas da busca (19.2).
 4. Revisão dos rascunhos pela equipe (na Fase 4, pela área administrativa; eram 2.354 em 11/11, 23.12).
-5. Merge da `fase-3-rag` na `main` e começo da Fase 4.
+5. ~~Merge da `fase-3-rag` na `main`~~ (PR nº 3, 11/11) e começo da Fase 4 (seção 24).
 6. Treino da Roberta, só depois das rodadas e com a confirmação do grupo.
 
 ### 23.9 Rodadas da PEC 319 com 4 leitores (08 e 09/11)
@@ -1676,6 +1680,7 @@ O kernel 7.0.0-43 foi instalado sem o módulo da NVIDIA (`linux-modules-nvidia-5
 - **Contexto, memória, planta e RAG quase não mudam a leitura** (no máximo 0,07; a memória sorteada rende o mesmo que a verdadeira). **O whitening é o único ganho que se repete:** tema oficial de cerca de 20º para cerca de 9º.
 - **O grupo está dividido:** Caio e Claude ficam com o texto normativo, Lucas e Rhuan com o fim da justificação; Lucas e Caio, o único par independente (o Rhuan partiu do arquivo do Lucas), têm 1 frase em comum. O consenso de 2 das 3 pessoas é a própria escolha do Rhuan, e contra ele a Roberta fica no acaso.
 - **Decisão pendente do grupo:** combinar o que conta como frase importante (ou reunir mais leituras independentes) antes de fixar a meta de "preciso" ou de propor treino. Recomendação do Claude Code: deixar a análise da PEC como estudo por enquanto e seguir para a Fase 4; no portal, a RoBERTaLexPT entra pela busca e pela sugestão de tema.
+- **Atualizado em 25.7:** a PEC 34/2024, em que o grupo concorda, confirmou o resultado, e o estudo foi encerrado.
 
 ### 23.10 Medições da `horaria` em dia útil (10/11)
 - Rodadas a partir do código da `fase-2-horaria` (`93a471c`, `HORARIA_ORCAMENTO_MIN=20`, `HORARIA_RECONFERIR_HORAS=6`), no banco real, com sessão deliberativa no Plenário desde 13h55. A API da Câmara ficou fora (502, 503 e 504) até 15h25. Backup antes: `instance/desperta-antes-horaria-10-11.db`.
@@ -1705,3 +1710,115 @@ O kernel 7.0.0-43 foi instalado sem o módulo da NVIDIA (`linux-modules-nvidia-5
 - **`horaria`:** de 3 min 20 s a 7 min 10 s (a mais longa às 03h05), bem abaixo dos 20 minutos.
 - **Rascunhos à espera de revisão:** 2.354.
 - **30 votações de 10/11 com HTTP 404 no detalhe:** aparecem na listagem `/votacoes`, mas `/votacoes/{id}` dá 404 (conferido de novo às 19h34). São registros do Plenário com a descrição "Alteração do Regime de Tramitação desta proposição…". Por causa delas, a coleta de votações de toda `horaria` fica `parcial`, com 30 erros no log por hora, até 10/11 sair da janela (ontem e hoje). O erro é da Câmara; nada muda no código. Se o problema voltar, avaliar com o grupo anotar os 404 para não tentar de novo na mesma janela, porque o `parcial` por esse motivo esconde o `parcial` por tempo que a 23.11 manda observar.
+
+---
+
+## 24. Fase 4: API REST e área administrativa (a partir de 11/11/2026)
+
+### 24.1 Antes do login (decisões 10.4, 10.5 e 11.3)
+- **Erros dos services viram JSON** (`desperta/ext/erros/`): `DadosInvalidos` (400), `AcessoNegado` (403), `NaoEncontrado` (404) e `Conflito` (409), com resposta `{"erro": "mensagem"}`. As rotas não tratam erro; registro em uso nunca vira 500.
+- **11.3:** `administrador.atualizado_em` sem `onupdate` (sem migração: o `onupdate` era só do Python). `desperta/auth/services.py`: `criar_administrador`, `editar_cadastro` (muda `atualizado_em` só se algo mudou de verdade), `registrar_acesso` (só `ultimo_acesso`), `desativar` e `excluir_administrador` (sempre 409). Confere nome (100), e-mail (formato, 254, sem repetir, em minúsculas), papel e senha (mínimo de 8 caracteres) antes de gravar.
+- **10.4:** `excluir_noticia` em `desperta/noticias/services.py`: só `admin` ativo, só `rascunho` ou `rejeitada`; fontes e revisões vão junto, as `geracao_ia` ficam com `noticia_id` nulo e a exclusão é registrada em `log_sistema` (`acao = excluir_noticia`). `IntegrityError` e `AssertionError` viram 409, com `rollback`.
+- **10.5:** `CORS_ORIGINS` (padrão `http://localhost:5173`, separadas por vírgula) e CORS só para essas origens em `/api/*`, com `supports_credentials=True`. Cookie de sessão `HttpOnly`, `SameSite=Lax` e `Secure` por `SESSION_COOKIE_SECURE=1` em produção.
+- **O agendador roda o código da pasta do projeto,** então roda o que estiver na branch atual. Na Fase 4 isso não muda o coletor, mas não deixar a pasta numa branch quebrada à noite.
+
+### 24.2 Rotas da API (11/11/2026)
+Rotas finas em `routes.py`, regras nos `services.py`; auxiliares HTTP comuns em `desperta/ext/api/` (corpo JSON, parâmetros, páginas, datas). Datas do portal saem em UTC (`Z`); datas da Câmara, no horário de Brasília (`-03:00`), como o coletor grava. Listas vêm como `{itens, pagina, por_pagina, total, paginas}` (`?pagina=`, `?por_pagina=` até 100).
+
+| Rota | Quem | O que faz |
+|---|---|---|
+| `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/eu`, `POST /api/auth/eu/senha` | equipe | login (sessão Flask, limite de falhas), sair, quem está logado, trocar a própria senha |
+| `GET/POST /api/auth/equipe`, `PATCH /api/auth/equipe/<id>` | admin | listar, criar e editar ou desativar alguém da equipe (sempre sobra um admin ativo) |
+| `GET /api/noticias` (`?tema=`), `GET /api/noticias/principal` (`?por_tema=`), `GET /api/noticias/busca` (`?q=&dia=&mes=&ano=&tema=`), `GET /api/noticias/<slug>` | público | publicadas por tema, página principal por tema, busca com período em horário de Brasília, detalhe com fontes, "como foi feita" e +1 visualização |
+| `GET /api/noticias/admin` (`?status=&tema=&caso=&origem=`), `GET/PATCH /api/noticias/admin/<id>`, `POST /api/noticias/admin` | equipe | fila de revisão (mais antigas primeiro), detalhe com histórico e o que a IA usou, edição (slug acompanha o título até publicar), notícia escrita pela equipe (fontes conferidas) |
+| `POST /api/noticias/admin/<id>/<acao>`, `POST /api/noticias/admin/lote` | equipe | `aprovar` (rascunho → em_revisao), `publicar`, `rejeitar` (comentário obrigatório) e `arquivar`; em lote, até 200 por vez, com a lista do que falhou |
+| `DELETE /api/noticias/admin/<id>` | admin | apaga só rascunho ou rejeitada (10.4) |
+| `GET /api/proposicoes/<id>`, `GET /api/proposicoes/<id>/tramitacoes`, `GET /api/proposicoes/temas` | público | situação (ou "não informado pela Câmara"), autores, temas, 20 tramitações mais recentes, votações e notícias publicadas; andamento completo em páginas; temas com o número de notícias publicadas |
+| `GET /api/votacoes/<id>` | público | resultado, situação dos votos (22.5), voto de cada deputado e orientações em três grupos (10.1) |
+| `GET /api/sistema/situacao` | público | última coleta concluída e aviso de dados desatualizados (RNF05, `AVISO_DESATUALIZADO_HORAS=6`) |
+| `GET /api/sistema/coletas`, `GET /api/sistema/log` | admin | coletas e log, com filtros |
+
+- O primeiro admin é criado pelo terminal: `flask equipe criar-admin` (`flask equipe listar` mostra a equipe).
+- Slugs `admin`, `busca` e `principal` são reservados (viram `...-noticia`).
+- No banco real, todas as rotas de leitura responderam em menos de 60 ms (votação com 467 votos: 11 ms; proposição com 1.066 tramitações: 8 ms).
+- **Falta na Fase 4:** rotas do visitante (cookie, aceite e contagem por tema, RF13 e RF17) e a tarefa LGPD; limite de requisições nas rotas públicas; teste de carga (RNF01); as decisões do grupo sobre o volume de rascunhos e o tema das proposições sem tema.
+
+### 24.3 Todas as dependências no `pyproject.toml` (12/11/2026)
+Pedido do Lucas, para quem pega o projeto pelo GitHub instalar tudo com um comando só:
+- Novo grupo `tudo` (`dev`, `test`, `ia`, `ver` e `analise`), e o `invoke install` passa a instalar `".[tudo]"`. `invoke install --leve` instala só `dev` e `test`, sem o PyTorch.
+- O grupo `analise` (`pymupdf` e `snowballstemmer`), que estava só na `busca-rag`, também entra aqui, com o mesmo texto, para os dois ramos se juntarem sem conflito.
+- `tzdata` só no Windows, porque o `zoneinfo` (horário de Brasília) não acha os fusos ali sem ele.
+- A voz (`voz`) fica de fora do `tudo` até a Fase 5 (o Piper e o faster-whisper podem não ter pacote para o Python 3.14, seção 9).
+- O PyTorch continua pedido só como `torch` (20.2). Quem quer a versão para processador ou para uma placa específica instala o PyTorch antes do `invoke install`, como no README.
+- Toda dependência nova entra num grupo do `pyproject.toml`, e não num `pip install` avulso no README.
+
+---
+
+## 25. Decisões e trabalho de 14/11/2026
+
+### 25.1 Mudança de situação é a situação ser outra
+- **O erro:** o `flask ia gerar-novos` tratava como mudança de situação toda proposição cuja `data_status` tinha andado. A Câmara muda essa data a cada passo do andamento (despacho, prazo, recebimento), mesmo quando a situação continua igual. Dos 3.699 rascunhos de "mudança de situação" feitos de 08 a 14/11, 2.288 (62%) tinham a mesma situação de antes, 567 (15%) eram de proposição sem situação na Câmara (o texto chamava a descrição do passo de "situação") e só 844 (23%) tinham mudado de verdade.
+- **A regra:** `situacao_mudou()` em `desperta/proposicoes/services.py`. Há mudança quando a Câmara informa uma situação (`cod_situacao`) e ela é diferente da última informada nas tramitações anteriores ao dia do status. Sem nenhuma anterior, é a primeira situação informada. Sem situação informada, não há mudança. `fatos_da_janela` (`desperta/ia/automatico.py`) usa essa regra. Não muda o banco.
+- **O texto:** se a situação não foi informada (geração manual com `flask ia gerar`), o `GeradorFrases` conta o último passo e escreve "A situação do PL … não foi informada pela Câmara". A descrição de um passo nunca aparece como situação.
+- **Efeito medido no banco real (só leitura):** na janela desde 05/11, os fatos de situação caem de 2.765 para 552. 734 testes.
+- **Rascunhos antigos com o texto errado:** resolvidos pela triagem de 15/11 (25.9). **Em aberto (grupo):** as regras de seleção propostas na análise de 14/11 (marcos, votação de mérito no Plenário, agrupamento por proposição e limite diário), que mudam a escolha de 07/11 (23.2).
+
+### 25.2 Tema principal da notícia e ícones dos temas
+- **O que é a relevância na API:** `proposicao_tema.relevancia` é a posição do tema na lista da Câmara. O 0 é o primeiro, o tema principal; os seguintes vêm com 1, 2, 3… A Câmara ordena assim desde julho de 2026 (99% das proposições novas com dois ou mais temas). Proposição mais antiga vem com todos os temas em 0, sem ordem.
+- **O erro:** a geração pegava a maior relevância, que é o último tema da lista, e, no empate, o menor código. Por isso "Administração Pública" (34), "Comunicações" (37) e "Cidades e Desenvolvimento Urbano" (41) apareciam demais nas notícias.
+- **A regra:** `tema_principal()` em `desperta/proposicoes/services.py`. Com a ordem da Câmara, vale o tema de relevância 0. Sem ordem, vale o tema que a Câmara mais costuma pôr em primeiro lugar nas proposições que ela ordena (taxa calculada no próprio banco, com suavização); no empate, o menor código. Medido nas 1.675 proposições ordenadas, com validação cruzada: 55% de acerto, contra 42% do acaso e 39% do menor código. `GET /api/proposicoes/<id>` lista os temas nessa ordem. Não muda o banco.
+- **Efeito medido (só leitura):** dos 4.474 rascunhos, 2.466 ficariam com outro tema (1.018 de proposição que a Câmara tinha ordenado e 1.448 sem ordem). Os rascunhos que já existem não foram alterados; o editor pode trocar o tema na revisão.
+- **Ícones:** `ICONES_TEMA` em `desperta/proposicoes/models.py` tem um ícone Material Symbols para cada um dos 32 temas. O coletor de temas grava em `tema.icone` (rotina `semanal` ou `flask coletar temas`). Testado numa cópia do banco: 32 temas atualizados, 32 ícones diferentes.
+- 742 testes.
+
+### 25.3 Busca pela raiz das palavras
+- **O que muda:** as duas buscas por palavras comparam a raiz ("professores" e "professora" acham "professor"; "vacinar" acha "vacinação"). O FTS5 não tem stemmer de português: o índice guarda o texto já reduzido à raiz pelo Snowball (`snowballstemmer`, BSD-3, Python puro), e a consulta é reduzida do mesmo jeito. Não é modelo: roda dentro da API. O `snowballstemmer` passou para as dependências principais do `pyproject.toml`.
+- **Com e sem acento:** o Snowball depende do acento ("vacinação" vira "vacin", "vacinacao" vira "vacinaca"). O índice guarda as duas raízes de cada palavra, e a consulta procura por qualquer uma: quem digita sem acento também acha.
+- **Índices novos, fora das 32 tabelas:** `noticia_fts_raiz` (busca do portal, `buscar_noticias`; todas as palavras precisam aparecer) e `trecho_fts_raiz` (busca dos trechos do RAG, `desperta/ia/palavras.py`; qualquer palavra serve e o `bm25` ordena). Os índices antigos (`noticia_fts` e `trecho_fts`, com as palavras como estão) continuam existindo, para o visualizador do banco. Todo o SQL fica em `desperta/ext/db/busca.py` e `desperta/ia/palavras.py` (11.1).
+- **Quem mantém os índices é o código, não o banco:** `acompanhar_pela_raiz()` liga o índice a cada gravação do ORM em `Noticia` e `TrechoRAG`. De propósito não há gatilho chamando a função `raiz()`: com gatilho, outra versão do código (outra branch na hora do agendador) não conseguiria mais gravar notícia. Rede de segurança: se o índice não tem uma linha por registro, ele é refeito (`conferir_busca_raiz` no começo do `gerar-novos`, com aviso no log, e `palavras.criar_indice()` em toda indexação e busca). Refazer os 33 mil trechos leva 2 segundos.
+- **Migração `19b825043af5`:** cria `noticia_fts_raiz` e indexa as notícias que já existiam. Testada na cópia do protótipo e aplicada no banco real em 14/11 (backup `instance/desperta-antes-busca-raiz.db`). `flask banco verificar` ganhou as duas conferências novas: 22 aprovados, 0 falhas.
+- **Medição (mesmas 20 consultas, notas do Claude Code, só a busca por palavras dos trechos):** 68 respostas nas 160 posições, igual ao experimento da raiz (antes, 52 na busca de então). Com as consultas digitadas sem acento: 67 (só com a raiz com acento cairia para 65). A busca do portal não pôde ser medida: o banco real ainda não tem notícia publicada.
+- 762 testes.
+
+### 25.4 Limite de requisições nas rotas da API (RNF10)
+- **O que faz:** conta as requisições de cada endereço (IP) em `/api/*` numa janela de tempo. Acima do limite, a API responde **429** com `{"erro": "Muitas requisições. Tente de novo em N segundos."}` e o cabeçalho `Retry-After`, sem processar o pedido. Pedido recusado não entra na conta.
+- **Dois limites, em `Config` e no `.env.example`:** `LIMITE_GERAL=600` e `LIMITE_BUSCA=60` por `LIMITE_JANELA_S=60` segundos; 0 desliga. A busca (`/api/noticias/busca`) tem conta própria, por ser a rota mais pesada: estourar a busca não tira o resto do portal do ar para aquele endereço. O valor geral é alto de propósito, porque uma rede inteira (um laboratório da faculdade) pode sair pelo mesmo IP.
+- **Quem não entra na conta:** quem está logado na área da equipe (o cookie de sessão é assinado) e o preflight do CORS (`OPTIONS`). O login continua com o limite próprio de tentativas (24.2).
+- **Onde fica:** `desperta/ext/limite/`, escrito no projeto, sem biblioteca nova (18.1) e sem Redis. A contagem fica na memória do processo, como a do login: com vários processos do Gunicorn, cada um conta as suas.
+- **No servidor (21.4):** atrás do Nginx, o Flask precisa do `ProxyFix` para enxergar o IP do visitante em vez do IP do Nginx. Sem isso, todos os visitantes dividiriam a mesma conta.
+- Com isso, do RNF10 só falta o HTTPS, que é do servidor. 770 testes.
+
+### 25.5 Relatório semanal (RF07)
+- **O que é:** `desperta/ia/relatorio.py` monta o relatório dos sete dias que terminaram ontem, só com o que está no banco e com frases prontas, como o `GeradorFrases`. Não usa a busca nem a rede neural, e não inventa número, nome ou data. Entra como **rascunho do tipo `relatorio`** e passa pela revisão da equipe, como toda notícia.
+- **O que ele conta:** quantas votações houve no Plenário e em comissões; a lista das votações de projetos no Plenário (aprovação ou rejeição, com o placar ou a explicação de votação simbólica e a ementa); as proposições que mudaram de verdade (25.1) para uma situação de avanço (`SITUACOES_DE_AVANCO`: sanção, norma jurídica, Senado, redação final, pauta), agrupadas pela situação, com até 15 por grupo; as proposições novas por tipo e os temas mais comuns entre as que a Câmara já classificou; e um fecho dizendo até que hora vão os dados (a última coleta concluída).
+- **Registro:** título "A semana na Câmara: 8 a 14 de novembro de 2026"; tema da notícia 53, "Processo Legislativo e Atuação Parlamentar" (tema oficial da Câmara); fontes são as votações e proposições citadas pelo nome; `geracao_ia` com `modelo_geracao = relatorio-semanal-v1`, `modelo_embedding = "nenhum (relatorio sem busca)"` e `entrada = {"caso": "relatorio_semanal", "inicio", "fim"}`. A mesma semana não gera dois relatórios (só se o primeiro foi rejeitado). Semana sem nenhum movimento não gera nada e deixa uma linha no log. Erro vira `geracao_ia` com status `erro`.
+- **Quando roda:** sozinho, na rotina `semanal` (domingo, 4h30), depois da coleta e sob a mesma trava (`flask coletar agendada semanal`). À mão: `flask ia relatorio-semanal [--ate AAAA-MM-DD] [--simular]` ou `invoke relatorio-semanal`. A fila de revisão aceita `?caso=relatorio_semanal`.
+- **Medido no banco real (semana de 8 a 14/11/2026):** 158 votações no Plenário (10 de projetos, todos aprovados) e 442 em comissões; 73 avanços (4 para a sanção, 17 para o Senado e 52 prontas para a pauta); 279 proposições novas (208 PDL, 56 PL, 14 PLP e 1 MPV), das quais só 19 já tinham tema.
+- **Fica para depois:** os relatórios por evento e por legislatura, que o RF07 também cita.
+- 785 testes.
+
+### 25.6 Proposição sem tema da Câmara vira notícia, e a falta de tema é informada
+- **Decisão do Lucas (15/11):** "a incompetência da Câmara tem que ser noticiada". A Câmara demora a classificar as proposições novas (na semana de 8 a 14/11, só 19 de 279 tinham tema), e por isso a maioria delas ficava sem notícia. Agora: com tema, vale o tema principal (25.2); sem tema, a notícia é gravada e diz que o tema não foi informado.
+- **Tema especial criado pelo portal:** código 0, "Sem tema informado pela Câmara", ícone `help` (`TEMA_SEM_CLASSIFICACAO` em `desperta/proposicoes/models.py`). O código 0 não existe na lista da Câmara, e a coleta de temas nunca apaga tema. A linha é criada na primeira vez que for preciso (`tema_sem_classificacao()`), com um `hash_origem` próprio que marca a origem. Não muda o modelo: é uma linha a mais na tabela `tema`, como a 22.5 já previa. Ele aparece na lista de temas e na página principal, o que deixa a falta de classificação visível no portal.
+- **O texto:** a notícia termina com "Quando este texto foi escrito, a Câmara ainda não tinha informado o tema do PL …". A frase continua verdadeira depois que a Câmara classificar. A API da proposição sem tema traz `aviso_tema`: "A Câmara ainda não informou o tema desta proposição."
+- **Quando a Câmara classifica:** no começo de cada `gerar-novos`, as notícias no tema especial (rascunho, em revisão ou publicada) cuja proposição ganhou tema passam para o tema principal, com uma linha no log (`tema_atualizado`). Arquivada fica como está.
+- **No banco real:** a `horaria` das 14h05 de 15/11 já rodou com este código, antes do commit (o agendador usa a pasta do projeto, 24.1): 233 notícias novas no tema especial, verificação do banco com 22 aprovados. Ficam 374 proposições acompanhadas sem tema no banco (219 PDL, 125 PL, 29 PLP e 1 PEC); só as da janela de 3 dias viram notícia.
+- 792 testes.
+
+### 25.7 PEC 34/2024 e fim do estudo da leitura da PEC (15/11)
+- **Frases do Rhuan:** ele marcou 13; as 5 que valem (F5, F2, F8, F10 e F9) foram escolhidas pelo Lucas. As 13 ficam no próprio arquivo, em `_frases_importantes_marcadas_antes`.
+- **Uma rodada só,** com a melhor configuração da PEC 319: `scripts/analise_pec/rodar.py --rodada votacao --whitening --pec PEC_34_2024` (1.000 leituras com dropout, 116 s na RTX 4050, com a cópia do modelo no PC porque o pendrive estava fora). Resultado em `instance/analise_pec/rodadas/2026-11-15_1833_votacao_whitening/`.
+- **Desta vez o grupo concorda** (os 4 leitores escolheram F2 e F5; todos têm o tema oficial entre os 3 principais), e **a Roberta continua longe:** 0 ou 1 de 5 frases com cada leitor, 0 de 3 temas e tema oficial em 11º de 32. Ela segue boa em reconhecer de qual PEC um resumo trata (teste C) e em completar lacunas (teste E).
+- **Estudo encerrado.** Detalhes na decisão 12 de `docs/LEITURA_ENCADEADA.md`. No portal, a RoBERTaLexPT entra pela busca e pela sugestão de tema por exemplos, não pela leitura de frases. Treino para a leitura só com a confirmação do grupo (23.5).
+
+### 25.8 Registro que a Câmara não tem mais (HTTP 404)
+- **O problema (23.12):** um registro que aparece na listagem ou já está no banco, mas cujo detalhe dá 404, era tentado de novo em toda coleta e deixava a coleta `parcial`. Foram 30 votações de 10/11 (706 erros no log até saírem da janela) e 2 eventos de 11/11 (83260 e 82251, "Convocada", 126 erros até 15/11; como não estão encerrados, seriam recoletados por 30 dias). Esse `parcial` escondia o `parcial` por tempo que a 23.11 manda observar.
+- **A regra:** em `Execucao.processar` (`desperta/coletor/execucao.py`), 404 no **detalhe do próprio item** (a URL termina no id) vira aviso `nao_encontrado_na_camara` em `log_sistema`, com tabela e id, e não conta como falha nem como queda da API. Nas `COLETOR_AUSENTE_HORAS` seguintes (padrão 24; 0 desliga), o item é pulado sem chamada; depois, é tentado de novo, para o caso de a Câmara corrigir. 404 num filho (`/pauta`, `/votos`…) continua sendo falha, porque o item existe. O `fim_coleta` mostra `nao_encontrados_na_camara` e `pulados_por_404_recente`, e o `flask coletar relatorio` conta os avisos por tipo.
+- Não muda o banco: a anotação é o próprio log. Os registros já gravados (como os 2 eventos) continuam no banco como a Câmara mandou da última vez.
+- 799 testes.
+
+### 25.9 Triagem dos rascunhos de situação com o texto errado (15/11)
+- **Escolha do Lucas:** apagar os rascunhos de "mudança de situação" escritos antes da 25.1 e manter, com título e resumo reescritos a partir do passo do dia, só os que contam um fato (parecer do relator, prejudicialidade, urgência, aprovação ou votação no Plenário), um por proposição e só se a votação do mesmo dia ainda não tem rascunho. Script: `scripts/triagem/situacao_errada.py` (`--admin <e-mail> [--simular]`).
+- **Tudo pelos services, assinado pelo primeiro admin do banco real** (criado em 15/11 com `flask equipe criar-admin`): as edições ficam em `noticia_revisao` (duas linhas por notícia: o que mudou, do service, e o motivo, do script) e as exclusões em `log_sistema` (`excluir_noticia`), com as `geracao_ia` mantidas e `noticia_id` nulo (10.4).
+- **No banco real (20h30, backup `instance/desperta-antes-triagem.db`):** de 2.877 rascunhos, 148 reescritos (133 pareceres, 13 prejudicialidades e 2 urgências) e 2.729 apagados (2.396 passos burocráticos, 311 com a votação do dia já em rascunho e 22 passos mais antigos da mesma proposição). Ficaram 1.979 rascunhos. `flask banco verificar`: 22 aprovados, 0 falhas. Rodar de novo não apaga nada.
+

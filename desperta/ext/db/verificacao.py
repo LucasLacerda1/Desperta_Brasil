@@ -189,7 +189,9 @@ def _indices_de_busca():
     tabelas = _tabelas_do_banco()
     pares = (
         ("noticia_fts_docsize", "noticia", "Busca de texto das noticias (FTS5)"),
+        ("noticia_fts_raiz_docsize", "noticia", "Busca das noticias pela raiz das palavras (FTS5)"),
         ("trecho_fts_docsize", "trecho_rag", "Busca por palavras dos trechos (FTS5)"),
+        ("trecho_fts_raiz_docsize", "trecho_rag", "Busca dos trechos pela raiz das palavras (FTS5)"),
         ("vec_trecho_rowids", "trecho_rag", "Indice vetorial dos trechos (sqlite-vec)"),
     )
     for indice, tabela, nome in pares:

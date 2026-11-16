@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 
 
 class Config:
@@ -8,6 +9,24 @@ class Config:
     SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
     DEBUG = True
 
+    # Decisao 10.5: CORS so para o front-end conhecido, com o cookie de sessao
+    CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",") if o.strip()]
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    # Em producao (HTTPS), SESSION_COOKIE_SECURE=1
+    SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "0") == "1"
+    # Login da equipe: a sessao dura um turno de trabalho
+    PERMANENT_SESSION_LIFETIME = timedelta(hours=int(os.getenv("SESSAO_HORAS", "8")))
+    # RNF10: depois destas falhas na janela, o login responde 429 (por e-mail e, x4, por IP)
+    LOGIN_TENTATIVAS = int(os.getenv("LOGIN_TENTATIVAS", "5"))
+    LOGIN_JANELA_MIN = int(os.getenv("LOGIN_JANELA_MIN", "15"))
+    # Limite de requisicoes por endereco (IP) nas rotas da API (RNF10, decisao 25.4); 0 desliga
+    LIMITE_JANELA_S = int(os.getenv("LIMITE_JANELA_S", "60"))
+    LIMITE_GERAL = int(os.getenv("LIMITE_GERAL", "600"))
+    LIMITE_BUSCA = int(os.getenv("LIMITE_BUSCA", "60"))
+    # RNF05: sem coleta concluida ha mais que isto, o portal avisa que os dados podem estar desatualizados
+    AVISO_DESATUALIZADO_HORAS = int(os.getenv("AVISO_DESATUALIZADO_HORAS", "6"))
+
     # Fases seguintes (ja deixar declarado)
     CAMARA_API_URL = os.getenv("CAMARA_API_URL", "https://dadosabertos.camara.leg.br/api/v2")
     CAMARA_TIMEOUT = int(os.getenv("CAMARA_TIMEOUT", "30"))
@@ -15,6 +34,8 @@ class Config:
     # Decisoes 14.2 e 15.3: limites da rotina horaria
     HORARIA_ORCAMENTO_MIN = int(os.getenv("HORARIA_ORCAMENTO_MIN", "20"))
     HORARIA_RECONFERIR_HORAS = int(os.getenv("HORARIA_RECONFERIR_HORAS", "6"))
+    # Decisao 25.8: item que deu 404 na Camara so e pedido de novo depois disto (0 desliga)
+    COLETOR_AUSENTE_HORAS = int(os.getenv("COLETOR_AUSENTE_HORAS", "24"))
     EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "eduagarcia/RoBERTaLexPT-base")
     # Decisao 21.2: modelos em pastas simples; so a RoBERTaLexPT-base pode ficar no pendrive
     MODELOS_DIR = os.getenv("MODELOS_DIR", "instance/modelos")

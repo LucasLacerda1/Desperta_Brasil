@@ -202,6 +202,11 @@ def coletar_agendada(rotina, esperar, sem_ia):
                     f"removidos={indexacao['removidos']}"
                 )
             click.echo(f"  rascunhos: {geracao.em_texto()}")
+            if rotina == "semanal":
+                # RF07 (decisao 25.5): o relatorio dos sete dias que terminaram ontem
+                from desperta.ia import relatorio
+
+                click.echo(f"  relatorio da semana: {relatorio.em_texto(*relatorio.gerar_relatorio_semanal())}")
         click.echo(f"{_agora_texto()} {rotina}: fim em {time.monotonic() - inicio:.0f} s")
         if falha:
             raise click.ClickException(f"A rotina {rotina} parou com erro: {falha}")

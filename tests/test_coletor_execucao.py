@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta
 import pytest
 
 from desperta.coletor.cliente import ErroAPI
-from desperta.coletor.execucao import Execucao, MAX_FALHAS_API_SEGUIDAS
+from desperta.coletor.execucao import ACAO_AUSENTE, Execucao, MAX_FALHAS_API_SEGUIDAS
 from desperta.coletor.janelas import janela_incremental
 from desperta.parlamentares.models import Bloco, BlocoPartido, Legislatura, Partido
 from desperta.sistema.models import Coleta, LogSistema
@@ -197,6 +197,96 @@ def test_processar_para_depois_de_varias_falhas_seguidas(db, cliente):
             execucao.processar("proposicao", id_item, falhar)
     assert len(tentativas) == MAX_FALHAS_API_SEGUIDAS
     assert _coleta(db).status == "erro"
+
+
+# ======================================================
+# REGISTRO QUE A CAMARA NAO TEM MAIS (404, decisao 25.8)
+# ======================================================
+URL_EVENTO = "https://dadosabertos.camara.leg.br/api/v2/eventos/83260"
+
+
+def _sumiu(url=URL_EVENTO):
+    def falhar():
+        raise ErroAPI(url, "HTTP 404", 404)
+
+    return falhar
+
+
+def _avisos_de_ausente(db):
+    return db.session.scalars(db.select(LogSistema).where(LogSistema.acao == ACAO_AUSENTE)).all()
+
+
+def test_404_no_proprio_item_e_aviso_e_nao_falha(db, cliente):
+    with _execucao(cliente, "eventos") as execucao:
+        assert execucao.processar("evento", 83260, _sumiu()) is False
+        assert execucao.processar("evento", 2, lambda: None) is True
+    coleta = _coleta(db)
+    assert coleta.status == "ok" and coleta.mensagem_erro is None
+    (aviso,) = _avisos_de_ausente(db)
+    assert (aviso.nivel, aviso.entidade, aviso.entidade_id) == ("aviso", "evento", "83260")
+    assert "HTTP 404" in aviso.descricao
+    assert db.session.scalar(db.select(LogSistema).where(LogSistema.acao == "gravar_registro")) is None
+
+
+def test_item_com_404_recente_nao_e_pedido_de_novo(db, cliente):
+    with _execucao(cliente, "eventos") as execucao:
+        execucao.processar("evento", 83260, _sumiu())
+    chamadas = []
+    with _execucao(cliente, "eventos") as execucao:
+        assert execucao.processar("evento", 83260, lambda: chamadas.append(1)) is False
+        # Outra tabela com o mesmo id nao e afetada
+        assert execucao.processar("proposicao", 83260, lambda: chamadas.append(2)) is True
+    assert chamadas == [2]
+    assert len(_avisos_de_ausente(db)) == 1
+    fim = db.session.scalars(
+        db.select(LogSistema).where(LogSistema.acao == "fim_coleta").order_by(LogSistema.id.desc())
+    ).first()
+    assert "pulados_por_404_recente=1" in fim.descricao
+    assert _coleta(db).status == "ok"
+
+
+def test_item_com_404_antigo_e_tentado_de_novo(db, cliente):
+    with _execucao(cliente, "eventos") as execucao:
+        execucao.processar("evento", 83260, _sumiu())
+    for aviso in _avisos_de_ausente(db):
+        aviso.data_hora = datetime.now() - timedelta(hours=25)
+    db.session.commit()
+    chamadas = []
+    with _execucao(cliente, "eventos") as execucao:
+        assert execucao.processar("evento", 83260, lambda: chamadas.append(1)) is True
+    assert chamadas == [1]
+
+
+def test_prazo_zero_desliga_o_pulo(app, db, cliente):
+    app.config["COLETOR_AUSENTE_HORAS"] = 0
+    with _execucao(cliente, "eventos") as execucao:
+        execucao.processar("evento", 83260, _sumiu())
+    chamadas = []
+    with _execucao(cliente, "eventos") as execucao:
+        execucao.processar("evento", 83260, lambda: chamadas.append(1))
+    assert chamadas == [1]
+
+
+def test_404_num_filho_continua_sendo_falha(db, cliente):
+    """O evento existe; so a pauta deu 404. Nao e registro sumido."""
+    with _execucao(cliente, "eventos") as execucao:
+        assert execucao.processar("evento", 83260, _sumiu(URL_EVENTO + "/pauta")) is False
+    assert _coleta(db).status == "parcial"
+    assert _avisos_de_ausente(db) == []
+
+
+def test_404_nao_conta_como_api_fora_do_ar(db, cliente):
+    tentativas = []
+
+    def sumir():
+        tentativas.append(1)
+        raise ErroAPI(f"https://dadosabertos.camara.leg.br/api/v2/eventos/{len(tentativas)}", "HTTP 404", 404)
+
+    with _execucao(cliente, "eventos") as execucao:
+        for id_item in range(1, 11):
+            execucao.processar("evento", id_item, sumir)
+    assert len(tentativas) == 10
+    assert _coleta(db).status == "ok"
 
 
 def test_coleta_interrompida_nao_conta_como_concluida(db, cliente):

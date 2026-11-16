@@ -4,6 +4,7 @@ from typing import List, Optional, TYPE_CHECKING
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from desperta.ext.db import db
+from desperta.ext.db.busca import acompanhar_pela_raiz
 
 if TYPE_CHECKING:
     from desperta.noticias.models import Noticia
@@ -161,3 +162,9 @@ class GeracaoTrecho(db.Model):
             f"<GeracaoTrecho geracao_id={self.geracao_id} "
             f"trecho_id={self.trecho_id} posicao={self.posicao}>"
         )
+
+
+# ----------------------------------------------------------
+# Busca pela raiz das palavras (decisao 25.3): o indice acompanha cada gravacao do trecho
+# ----------------------------------------------------------
+acompanhar_pela_raiz(TrechoRAG, "trecho_fts_raiz", ("texto",))

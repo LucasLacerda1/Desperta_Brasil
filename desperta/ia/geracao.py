@@ -7,7 +7,8 @@ from desperta.ext.db import db
 from desperta.noticias.models import Noticia
 from desperta.noticias.services import criar_rascunho
 from desperta.orgaos.models import Orgao
-from desperta.proposicoes.models import Proposicao, ProposicaoAutor, ProposicaoTema, Tramitacao
+from desperta.proposicoes.models import Proposicao, ProposicaoAutor, Tramitacao
+from desperta.proposicoes.services import tema_da_noticia
 from desperta.sistema.models import LogSistema
 from desperta.votacoes.models import Votacao, VotacaoProposicao
 from desperta.votacoes.services import situacao_dos_votos
@@ -39,7 +40,7 @@ def _nome_do_orgao(orgao_id, sigla):
     return orgao.nome if orgao else "órgão não informado"
 
 
-def _dados_da_proposicao(proposicao):
+def _dados_da_proposicao(proposicao, tem_tema=True):
     autores = db.session.scalars(
         db.select(ProposicaoAutor).filter_by(proposicao_id=proposicao.id).order_by(ProposicaoAutor.ordem)
     ).all()
@@ -55,6 +56,7 @@ def _dados_da_proposicao(proposicao):
         situacao=proposicao.situacao,
         regime=proposicao.regime,
         apreciacao=proposicao.apreciacao,
+        tem_tema=tem_tema,
     )
 
 
@@ -117,19 +119,6 @@ def _ler_origem(caso, ref):
     if proposicao is None:
         raise ErroDeGeracao(f"Proposicao {ref} nao encontrada.")
     return proposicao, None
-
-
-def _tema_principal(proposicao):
-    """A noticia precisa de um tema (RF05): o de maior relevancia entre os que a API mandou."""
-    cod_tema = db.session.scalar(
-        db.select(ProposicaoTema.cod_tema)
-        .filter_by(proposicao_id=proposicao.id)
-        .order_by(ProposicaoTema.relevancia.desc(), ProposicaoTema.cod_tema)
-        .limit(1)
-    )
-    if cod_tema is None:
-        raise ErroDeGeracao(f"A proposicao {proposicao.id} nao tem tema.")
-    return cod_tema
 
 
 def _entrada(caso, proposicao, votacao):
@@ -220,10 +209,11 @@ def gerar_noticia(modelo, caso, ref, gerador=None):
         gerador = gerador or criar_gerador(config["GERADOR"])
         nome, versao = gerador.nome, gerador.versao_prompt
 
-        cod_tema = _tema_principal(proposicao)
+        # 25.2 e 25.6: o tema principal, ou o tema especial quando a Camara nao informou nenhum
+        cod_tema, tem_tema = tema_da_noticia(proposicao.id)
         dados = DadosNoticia(
             caso=caso,
-            proposicao=_dados_da_proposicao(proposicao),
+            proposicao=_dados_da_proposicao(proposicao, tem_tema),
             votacao=_dados_da_votacao(votacao) if votacao else None,
             tramitacoes=_tramitacoes(proposicao.id),
         )

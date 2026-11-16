@@ -18,6 +18,7 @@ from desperta.coletor import (
     temas,
     votacoes,
 )
+from desperta.coletor.execucao import ACAO_AUSENTE
 from desperta.ext.db import db as _db
 from desperta.orgaos.models import DeputadoOrgao, Evento, Orgao, PautaItem
 from desperta.parlamentares.models import (
@@ -89,12 +90,43 @@ def test_legislaturas(db, api, cliente):
     assert legislaturas.id_atual(cliente, date(2026, 10, 30)) == 57
 
 
-def test_temas_convertem_o_codigo_e_usam_o_icone_padrao(db, api, cliente):
+def test_temas_convertem_o_codigo_e_usam_o_icone_padrao(db, api, cliente, monkeypatch):
+    # Tema que nao esta no mapa (um tema novo da Camara, por exemplo) fica com o icone padrao
+    monkeypatch.delitem(ICONES_TEMA, 34)
     api.responder("referencias/proposicoes/codTema", carregar("temas"))
     temas.coletar(cliente)
     tema = db.session.get(Tema, 34)
     assert tema.nome == "Administração Pública"
     assert tema.icone == "article"
+
+
+# Os 32 codigos de /referencias/proposicoes/codTema (conferidos no banco real em 14/11/2026)
+TEMAS_OFICIAIS = {
+    34, 35, 37, 39, 40, 41, 42, 43, 44, 46, 48, 51, 52, 53, 54, 55,
+    56, 57, 58, 60, 61, 62, 64, 66, 67, 68, 70, 72, 74, 76, 85, 86,
+}  # fmt: skip
+
+
+def test_todo_tema_oficial_tem_icone_proprio(db, api, cliente):
+    # Decisao 25.2: cada tema da Camara tem o seu icone Material Symbols, sem repetir
+    assert set(ICONES_TEMA) == TEMAS_OFICIAIS
+    assert "article" not in ICONES_TEMA.values()
+    assert len(set(ICONES_TEMA.values())) == len(TEMAS_OFICIAIS)
+    api.responder("referencias/proposicoes/codTema", carregar("temas"))
+    temas.coletar(cliente)
+    gravados = db.session.scalars(db.select(Tema)).all()
+    assert gravados and all(tema.icone == ICONES_TEMA[tema.cod_tema] for tema in gravados)
+
+
+def test_icone_novo_atualiza_o_tema_ja_gravado(db, api, cliente, monkeypatch):
+    # O banco real tinha os temas com "article": a coleta seguinte precisa trocar pelo icone do mapa
+    monkeypatch.delitem(ICONES_TEMA, 34)
+    api.responder("referencias/proposicoes/codTema", carregar("temas"))
+    temas.coletar(cliente)
+    assert db.session.get(Tema, 34).icone == "article"
+    monkeypatch.setitem(ICONES_TEMA, 34, "domain")
+    temas.coletar(cliente)
+    assert db.session.get(Tema, 34).icone == "domain"
 
 
 def test_temas_usam_o_mapa_de_icones(db, api, cliente, monkeypatch):
@@ -439,7 +471,10 @@ def test_proposicao_so_e_gravada_depois_do_detalhe(base, api, cliente):
     api.responder(f"proposicoes/{ID_PROPOSICAO}", [404])
     proposicoes.coletar(cliente, INICIO, FIM, limite_pendentes=0)
     assert _total(base, Proposicao) == 0
-    assert _ultima_coleta(base).status == "parcial"
+    # 404 no proprio detalhe: a Camara nao tem o registro, e isso e aviso, nao falha (25.8)
+    assert _ultima_coleta(base).status == "ok"
+    aviso = base.session.scalar(_db.select(LogSistema).where(LogSistema.acao == ACAO_AUSENTE))
+    assert aviso.entidade_id == str(ID_PROPOSICAO)
 
 
 def test_reprocessar_nao_duplica_nem_conta_como_novo(base, api, cliente):
@@ -780,6 +815,20 @@ def test_voto_com_falha_deixa_a_votacao_pendente(base, api, cliente):
     base.session.expire_all()
     assert base.session.get(Votacao, ID_VOTACAO).filhos_sincronizados_em is not None
     assert len(base.session.get(Votacao, ID_VOTACAO).votos) == 3
+
+
+def test_votacao_que_some_da_camara_nao_e_pedida_toda_hora(base, api, cliente):
+    """23.12: a listagem traz a votacao, mas o detalhe da 404. Aviso uma vez, e a proxima coleta pula."""
+    _responder_votacao(api)
+    api.responder(f"votacoes/{ID_VOTACAO}", 404)
+    votacoes.coletar(cliente, INICIO, FIM)
+    assert base.session.get(Votacao, ID_VOTACAO) is None
+    assert _ultima_coleta(base).status == "ok"
+
+    api.chamadas.clear()
+    votacoes.coletar(cliente, INICIO, FIM)
+    assert f"votacoes/{ID_VOTACAO}" not in api.caminhos_chamados()
+    assert _ultima_coleta(base).status == "ok"
 
 
 def test_janela_de_votacoes_e_dividida_por_ano(base, api, cliente):

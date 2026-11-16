@@ -389,13 +389,52 @@ def test_indice_de_palavras_criado_na_busca_continua_cheio_depois_dela(origem, m
     assert _referencias(services.buscar(modelo, "orcamento", modo="palavras")) == [("evento", "70001")]
 
 
-def test_reconstruir_refaz_o_indice_de_palavras(origem, modelo):
+def _linhas_nos_indices(origem):
+    contar = "SELECT (SELECT COUNT(*) FROM trecho_fts_docsize), (SELECT COUNT(*) FROM trecho_fts_raiz_docsize)"
+    return tuple(origem.session.execute(origem.text(contar)).one())
+
+
+def test_reconstruir_refaz_os_indices_de_palavras(origem, modelo):
     services.indexar(modelo)
+    total = origem.session.scalar(origem.select(origem.func.count()).select_from(TrechoRAG))
     origem.session.execute(origem.text("INSERT INTO trecho_fts(trecho_fts) VALUES ('delete-all')"))
+    origem.session.execute(origem.text("DELETE FROM trecho_fts_raiz"))
     origem.session.commit()
-    assert services.buscar(modelo, "orcamento", modo="palavras") == []
+    assert _linhas_nos_indices(origem) == (0, 0)
     services.reconstruir_indice(MODELO)
+    assert _linhas_nos_indices(origem) == (total, total)
     assert services.buscar(modelo, "orcamento", modo="palavras")
+
+
+def test_indice_das_raizes_incompleto_e_refeito_na_busca(origem, modelo):
+    # Decisao 25.3: trecho gravado por uma versao do codigo que nao mantinha o indice das raizes
+    services.indexar(modelo)
+    total = origem.session.scalar(origem.select(origem.func.count()).select_from(TrechoRAG))
+    origem.session.execute(origem.text("DELETE FROM trecho_fts_raiz WHERE rowid = (SELECT MIN(id) FROM trecho_rag)"))
+    origem.session.commit()
+    assert _linhas_nos_indices(origem) == (total, total - 1)
+    assert services.buscar(modelo, "orcamento", modo="palavras")
+    assert _linhas_nos_indices(origem) == (total, total)
+
+
+def test_busca_por_palavras_compara_as_raizes(origem, modelo):
+    # Decisao 25.3: plural, genero e conjugacao nao atrapalham, com ou sem acento
+    origem.session.get(fabricas.Evento, 70001).descricao = "Audiência sobre a vacinação de idosos"
+    origem.session.commit()
+    services.indexar(modelo)
+    for consulta in ("audiencias", "vacinar idosa", "VACINACAO"):
+        assert _referencias(services.buscar(modelo, consulta, modo="palavras"))[0] == ("evento", "70001"), consulta
+
+
+def test_indice_das_raizes_acompanha_o_trecho(origem, modelo):
+    services.indexar(modelo)
+    trecho = origem.session.scalar(origem.select(TrechoRAG).filter_by(tipo="evento", ref_id="70001"))
+    trecho.texto = "Seminário sobre merenda escolar"
+    origem.session.commit()
+    assert _referencias(services.buscar(modelo, "seminarios", modo="palavras")) == [("evento", "70001")]
+    origem.session.delete(trecho)
+    origem.session.commit()
+    assert services.buscar(modelo, "seminarios", modo="palavras") == []
 
 
 # ======================================================

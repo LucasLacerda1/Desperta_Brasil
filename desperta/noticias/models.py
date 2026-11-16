@@ -4,6 +4,7 @@ from typing import List, Optional, TYPE_CHECKING
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from desperta.ext.db import db
+from desperta.ext.db.busca import acompanhar_pela_raiz
 
 if TYPE_CHECKING:
     from desperta.auth.models import Administrador
@@ -174,3 +175,9 @@ class NoticiaRevisao(db.Model):
             f"<NoticiaRevisao id={self.id} "
             f"noticia_id={self.noticia_id} acao='{self.acao}'>"
         )
+
+
+# ----------------------------------------------------------
+# Busca pela raiz das palavras (decisao 25.3): o indice acompanha cada gravacao da noticia
+# ----------------------------------------------------------
+acompanhar_pela_raiz(Noticia, "noticia_fts_raiz", ("titulo", "resumo", "corpo"))
