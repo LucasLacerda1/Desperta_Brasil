@@ -8,10 +8,20 @@ TAMANHO_LOTE = 16
 ARQUIVOS_DO_MODELO = ("config.json", "model.safetensors", "tokenizer_config.json")
 ARQUIVOS_DO_TOKENIZADOR = (("tokenizer.json",), ("vocab.json", "merges.txt"))
 PREFERENCIAS_DE_DISPOSITIVO = ("auto", "cuda", "cpu")
+# Decisao 25.10: o e5 foi treinado com estes prefixos; sem eles, a busca piora
+PREFIXOS_E5 = {"prefixo_documento": "passage: ", "prefixo_consulta": "query: "}
 
 
-class RobertaAusente(Exception):
+class ModeloAusente(Exception):
+    """A pasta de um modelo de embeddings nao existe ou esta incompleta."""
+
+
+class RobertaAusente(ModeloAusente):
     """A pasta da RoBERTaLexPT nao existe ou esta incompleta (decisao 21.3)."""
+
+
+class E5Ausente(ModeloAusente):
+    """A pasta do e5 nao existe ou esta incompleta (decisao 25.10)."""
 
 
 class DispositivoIndisponivel(Exception):
@@ -41,15 +51,18 @@ def tamanho_em_mb(pasta):
     return sum(os.path.getsize(caminho) for caminho in caminhos if os.path.isfile(caminho)) // 1_000_000
 
 
-def salvar_modelo(nome, pasta, cache_dir):
-    """Salva em pasta simples, sem os links do cache do Hugging Face, que pendrive em exFAT ou FAT32 nao aceita."""
-    from transformers import AutoModelForMaskedLM, AutoTokenizer
+def salvar_modelo(nome, pasta, cache_dir, com_cabeca=True):
+    """
+    Salva em pasta simples, sem os links do cache do Hugging Face, que pendrive em exFAT ou FAT32 nao aceita.
+    com_cabeca: a RoBERTaLexPT guarda tambem a cabeca de preenchimento, para ficar inteira como foi
+    publicada; o e5 nao tem essa cabeca e e salvo so com o encoder.
+    """
+    from transformers import AutoModel, AutoModelForMaskedLM, AutoTokenizer
     from transformers.utils import logging
 
     logging.set_verbosity_error()
     tokenizador = AutoTokenizer.from_pretrained(nome, cache_dir=cache_dir)
-    # MaskedLM guarda tambem a cabeca de preenchimento: o modelo fica inteiro, como foi publicado
-    modelo = AutoModelForMaskedLM.from_pretrained(nome, cache_dir=cache_dir)
+    modelo = (AutoModelForMaskedLM if com_cabeca else AutoModel).from_pretrained(nome, cache_dir=cache_dir)
     os.makedirs(pasta, exist_ok=True)
     tokenizador.save_pretrained(pasta)
     modelo.save_pretrained(pasta)
@@ -102,19 +115,31 @@ def nome_do_dispositivo(dispositivo):
     return f"{dispositivo} ({torch.cuda.get_device_name(0)})"
 
 
-# === ModeloEmbedding (RoBERTaLexPT original: so faz embeddings, nao gera texto) ===
+# === ModeloEmbedding (RoBERTaLexPT original ou e5: so fazem embeddings, nao geram texto) ===
 class ModeloEmbedding:
     """
     Carregado uma vez pelo modulo de IA, em segundo plano.
     torch e transformers ficam dentro dos metodos: a API Flask nao carrega o modelo.
+    Os prefixos sao do e5 ("passage: " nos trechos, "query: " na consulta); a RoBERTa nao usa.
     """
 
-    def __init__(self, nome, pasta=None, tokenizador=None, modelo=None, dispositivo="cpu"):
+    def __init__(
+        self,
+        nome,
+        pasta=None,
+        tokenizador=None,
+        modelo=None,
+        dispositivo="cpu",
+        prefixo_documento="",
+        prefixo_consulta="",
+    ):
         self.nome = nome
         self.pasta = pasta
         self.tokenizador = tokenizador
         self.modelo = modelo
         self.dispositivo = dispositivo
+        self.prefixo_documento = prefixo_documento
+        self.prefixo_consulta = prefixo_consulta
         if tokenizador is None or modelo is None:
             self._carregar()
 
@@ -144,7 +169,14 @@ class ModeloEmbedding:
         return trechos
 
     def embutir(self, textos):
-        """Devolve um embedding por texto, na mesma ordem: 768 float32 = 3.072 bytes."""
+        """Devolve um embedding por trecho, na mesma ordem: 768 float32 = 3.072 bytes."""
+        return self._embutir([self.prefixo_documento + texto for texto in textos])
+
+    def embutir_consulta(self, consulta):
+        """O embedding da consulta da busca."""
+        return self._embutir([self.prefixo_consulta + consulta])[0]
+
+    def _embutir(self, textos):
         # Textos de tamanho parecido no mesmo lote gastam menos com preenchimento
         ordem = sorted(range(len(textos)), key=lambda posicao: len(textos[posicao]))
         resultado = [None] * len(textos)

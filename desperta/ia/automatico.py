@@ -249,16 +249,19 @@ def gerar_novos(modelo, dias=None, limite=None, simular=False, refazer_erros=Fal
 # ======================================================
 # DEPOIS DE CADA COLETA (AGENDADOR)
 # ======================================================
-def carregar_modelo_ou_nada():
+def carregar_modelo_ou_nada(qual=None):
     """
-    Decisao 21.3: sem a RoBERTaLexPT (pendrive fora), sem a placa pedida ou sem o PyTorch,
-    devolve None e deixa um aviso no log; a geracao segue so com a busca por palavras.
+    Decisao 21.3: sem o modelo (pendrive fora, no caso da RoBERTaLexPT), sem a placa pedida ou sem o
+    PyTorch, devolve None e deixa um aviso no log; a geracao segue so com a busca por palavras.
+    Decisao 25.10: qual e roberta ou e5; o padrao e o da escrita dos rascunhos (RAG_MODELO).
     """
+    from flask import current_app
+
     from . import embeddings, services
 
     try:
-        return services.carregar_modelo()
-    except embeddings.RobertaAusente:
+        return services.carregar_modelo(qual or current_app.config["RAG_MODELO"])
+    except embeddings.ModeloAusente:
         # O aviso ja foi para o log em carregar_modelo
         return None
     except (embeddings.DispositivoIndisponivel, ImportError) as erro:
@@ -270,11 +273,14 @@ def carregar_modelo_ou_nada():
 def depois_da_coleta():
     """
     Secao 6.1 e decisao 23.2: indexa o que e novo ou mudou e escreve os rascunhos dos fatos novos.
-    Sem o modelo, a indexacao fica para a proxima vez (ela e incremental pelo hash_texto).
-    Devolve (resumo da indexacao ou None, resumo da geracao).
+    Decisao 25.10: cada modelo indexa os seus trechos; sem um deles, a indexacao dele fica para a
+    proxima vez (ela e incremental pelo hash_texto) e o outro segue. A escrita usa o de RAG_MODELO.
+    Devolve ({modelo: resumo da indexacao ou None}, resumo da geracao).
     """
+    from flask import current_app
+
     from . import services
 
-    modelo = carregar_modelo_ou_nada()
-    indexacao = services.indexar(modelo) if modelo is not None else None
-    return indexacao, gerar_novos(modelo)
+    modelos = {qual: carregar_modelo_ou_nada(qual) for qual in services.MODELOS}
+    indexacoes = {qual: services.indexar(modelo) if modelo is not None else None for qual, modelo in modelos.items()}
+    return indexacoes, gerar_novos(modelos[current_app.config["RAG_MODELO"]])

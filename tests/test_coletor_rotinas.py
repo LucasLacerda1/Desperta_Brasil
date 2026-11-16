@@ -728,7 +728,8 @@ def ia_falsa(monkeypatch, comandos):
     def depois_da_coleta():
         # A IA roda ainda com a trava: a proxima coleta nao entra no meio
         chamadas.append(os.path.exists(comandos.caminho_trava))
-        return Counter(indexados=3, iguais=7), automatico.Resumo(inicio=HOJE)
+        # Decisao 25.10: um resumo por modelo; sem a RoBERTa (pendrive fora), so o e5 indexa
+        return {"roberta": None, "e5": Counter(indexados=3, iguais=7)}, automatico.Resumo(inicio=HOJE)
 
     monkeypatch.setattr(automatico, "depois_da_coleta", depois_da_coleta)
     return chamadas
@@ -745,6 +746,8 @@ def test_agendada_coleta_indexa_e_escreve_sob_a_mesma_trava(comandos, db, api, i
     assert db.session.scalars(db.select(Voto)).first() is not None
     assert ia_falsa == [True]
     assert "indexados=3" in resultado.output
+    assert "indexacao e5: indexados=3" in resultado.output
+    assert "indexacao roberta: modelo indisponivel" in resultado.output
     assert "coleta " in resultado.output and "requisicoes=" in resultado.output
     assert not os.path.exists(comandos.caminho_trava)
 

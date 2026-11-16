@@ -385,7 +385,8 @@ def banco(app, db):
                 texto="PL 1234/2024. Institui o Dia Nacional da Merenda.",
                 tokens=8,
                 embedding=bytes(3072),
-                modelo_embedding="m",
+                # O modelo da escrita (RAG_MODELO, padrao e5): a busca por palavras so olha os trechos dele (25.10)
+                modelo_embedding="intfloat/multilingual-e5-base",
                 hash_texto="a" * 64,
             ),
         ]
@@ -414,6 +415,36 @@ def test_gerar_grava_rascunho_geracao_trechos_e_fontes(banco):
     ligado = banco.session.scalar(banco.select(GeracaoTrecho).filter_by(geracao_id=geracao.id))
     assert ligado.posicao == 1 and ligado.similaridade > 0
     assert [(f.tipo, f.ref_id, f.ordem) for f in noticia.fontes] == [("proposicao", "2310837", 1)]
+    # Sem modelo, a geracao diz que a busca foi so por palavras (22.5 e 25.10)
+    assert geracao.modelo_embedding == "nenhum (busca so por palavras)"
+
+
+def test_busca_por_palavras_nao_mistura_os_trechos_dos_dois_modelos(app, banco):
+    """Decisao 25.10: o mesmo texto existe para a RoBERTa e para o e5; so os do modelo da escrita entram."""
+    banco.session.add(
+        TrechoRAG(
+            tipo="proposicao",
+            ref_id="2310837",
+            parte=1,
+            texto="PL 1234/2024. Institui o Dia Nacional da Merenda.",
+            tokens=8,
+            embedding=bytes(3072),
+            modelo_embedding=app.config["EMBEDDING_MODEL"],
+            hash_texto="a" * 64,
+        )
+    )
+    banco.session.commit()
+    geracao, _ = _gerar()
+    usados = banco.session.scalars(banco.select(GeracaoTrecho).filter_by(geracao_id=geracao.id)).all()
+    assert [banco.session.get(TrechoRAG, u.trecho_id).modelo_embedding for u in usados] == [app.config["E5_MODEL"]]
+    app.config["RAG_MODELO"] = "roberta"
+    banco.session.get(fabricas.Proposicao, 2310837).data_status = datetime(2025, 1, 1)
+    banco.session.commit()
+    outra, _ = _gerar("situacao")
+    usados = banco.session.scalars(banco.select(GeracaoTrecho).filter_by(geracao_id=outra.id)).all()
+    assert [banco.session.get(TrechoRAG, u.trecho_id).modelo_embedding for u in usados] == [
+        app.config["EMBEDDING_MODEL"]
+    ]
 
 
 def test_gerar_votacao_tem_a_votacao_como_fonte_principal(banco):
@@ -513,13 +544,20 @@ def test_gerador_da_configuracao_invalido_tambem_grava_erro(app, banco):
     assert banco.session.get(GeracaoIA, geracao.id).modelo_geracao == "roberta"
 
 
-def test_sem_o_pendrive_o_comando_gera_so_com_palavras(app, banco, tmp_path):
-    app.config["ROBERTA_DIR"] = str(tmp_path / "pendrive")
+@pytest.mark.parametrize("qual,variavel", [("e5", "E5_DIR"), ("roberta", "ROBERTA_DIR")])
+def test_sem_o_modelo_da_escrita_o_comando_gera_so_com_palavras(app, banco, tmp_path, qual, variavel):
+    """Decisao 21.3 (pendrive fora, no caso da RoBERTa) e 25.10: vale para o modelo de RAG_MODELO."""
+    app.config["RAG_MODELO"] = qual
+    app.config[variavel] = str(tmp_path / "sem-modelo")
+    banco.session.execute(banco.update(TrechoRAG).values(modelo_embedding=app.config["EMBEDDING_MODEL"]))
+    if qual == "e5":
+        banco.session.execute(banco.update(TrechoRAG).values(modelo_embedding=app.config["E5_MODEL"]))
+    banco.session.commit()
     resultado = app.test_cli_runner().invoke(args=["ia", "gerar", "nova", "2310837"])
     assert resultado.exit_code == 0, resultado.output
     assert "Usando só a busca por palavras" in resultado.output
     assert "Projeto institui" in resultado.output
-    assert banco.session.scalar(banco.select(LogSistema).filter_by(acao="roberta_ausente"))
+    assert banco.session.scalar(banco.select(LogSistema).filter_by(acao=f"{qual}_ausente"))
     assert banco.session.scalar(banco.select(GeracaoTrecho))
 
 

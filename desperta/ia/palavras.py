@@ -109,13 +109,26 @@ def _para_match(consulta):
     return " OR ".join(f'"{raiz}"' for raiz in raizes_da_consulta(consulta))
 
 
-def buscar(consulta, k, candidatos=None):
-    """Devolve os ids dos trechos, do mais relevante ao menos; candidatos e um select de ids."""
+# Decisao 25.10: o filtro por modelo (e por tipo ou periodo) entra por um JOIN com trecho_rag. Assim o
+# SQLite faz o MATCH primeiro e confere o resto pela chave primaria; com rowid IN direto no FTS5, ele
+# avaliava o MATCH trecho a trecho (de 2 a 44 s por busca no banco real, contra menos de 0,1 s).
+_trecho = db.table("trecho_rag", db.column("id"), db.column("modelo_embedding"))
+
+
+def buscar(consulta, k, candidatos=None, modelo=None):
+    """
+    Devolve os ids dos trechos, do mais relevante ao menos; candidatos e um select de ids.
+    modelo: so os trechos desse modelo de embeddings (trecho_rag.modelo_embedding).
+    """
     match = _para_match(consulta)
     if not match:
         return []
     busca = db.select(_indice.c.rowid).where(text("trecho_fts_raiz MATCH :consulta").bindparams(consulta=match))
-    if candidatos is not None:
-        busca = busca.where(_indice.c.rowid.in_(candidatos))
+    if modelo is not None or candidatos is not None:
+        busca = busca.select_from(_indice.join(_trecho, _trecho.c.id == _indice.c.rowid))
+        if modelo is not None:
+            busca = busca.where(_trecho.c.modelo_embedding == modelo)
+        if candidatos is not None:
+            busca = busca.where(_trecho.c.id.in_(candidatos))
     busca = busca.order_by(db.func.bm25(db.literal_column("trecho_fts_raiz"))).limit(k)
     return list(db.session.scalars(busca))

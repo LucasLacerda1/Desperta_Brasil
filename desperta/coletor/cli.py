@@ -193,14 +193,15 @@ def coletar_agendada(rotina, esperar, sem_ia):
         if not sem_ia:
             from desperta.ia import automatico
 
-            indexacao, geracao = automatico.depois_da_coleta()
-            if indexacao is None:
-                click.echo("  indexacao: modelo indisponivel, fica para a proxima vez (ver log_sistema)")
-            else:
-                click.echo(
-                    f"  indexacao: indexados={indexacao['indexados']} iguais={indexacao['iguais']} "
-                    f"removidos={indexacao['removidos']}"
-                )
+            indexacoes, geracao = automatico.depois_da_coleta()
+            for qual, indexacao in indexacoes.items():
+                if indexacao is None:
+                    click.echo(f"  indexacao {qual}: modelo indisponivel, fica para a proxima vez (ver log_sistema)")
+                else:
+                    click.echo(
+                        f"  indexacao {qual}: indexados={indexacao['indexados']} iguais={indexacao['iguais']} "
+                        f"removidos={indexacao['removidos']}"
+                    )
             click.echo(f"  rascunhos: {geracao.em_texto()}")
             if rotina == "semanal":
                 # RF07 (decisao 25.5): o relatorio dos sete dias que terminaram ontem

@@ -271,6 +271,7 @@ def test_sem_o_tema_do_relatorio_a_geracao_fica_registrada_como_erro(banco):
     geracao, novo = relatorio.gerar_relatorio_semanal(hoje=HOJE)
     assert novo is False and geracao.status == "erro" and geracao.noticia_id is None
     assert "tema 53" in geracao.erro and _contar(banco, Noticia) == 0
+    assert geracao.modelo_embedding == "nenhum (relatorio sem busca)"
     assert relatorio.em_texto(geracao, novo).startswith("erro na geracao")
 
 
