@@ -1,7 +1,7 @@
 # ----------------------------------------------------------
 # Situacao explicada (decisao 25.13)
 # Para cada codigo de situacao da Camara (statusProposicao.codSituacao), uma explicacao
-# em linguagem popular. RASCUNHO do Claude Code: o grupo revisa o texto.
+# em linguagem popular. Escrito pelo Claude Code e aprovado pelo Lucas em 17/11/2026.
 # O nome mostrado ao leitor e sempre o que a Camara mandou; a explicacao so acompanha.
 # Codigo fora do dicionario: mostra so o nome da Camara, sem explicacao inventada,
 # e a geracao grava um aviso no log (situacao_desconhecida).
