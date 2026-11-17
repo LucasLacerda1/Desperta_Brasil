@@ -1761,7 +1761,7 @@ Pedido do Lucas, para quem pega o projeto pelo GitHub instalar tudo com um coman
 - **A regra:** `situacao_mudou()` em `desperta/proposicoes/services.py`. Há mudança quando a Câmara informa uma situação (`cod_situacao`) e ela é diferente da última informada nas tramitações anteriores ao dia do status. Sem nenhuma anterior, é a primeira situação informada. Sem situação informada, não há mudança. `fatos_da_janela` (`desperta/ia/automatico.py`) usa essa regra. Não muda o banco.
 - **O texto:** se a situação não foi informada (geração manual com `flask ia gerar`), o `GeradorFrases` conta o último passo e escreve "A situação do PL … não foi informada pela Câmara". A descrição de um passo nunca aparece como situação.
 - **Efeito medido no banco real (só leitura):** na janela desde 05/11, os fatos de situação caem de 2.765 para 552. 734 testes.
-- **Rascunhos antigos com o texto errado:** resolvidos pela triagem de 15/11 (25.9). **Em aberto (grupo):** as regras de seleção propostas na análise de 14/11 (marcos, votação de mérito no Plenário, agrupamento por proposição e limite diário), que mudam a escolha de 07/11 (23.2).
+- **Rascunhos antigos com o texto errado:** resolvidos pela triagem de 15/11 (25.9). ~~**Em aberto (grupo):** as regras de seleção propostas na análise de 14/11.~~ **Decidido em 25.12:** continua a escolha de 07/11 (23.2), tudo vira rascunho.
 
 ### 25.2 Tema principal da notícia e ícones dos temas
 - **O que é a relevância na API:** `proposicao_tema.relevancia` é a posição do tema na lista da Câmara. O 0 é o primeiro, o tema principal; os seguintes vêm com 1, 2, 3… A Câmara ordena assim desde julho de 2026 (99% das proposições novas com dois ou mais temas). Proposição mais antiga vem com todos os temas em 0, sem ordem.
@@ -1843,4 +1843,9 @@ Pedido do Lucas, depois do panorama do código. Nada muda no comportamento do po
 - **Black:** os 7 arquivos que estavam fora do padrão foram formatados (só aparência). O `.flake8` passou a ignorar o E203, a única regra em que o Black e o flake8 discordam (espaço antes do `:` em fatias), como manda a documentação do Black. `invoke format` e `invoke lint` concordam.
 - README: a frase "proposição sem tema não gera notícia", desatualizada desde a 25.6, foi corrigida.
 - 818 testes, sem nenhum aviso.
+
+### 25.12 Regras de seleção dos rascunhos: continua tudo (16/11)
+- **A medição** (banco real, 03 a 16/11, `fatos_da_janela`): hoje entram em média 146 rascunhos por dia útil (351 no pior dia). As regras propostas na 25.1 baixariam para 49 (marcos de situação + votação de mérito no Plenário + todas as novas), 26 (o mesmo, sem PDL novo), 25 (com um rascunho por proposição por dia), 16 (só PEC, PLP e MPV novas) ou 56 (com os pareceres aprovados em comissão). Dos fatos das duas semanas, 504 eram passos de situação sem marco, 296 pareceres de comissão, 226 PDLs novos e 141 votações do Plenário que não eram de mérito (requerimentos, urgências e mudança de regime).
+- **Decisão do Lucas: cenário A, tudo continua virando rascunho**, como na escolha de 07/11 (23.2) com a correção da 25.1: toda votação que afeta um tipo acompanhado (Plenário e comissões), toda mudança de situação de verdade e toda proposição nova. Os 2.098 rascunhos da fila seguem a mesma regra e ficam todos. Nada muda no código.
+- **O que isso pede da revisão:** o volume continua alto, e a área administrativa já aceita ações em lote (até 200 por vez, 24.2). Se o grupo quiser rever, as regras e os números estão aqui.
 
