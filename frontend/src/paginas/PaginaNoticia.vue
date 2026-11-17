@@ -18,8 +18,28 @@ const carregando = ref(true)
 const erro = ref('')
 const avisoOuvir = ref(false)
 
-// O corpo vem em texto simples: paragrafos separados por linha em branco.
-const paragrafos = computed(() => (noticia.value?.corpo || '').split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean))
+// O corpo vem dividido em secoes (25.14): cada uma com titulo e texto. Dentro do texto,
+// "### " abre uma atualizacao e linhas com "- " viram lista.
+function blocos(texto) {
+  const saida = []
+  for (const parte of (texto || '').split(/\n\s*\n/)) {
+    const linhas = parte.split('\n').map((l) => l.trim()).filter(Boolean)
+    if (!linhas.length) continue
+    if (linhas[0].startsWith('### ')) {
+      saida.push({ tipo: 'sub', texto: linhas.shift().slice(4) })
+      if (!linhas.length) continue
+    }
+    if (linhas.every((l) => l.startsWith('- '))) saida.push({ tipo: 'lista', itens: linhas.map((l) => l.slice(2)) })
+    else saida.push({ tipo: 'p', texto: linhas.join('\n') })
+  }
+  return saida
+}
+const secoes = computed(() => (noticia.value?.secoes || [{ titulo: null, texto: noticia.value?.corpo }])
+  .map((s) => ({ ...s, blocos: blocos(s.texto), lacunas: s.titulo === 'O que a Câmara não informou', atualizacoes: s.titulo === 'Atualizações' })))
+// Endereco no meio do texto vira link
+function partes(texto) {
+  return texto.split(/(https?:\/\/\S+[^\s.,;)])/).map((t, i) => ({ link: i % 2 === 1, t }))
+}
 
 async function carregar(slug) {
   carregando.value = true
@@ -74,6 +94,7 @@ watch(() => rota.params.slug, (slug) => slug && carregar(slug), { immediate: tru
             <span class="texto-2 datas">
               Publicada em {{ dataHora(noticia.publicado_em) }}
               <template v-if="noticia.alterado_em"> · alterada em {{ dataHora(noticia.alterado_em) }}</template>
+              <span v-if="noticia.atualizada" class="selo-atualizada"><span class="icone" aria-hidden="true">update</span>{{ noticia.atualizacoes }} {{ noticia.atualizacoes === 1 ? 'atualização' : 'atualizações' }}</span>
             </span>
           </div>
           <p v-if="avisoOuvir" class="texto-2 aviso" role="status">
@@ -81,7 +102,17 @@ watch(() => rota.params.slug, (slug) => slug && carregar(slug), { immediate: tru
           </p>
 
           <div class="corpo serifa">
-            <p v-for="(p, i) in paragrafos" :key="i">{{ p }}</p>
+            <section v-for="(s, i) in secoes" :key="i" class="secao" :class="{ lacunas: s.lacunas, atualizacoes: s.atualizacoes }">
+              <h2 v-if="s.titulo" class="titulo-secao">
+                <span v-if="s.lacunas" class="icone" aria-hidden="true">report</span>
+                <span v-else-if="s.atualizacoes" class="icone" aria-hidden="true">update</span>{{ s.titulo }}
+              </h2>
+              <template v-for="(b, j) in s.blocos" :key="j">
+                <h3 v-if="b.tipo === 'sub'" class="sub">{{ b.texto }}</h3>
+                <ul v-else-if="b.tipo === 'lista'"><li v-for="(it, k) in b.itens" :key="k">{{ it }}</li></ul>
+                <p v-else><template v-for="(x, k) in partes(b.texto)" :key="k"><a v-if="x.link" :href="x.t" target="_blank" rel="noopener">{{ x.t }}</a><template v-else>{{ x.t }}</template></template></p>
+              </template>
+            </section>
           </div>
 
           <SecaoVotacao v-if="votacao" :votacao="votacao" />
@@ -127,6 +158,15 @@ h1 { margin: 0; font-size: clamp(30px, 4.5vw, 44px); line-height: 1.15; font-wei
 
 .corpo { font-size: 19px; line-height: 1.7; display: flex; flex-direction: column; gap: 16px; }
 .corpo p { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
+.secao { display: flex; flex-direction: column; gap: 12px; }
+.titulo-secao { font-family: inherit; font-size: 22px; margin: 12px 0 0; display: flex; align-items: center; gap: 8px; }
+.titulo-secao .icone { color: var(--link); font-size: 24px; }
+.sub { font-size: 17px; margin: 8px 0 0; color: var(--texto-2); }
+.corpo ul { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; }
+.secao.lacunas { border-left: 4px solid var(--aviso, var(--principal)); padding: 4px 0 4px 18px; font-size: 17px; }
+.secao.atualizacoes { border-top: 1px solid var(--linha); padding-top: 8px; }
+.selo-atualizada { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; padding: 2px 10px; border-radius: 999px; background: var(--faixa); color: var(--texto); font-size: 13px; }
+.selo-atualizada .icone { font-size: 16px; }
 
 .outras { display: flex; flex-direction: column; gap: 10px; font-size: 15px; }
 .outras h2 { margin: 0; font-size: 16px; }

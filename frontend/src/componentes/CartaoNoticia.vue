@@ -21,6 +21,7 @@ defineProps({
     <p class="meta texto-2">
       Publicada em {{ data(noticia.publicado_em) }}
       <template v-if="noticia.alterado_em"> · alterada em {{ data(noticia.alterado_em) }}</template>
+      <template v-if="noticia.atualizada"> · <strong>atualizada em {{ data(noticia.ultima_atualizacao) }}</strong></template>
     </p>
   </article>
 </template>

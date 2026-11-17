@@ -25,8 +25,13 @@ const fontes = computed(() =>
         <span class="texto-2">(gerador: {{ feita.gerador || 'não registrado' }})</span>.
       </li>
       <li v-else>Escrita pela equipe do Desperta Brasil, com os dados da Câmara.</li>
-      <li>
-        Revisada e publicada por <strong>{{ feita.publicada_por || 'equipe' }}</strong>
+      <li v-if="feita.publicada_automaticamente">
+        Publicada automaticamente<template v-if="feita.publicada_em"> em {{ dataHora(feita.publicada_em) }}</template>:
+        passou na conferência da planta da notícia (estrutura padrão, linguagem neutra, sem falha grave nos dados da Câmara).
+        A equipe pode revisar ou retirar a qualquer momento.
+      </li>
+      <li v-else>
+        Revisada e publicada pela equipe (<strong>{{ feita.publicada_por || 'equipe' }}</strong>)
         <template v-if="feita.publicada_em"> em {{ dataHora(feita.publicada_em) }}</template>.
       </li>
       <li v-if="noticia.alterado_em">Texto alterado pela última vez em {{ dataHora(noticia.alterado_em) }}.</li>

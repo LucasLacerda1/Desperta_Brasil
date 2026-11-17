@@ -24,6 +24,7 @@ const CASOS = [
   { valor: 'votacao', nome: 'Votações' },
   { valor: 'situacao', nome: 'Mudanças de situação' },
   { valor: 'nova', nome: 'Proposições novas' },
+  { valor: 'boletim', nome: 'Boletins' },
 ]
 const filtros = reactive({ status: 'rascunho', caso: '', tema: '', pagina: 1 })
 const lista = ref({ itens: [], total: 0, paginas: 1, pagina: 1 })
@@ -236,7 +237,10 @@ function mudarPagina(p) {
               <input v-model="marcados" type="checkbox" :value="n.id" :aria-label="`Selecionar ${n.titulo}`">
               <button type="button" class="abrir" @click="abrir(n.id)">
                 <span class="titulo">{{ n.titulo }}</span>
+                <span v-if="n.prioridade?.motivos?.length" class="motivo texto-2">{{ n.prioridade.motivos[0] }}</span>
                 <span class="meta texto-2">
+                  <span v-if="n.prioridade" class="prio" :class="n.prioridade.nivel" :title="n.prioridade.motivos.join('; ')">Prioridade {{ { alta: 'alta', media: 'média', baixa: 'baixa' }[n.prioridade.nivel] }}</span>
+                  <span v-if="n.conferencia && !n.conferencia.passou" class="falha" :title="n.conferencia.falhas.join('; ')">Não passou na planta</span>
                   <span v-if="n.origem === 'equipe'" class="origem">Escrita pela equipe</span>
                   <span>{{ n.tema?.nome }}</span>
                   <span>{{ dataHora(n.criado_em) }}</span>
@@ -400,6 +404,12 @@ input[type='checkbox'] { width: 18px; height: 18px; margin: 3px 0 0; accent-colo
 .abrir:hover .titulo { text-decoration: underline; }
 .titulo { font-weight: 500; line-height: 1.35; }
 .meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; }
+.prio { padding: 0 8px; border-radius: 999px; font-weight: 600; }
+.prio.alta { background: var(--principal); color: var(--sobre-principal, #fff); }
+.prio.media { background: var(--faixa); color: var(--texto); }
+.prio.baixa { border: 1px solid var(--linha); }
+.falha { color: var(--erro, var(--texto)); font-weight: 600; }
+.motivo { font-size: 13px; }
 .origem { color: var(--destaque); font-weight: 500; }
 .pe-lista { padding: 12px 16px; }
 
