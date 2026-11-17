@@ -85,8 +85,8 @@ def test_fatos_da_mesma_proposicao_viram_uma_noticia_com_o_original_no_topo(banc
     corpo = votacao.corpo
     assert corpo.count("## Atualizações") == 1
     atualizacao = corpo.split("## Atualizações\n\n")[1]
-    assert atualizacao.startswith("### 20/05/2024: Câmara aprova projeto de lei que institui o Dia Nacional da Merenda")
-    assert "O Plenário aprovou, na segunda-feira (20/05/2024), o PL 1234/2024." in atualizacao
+    assert atualizacao.startswith("### 20/05/2024: Câmara aprova PL 1234/2024, que institui o Dia Nacional da Merenda")
+    assert "O Plenário da Câmara aprovou, na segunda-feira (20/05/2024), o projeto de lei PL 1234/2024." in atualizacao
     assert "Resultado: aprovado." in atualizacao
     assert [(f.tipo, f.ref_id) for f in votacao.fontes] == [
         ("proposicao", "2310837"),
@@ -135,7 +135,7 @@ def test_noticia_publicada_ganha_rascunho_de_atualizacao_que_entra_ao_publicar(b
 
     rascunho = _gerar("votacao", "2310837-8")
     assert rascunho.id != original.id and rascunho.status == "rascunho"
-    assert rascunho.titulo.startswith("Atualização: Câmara aprova projeto de lei")
+    assert rascunho.titulo.startswith("Atualização: Câmara aprova PL")
     assert rascunho.corpo.startswith("### 20/05/2024: ")
     assert "## Atualizações" not in original.corpo
     detalhe = como_detalhe_de_revisao(rascunho)
@@ -325,7 +325,7 @@ def test_api_avisa_a_atualizacao_e_mantem_titulo_e_tema(app, banco, admin):
     assert (depois["atualizada"], depois["atualizacoes"], depois["ultima_atualizacao"]) == (True, 1, "20/05/2024")
     [atualizacao] = depois["lista_de_atualizacoes"]
     assert atualizacao["data"] == "20/05/2024"
-    assert atualizacao["titulo"].startswith("Câmara aprova projeto de lei")
-    assert atualizacao["texto"].startswith("O Plenário aprovou")
+    assert atualizacao["titulo"].startswith("Câmara aprova PL")
+    assert atualizacao["texto"].startswith("O Plenário da Câmara aprovou")
     cartao = cliente.get("/api/noticias").get_json()["itens"][0]
     assert (cartao["titulo"], cartao["atualizada"]) == (titulo, True)

@@ -252,6 +252,15 @@ def boletins(dia, simular):
         raise click.ClickException(f"Geracao {erros[0].id} com erro: {erros[0].erro}")
 
 
+@ia.command("publicar-automaticas")
+@click.option("--modo", type=click.Choice(["ensaio", "ligada"]), help="Padrao: PUBLICACAO_AUTOMATICA.")
+def publicar_automaticas(modo):
+    """Decisao 25.18: confere os rascunhos na planta da noticia e publica (ligada) ou so conta (ensaio)."""
+    from desperta.noticias import planta
+
+    click.echo(planta.publicar_automaticas(modo).em_texto())
+
+
 @ia.command("reconstruir")
 def reconstruir():
     """Refaz os indices vetoriais (um por modelo) e os de palavras a partir de trecho_rag, sem gerar embeddings."""

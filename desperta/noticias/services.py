@@ -234,8 +234,14 @@ def como_foi_feita(noticia):
     revisoes = db.session.scalar(
         db.select(db.func.count()).select_from(NoticiaRevisao).filter_by(noticia_id=noticia.id)
     )
+    from .planta import publicada_pelo_sistema
+
+    automatica = noticia.status == "publicada" and publicada_pelo_sistema(noticia)
     return {
         "origem": noticia.origem,
+        # 25.18: transparencia sobre quem publicou (a planta pode publicar sozinha)
+        "publicada_automaticamente": automatica,
+        "revisada_pela_equipe": noticia.status == "publicada" and not automatica,
         "gerador": geracao.modelo_geracao if geracao else None,
         "revisoes": revisoes,
         "publicada_por": publicou.nome if publicou else None,
@@ -502,6 +508,13 @@ def listar_para_revisao(
     return [por_id[noticia_id] for noticia_id in pagina_ids], len(candidatas)
 
 
+def conferencias(noticias):
+    """{noticia_id: {"passou", "falhas", "avisos"}} da planta da noticia (25.18); so a equipe ve."""
+    from .planta import conferir
+
+    return {noticia.id: conferir(noticia).como_dict() for noticia in noticias}
+
+
 def prioridades(noticias):
     """{noticia_id: {"nivel", "motivos"}} (interno, so a equipe ve; 25.15)."""
     from . import prioridade as regras
@@ -509,11 +522,13 @@ def prioridades(noticias):
     return {noticia_id: valor.como_dict() for noticia_id, valor in regras.calcular(noticias).items()}
 
 
-def como_item_de_revisao(noticia, prioridade=None):
+def como_item_de_revisao(noticia, prioridade=None, conferencia=None):
     dados = como_cartao(noticia)
     dados.update({"status": noticia.status, "origem": noticia.origem, "criado_em": iso(noticia.criado_em)})
     if prioridade is not None:
         dados["prioridade"] = prioridade
+    if conferencia is not None:
+        dados["conferencia"] = conferencia
     return dados
 
 
@@ -525,6 +540,8 @@ def como_detalhe_de_revisao(noticia):
     dados = como_item_de_revisao(noticia, prioridades([noticia])[noticia.id])
     # 25.16: rascunho de atualizacao mostra qual noticia publicada ele atualiza
     dados["atualiza"] = viva.como_dict_da_original(noticia)
+    # 25.18: o que a planta da noticia achou (passou = pode sair sozinha)
+    dados["conferencia"] = conferencias([noticia])[noticia.id]
     dados.update(
         {
             "corpo": noticia.corpo,

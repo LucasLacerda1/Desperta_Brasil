@@ -28,6 +28,8 @@ class Config:
     AVISO_DESATUALIZADO_HORAS = int(os.getenv("AVISO_DESATUALIZADO_HORAS", "6"))
     # Decisao 25.13: proposicao sem tema ha mais dias que isto sobe de nivel (atraso -> ocultacao)
     LACUNA_ATRASO_DIAS = int(os.getenv("LACUNA_ATRASO_DIAS", "30"))
+    # Decisao 25.18: ensaio (so marca na fila), ligada (publica o que passa na planta) ou desligada
+    PUBLICACAO_AUTOMATICA = os.getenv("PUBLICACAO_AUTOMATICA", "ensaio")
 
     # Fases seguintes (ja deixar declarado)
     CAMARA_API_URL = os.getenv("CAMARA_API_URL", "https://dadosabertos.camara.leg.br/api/v2")

@@ -257,6 +257,45 @@ def _nome_com_artigo(proposicao):
     return f"A proposição {_identificacao(proposicao)}"
 
 
+def _explicado(proposicao, maiuscula=False):
+    """
+    Planta da noticia (25.18): a sigla explicada na primeira vez, para o brasileiro comum:
+    "o projeto de lei PL 1/2024", "a proposta de emenda à Constituição PEC 2/2023".
+    """
+    if proposicao.sigla in TIPOS:
+        extenso, artigo, _ = _tipo(proposicao)
+        texto = f"{artigo} {extenso} {_identificacao(proposicao)}"
+    else:
+        texto = f"a proposição {_identificacao(proposicao)}"
+    return texto[:1].upper() + texto[1:] if maiuscula else texto
+
+
+def _de_explicado(proposicao):
+    """ "do projeto de lei PL 1/2024", "da proposta de emenda à Constituição PEC 2/2023"."""
+    texto = _explicado(proposicao)
+    return f"d{texto}" if texto[:2] in ("o ", "a ") else f"de {texto}"
+
+
+# Autor que nao e pessoa: "do Poder Executivo", "da Comissao de Saude" (e nao "de Poder Executivo")
+ARTIGO_DO_AUTOR = {
+    "Poder": "do",
+    "Senado": "do",
+    "Supremo": "do",
+    "Tribunal": "do",
+    "Ministério": "do",
+    "Comissão": "da",
+    "Mesa": "da",
+    "Câmara": "da",
+    "Procuradoria": "da",
+    "Defensoria": "da",
+}
+
+
+def _de_autor(autor):
+    artigo = ARTIGO_DO_AUTOR.get(autor.split(" ", 1)[0])
+    return f"{artigo} {autor}" if artigo else f"de {autor}"
+
+
 def _de_nome(proposicao):
     """ "do PL 1/2024", "da PEC 2/2023"; fora dos tipos acompanhados, "da proposicao REQ 1/2024"."""
     if proposicao.sigla in TIPOS:
@@ -275,7 +314,7 @@ def _frase(texto):
 
 
 def _quem_votou(votacao):
-    return "O Plenário" if votacao.sigla_orgao == "PLEN" else f"O órgão {votacao.orgao}"
+    return "O Plenário da Câmara" if votacao.sigla_orgao == "PLEN" else f"O órgão {votacao.orgao}"
 
 
 def _titulo_da_votacao(votacao):
@@ -306,9 +345,11 @@ def _tramitacao_em_frase(tramitacao):
 
 # === GeradorFrases (frases prontas: nunca escreve fato que nao esteja nos registros) ===
 class GeradorFrases(Gerador):
-    nome = "frases-v2"
+    nome = "frases-v3"
     # v2 (decisao 25.13): paragrafo principal so com o fato; placar, situacao e lacunas em secoes
-    versao_prompt = "frases-v2"
+    # v3 (decisao 25.18): segue a planta da noticia (docs/PLANTA_DA_NOTICIA.md): sigla no titulo e
+    # explicada no paragrafo principal; situacao contada com a explicacao popular, sem o jargao do passo
+    versao_prompt = "frases-v3"
 
     def escrever(self, consulta, trechos, dados=None):
         if dados is None:
@@ -331,17 +372,22 @@ class GeradorFrases(Gerador):
 
     def _nova(self, dados):
         proposicao = dados.proposicao
-        sujeito = _tipo(proposicao)[2]
+        identificacao = _identificacao(proposicao)
         forma, ementa = simplificar_ementa(proposicao.ementa)
-        titulo = f"{sujeito} {ementa}" if forma == "verbo" else f"{sujeito} propõe {ementa}"
-        if forma == "livre":
-            titulo = f"{sujeito} propõe: {ementa}"
+        titulo = {
+            "verbo": f"{identificacao} {ementa}",
+            "finalidade": f"{identificacao} propõe {ementa}",
+            "livre": f"{identificacao} propõe: {ementa}",
+        }[forma]
         apresentado = "apresentada" if _tipo(proposicao)[1] == "a" else "apresentado"
-        autoria = f", de autoria de {self._autoria(proposicao)}," if proposicao.autor else ""
-        resumo = (
-            f"{_nome_com_artigo(proposicao)}{autoria} foi {apresentado} em {proposicao.apresentada_em:%d/%m/%Y}. "
-            f"{_frase(_limpar_ementa(proposicao.ementa))}"
-        )
+        autoria = f", de autoria {_de_autor(self._autoria(proposicao))}," if proposicao.autor else ""
+        quando = f"{proposicao.apresentada_em:%d/%m/%Y}"
+        resumo = f"{_explicado(proposicao, maiuscula=True)}{autoria} foi {apresentado} em {quando}."
+        # A ementa simplificada so por regra (sem acrescentar fato); a oficial fica em "O que propoe"
+        if forma == "verbo":
+            resumo += f" O texto {_frase(ementa)}"
+        elif forma == "finalidade":
+            resumo += f" O objetivo é {_frase(ementa)}"
         return titulo, resumo
 
     def _situacao(self, dados):
@@ -353,9 +399,10 @@ class GeradorFrases(Gerador):
             titulo = f"{_identificacao(proposicao)} avança na Câmara"
         else:
             titulo = f'{_identificacao(proposicao)}: situação agora é "{situacao}"'
-        resumo = f'{_nome_com_artigo(proposicao)} está com a situação "{situacao}".'
-        if dados.tramitacoes:
-            resumo += f" {_tramitacao_em_frase(dados.tramitacoes[-1])}"
+        # 25.18: o fato e a explicacao popular da situacao (25.14); o passo do andamento fica em "Onde esta"
+        resumo = f'A situação {_de_explicado(proposicao)} na Câmara mudou para "{situacao}".'
+        if proposicao.explicacao_situacao:
+            resumo += f" {proposicao.explicacao_situacao}"
         return titulo, resumo
 
     def _votacao(self, dados):
@@ -368,23 +415,26 @@ class GeradorFrases(Gerador):
             verbo = "aprova" if votacao.aprovacao else "rejeita"
             feito = "aprovou" if votacao.aprovacao else "rejeitou"
             titulo = f"{_titulo_da_votacao(votacao)} {verbo} {self._o_que_foi_votado(proposicao)}"
-            artigo = _tipo(proposicao)[1]
             # 25.13: o placar sai do paragrafo principal e vai para a secao "Resultado da votacao"
-            resumo = f"{_quem_votou(votacao)} {feito}, {_no_dia(votacao.data)}, {artigo} {identificacao}."
+            resumo = f"{_quem_votou(votacao)} {feito}, {_no_dia(votacao.data)}, {_explicado(proposicao)}."
         else:
             # Requerimento, destaque, redacao final: conta o que a Camara registrou, sem dizer que o projeto passou
             titulo = f"{identificacao}: {descricao}"
-            resumo = f"Votação {_no_dia(votacao.data)} sobre {identificacao}: {_frase(descricao)}"
+            resumo = (
+                f"{_quem_votou(votacao)} votou, {_no_dia(votacao.data)}, sobre {_explicado(proposicao)}: "
+                f"{_frase(descricao)}"
+            )
         return titulo, resumo.strip()
 
     def _o_que_foi_votado(self, proposicao):
-        extenso = _tipo(proposicao)[0]
+        """25.18: a sigla no titulo ("Camara aprova PL 1/2024, que institui ...")."""
+        identificacao = _identificacao(proposicao)
         forma, ementa = simplificar_ementa(proposicao.ementa)
         if forma == "finalidade":
-            return f"{extenso} para {ementa}"
+            return f"{identificacao} para {ementa}"
         if forma == "verbo":
-            return f"{extenso} que {ementa}"
-        return f"{extenso}: {ementa}"
+            return f"{identificacao}, que {ementa}"
+        return f"{identificacao}: {ementa}"
 
     def _autoria(self, proposicao):
         return f"{proposicao.autor} e outros" if proposicao.mais_autores else proposicao.autor

@@ -142,8 +142,8 @@ def test_gera_um_rascunho_por_fato_e_conta_o_que_pulou(banco):
     # 25.16: a votacao e a proposicao nova do PL 1234 sao a mesma noticia viva (4 fatos, 3 noticias)
     assert len(noticias) == 3 and {n.status for n in noticias} == {"rascunho"}
     viva = banco.session.scalars(banco.select(Noticia).order_by(Noticia.id)).first()
-    assert viva.titulo.startswith("Câmara aprova projeto de lei")
-    assert "## Atualizações\n\n### 14/05/2024: Projeto institui o Dia Nacional da Merenda" in viva.corpo
+    assert viva.titulo.startswith("Câmara aprova PL 1234/2024")
+    assert "## Atualizações\n\n### 14/05/2024: PL 1234/2024 institui o Dia Nacional da Merenda" in viva.corpo
     assert _contar(banco, GeracaoIA) == 4
     log = banco.session.scalar(banco.select(LogSistema).filter_by(acao="gerar_novos"))
     assert log.nivel == "info" and "sem_tema_da_camara=1" in log.descricao and "pendentes_na_coleta=2" in log.descricao

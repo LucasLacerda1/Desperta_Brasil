@@ -214,6 +214,10 @@ def coletar_agendada(rotina, esperar, sem_ia):
                 from desperta.ia import relatorio
 
                 click.echo(f"  relatorio da semana: {relatorio.em_texto(*relatorio.gerar_relatorio_semanal())}")
+            # Decisao 25.18: o que passa na planta da noticia sai sozinho (ou so e marcado, no ensaio)
+            from desperta.noticias import planta
+
+            click.echo(f"  publicacao: {planta.publicar_automaticas().em_texto()}")
         click.echo(f"{_agora_texto()} {rotina}: fim em {time.monotonic() - inicio:.0f} s")
         if falha:
             raise click.ClickException(f"A rotina {rotina} parou com erro: {falha}")

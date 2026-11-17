@@ -103,16 +103,34 @@ def test_simplificar_ementa(ementa, esperado):
 # ======================================================
 def test_proposicao_nova():
     texto = _escrever(CASO_NOVA)
-    assert texto.titulo == "Projeto institui o Dia Nacional da Merenda"
-    assert texto.resumo.startswith("O PL 1234/2024, de autoria de Fulana de Tal, foi apresentado em 14/05/2024.")
+    # 25.18 (planta): a sigla no titulo e explicada no paragrafo principal; a ementa simplificada por regra
+    assert texto.titulo == "PL 1234/2024 institui o Dia Nacional da Merenda"
+    assert texto.resumo == (
+        "O projeto de lei PL 1234/2024, de autoria de Fulana de Tal, foi apresentado em 14/05/2024. "
+        "O texto institui o Dia Nacional da Merenda."
+    )
     assert "Ementa oficial: Institui o Dia Nacional da Merenda." in texto.corpo
 
 
 def test_proposicao_nova_com_finalidade_e_tipo_feminino():
     proposicao = _proposicao(sigla="PEC", ementa="Altera o art. 5º da Constituição para garantir o acesso.")
     texto = _escrever(CASO_NOVA, proposicao=proposicao)
-    assert texto.titulo == "Proposta propõe garantir o acesso"
-    assert "A PEC 1234/2024" in texto.resumo and "foi apresentada" in texto.resumo
+    assert texto.titulo == "PEC 1234/2024 propõe garantir o acesso"
+    assert texto.resumo.startswith("A proposta de emenda à Constituição PEC 1234/2024, de autoria de Fulana de Tal")
+    assert "foi apresentada" in texto.resumo and texto.resumo.endswith("O objetivo é garantir o acesso.")
+
+
+@pytest.mark.parametrize(
+    "autor,esperado",
+    [
+        ("Fulana de Tal", "de autoria de Fulana de Tal"),
+        ("Poder Executivo", "de autoria do Poder Executivo"),
+        ("Senado Federal", "de autoria do Senado Federal"),
+        ("Comissão de Saúde", "de autoria da Comissão de Saúde"),
+    ],
+)
+def test_autoria_com_artigo_certo(autor, esperado):
+    assert esperado in _escrever(CASO_NOVA, proposicao=_proposicao(autor=autor)).resumo
 
 
 def test_proposicao_nova_sem_autor_e_com_varios():
@@ -122,14 +140,16 @@ def test_proposicao_nova_sem_autor_e_com_varios():
 
 def test_proposicao_nova_com_ementa_sem_verbo():
     texto = _escrever(CASO_NOVA, proposicao=_proposicao(ementa="Fica assegurada a realização."))
-    assert texto.titulo == "Projeto propõe: Fica assegurada a realização"
+    assert texto.titulo == "PL 1234/2024 propõe: Fica assegurada a realização"
+    # Sem verbo reconhecido, a ementa nao e reescrita: so a oficial, em "O que propoe"
+    assert texto.resumo.endswith("foi apresentado em 14/05/2024.")
 
 
 def test_votacao_de_merito_aprovada():
     texto = _escrever(CASO_VOTACAO, votacao=_votacao())
-    assert texto.titulo == "Câmara aprova projeto de lei que institui o Dia Nacional da Merenda"
+    assert texto.titulo == "Câmara aprova PL 1234/2024, que institui o Dia Nacional da Merenda"
     # Decisao 25.13: o paragrafo principal so traz o fato; o placar vem logo abaixo, no resultado
-    assert texto.resumo == "O Plenário aprovou, na terça-feira (14/05/2024), o PL 1234/2024."
+    assert texto.resumo == "O Plenário da Câmara aprovou, na terça-feira (14/05/2024), o projeto de lei PL 1234/2024."
     assert "## Resultado da votação\n\n" in texto.corpo
     assert "Resultado: aprovado.\n\nForam 300 votos a favor e 100 contra." in texto.corpo
 
@@ -139,14 +159,14 @@ def test_votacao_de_merito_rejeitada_e_em_comissao():
         descricao="Rejeitado o Projeto de Lei nº 1.234.", aprovacao=False, sigla_orgao="CCJC", orgao="CCJC"
     )
     texto = _escrever(CASO_VOTACAO, votacao=votacao)
-    assert texto.titulo.startswith("CCJC rejeita projeto de lei")
+    assert texto.titulo.startswith("CCJC rejeita PL 1234/2024")
     assert texto.resumo.startswith("O órgão CCJC rejeitou")
 
 
 def test_votacao_simbolica_nao_tem_placar():
     texto = _escrever(CASO_VOTACAO, votacao=_votacao(sim=0, nao=0))
     assert "votos" not in texto.resumo
-    assert texto.resumo.endswith("o PL 1234/2024.")
+    assert texto.resumo.endswith("o projeto de lei PL 1234/2024.")
 
 
 def test_placar_com_abstencao_e_fim_de_semana():
@@ -234,7 +254,9 @@ def test_so_avanca_quando_a_situacao_e_de_avanco(situacao, avanca):
     texto = _escrever(CASO_SITUACAO, proposicao=_proposicao(situacao=situacao), tramitacoes=[_passo()])
     assert ("avança" in texto.titulo) is avanca
     assert f'"{situacao}"' in texto.resumo
-    assert "Em 03/06/2024, em CCJC: Publique-se." in texto.resumo
+    # 25.18: o passo do andamento sai do paragrafo principal e fica em "Onde esta na Camara"
+    assert "Publique-se" not in texto.resumo
+    assert "Em 03/06/2024, em CCJC: Publique-se." in texto.corpo
 
 
 def test_titulo_de_situacao_mostra_a_situacao_como_a_camara_escreve():
@@ -334,7 +356,7 @@ def test_cabe_nos_tamanhos_de_noticia_sem_partir_palavra():
 # ======================================================
 def test_padrao_e_o_gerador_de_frases(app):
     assert app.config["GERADOR"] == "frases"
-    assert criar_gerador("frases").nome == "frases-v2"
+    assert criar_gerador("frases").nome == "frases-v3"
     assert isinstance(criar_gerador("falso"), GeradorFalso)
 
 
@@ -413,9 +435,9 @@ def test_gerar_grava_rascunho_geracao_trechos_e_fontes(banco):
     noticia = geracao.noticia
     assert (noticia.status, noticia.origem, noticia.tipo) == ("rascunho", "ia", "noticia")
     assert noticia.cod_tema == 47
-    assert noticia.titulo == "Projeto institui o Dia Nacional da Merenda."[:-1]
-    assert noticia.slug == "projeto-institui-o-dia-nacional-da-merenda"
-    assert (geracao.status, geracao.modelo_geracao, geracao.versao_prompt) == ("ok", "frases-v2", "frases-v2")
+    assert noticia.titulo == "PL 1234/2024 institui o Dia Nacional da Merenda"
+    assert noticia.slug == "pl-1234-2024-institui-o-dia-nacional-da-merenda"
+    assert (geracao.status, geracao.modelo_geracao, geracao.versao_prompt) == ("ok", "frases-v3", "frases-v3")
     assert geracao.duracao_ms >= 0 and geracao.tokens_saida > 0
     assert json.loads(geracao.entrada)["proposicao_id"] == 2310837
     ligado = banco.session.scalar(banco.select(GeracaoTrecho).filter_by(geracao_id=geracao.id))
@@ -458,7 +480,7 @@ def test_gerar_votacao_tem_a_votacao_como_fonte_principal(banco):
     banco.session.get(fabricas.Votacao, "2310837-8").filhos_sincronizados_em = datetime(2024, 5, 15)
     banco.session.commit()
     geracao, _ = _gerar("votacao", "2310837-8")
-    assert geracao.noticia.titulo.startswith("Câmara aprova projeto de lei que institui")
+    assert geracao.noticia.titulo.startswith("Câmara aprova PL 1234/2024, que institui")
     assert "Foi 1 voto a favor e 0 contra." in geracao.noticia.corpo
     assert "voto" not in geracao.noticia.resumo
     assert [(f.tipo, f.ref_id) for f in geracao.noticia.fontes] == [
@@ -569,7 +591,7 @@ def test_sem_o_modelo_da_escrita_o_comando_gera_so_com_palavras(app, banco, tmp_
     resultado = app.test_cli_runner().invoke(args=["ia", "gerar", "nova", "2310837"])
     assert resultado.exit_code == 0, resultado.output
     assert "Usando só a busca por palavras" in resultado.output
-    assert "Projeto institui" in resultado.output
+    assert "PL 1234/2024 institui" in resultado.output
     assert banco.session.scalar(banco.select(LogSistema).filter_by(acao=f"{qual}_ausente"))
     assert banco.session.scalar(banco.select(GeracaoTrecho))
 

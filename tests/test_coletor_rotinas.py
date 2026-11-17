@@ -808,6 +808,8 @@ def test_so_a_agendada_diaria_escreve_os_boletins_de_ontem(comandos, db, api, ia
     assert resultado.exit_code == 0, resultado.output
     assert chamadas == [(date.today() - timedelta(days=1), True)]
     assert "boletins: " in resultado.output and "nenhum fato pequeno" in resultado.output
+    # 25.18: depois de tudo, a publicacao automatica (padrao: ensaio, so conta)
+    assert "publicacao: modo=ensaio" in resultado.output
 
 
 def test_agendada_horaria_nao_espera_outra_coleta(comandos, db, api, ia_falsa):
