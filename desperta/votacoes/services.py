@@ -25,6 +25,10 @@ INCONSISTENTE = "inconsistente"
 SITUACOES_DOS_VOTOS = (PENDENTE, ERRO_NA_COLETA, SO_PLACAR, SIMBOLICA, NOMINAL, INCONSISTENTE)
 
 PLACAR = re.compile(r"(Sim|Não|Abstenção|Obstrução|Total): (\d+)")
+# Decisao tomada com os dados reais: "aprovada" quase sempre e requerimento ou redacao final, nao o projeto
+VOTACAO_DE_MERITO = re.compile(
+    r"^(?:Aprovad|Rejeitad)[oa] (?:o|a) (?:Projeto de|Proposta de Emenda|Medida Provis[oó]ria|Substitutivo)"
+)
 # Tabelas filhas da votacao que podem registrar erro no log
 TABELAS_DA_VOTACAO = ("votacao", "voto", "orientacao", "votacao_proposicao")
 
@@ -73,23 +77,19 @@ def _teve_erro_na_coleta(id_votacao):
     )
 
 
-def situacao_dos_votos(votacao):
-    """Classifica os votos da votacao: pendente, erro na coleta, so o placar, simbolica, nominal ou inconsistente."""
-    votos = Counter(
-        dict(
-            db.session.execute(
-                db.select(Voto.tipo_voto, db.func.count()).filter_by(votacao_id=votacao.id).group_by(Voto.tipo_voto)
-            ).all()
-        )
-    )
+def e_votacao_de_merito(descricao):
+    """A votacao decidiu o proprio projeto (aprovou ou rejeitou), e nao um requerimento ou um destaque."""
+    return bool(VOTACAO_DE_MERITO.match((descricao or "").strip()))
+
+
+def classificar_votos(votacao, votos):
+    """
+    So para votacao com os votos ja coletados (filhos_sincronizados_em preenchido):
+    simbolica, so o placar, inconsistente ou nominal. votos: Counter por tipo (None = sem tipo).
+    Separada da consulta para servir tambem ao calculo em lote (fila por prioridade, 25.15).
+    """
     placar = placar_da_camara(votacao.descricao)
     total = sum(votos.values())
-    if votacao.filhos_sincronizados_em is None:
-        if _teve_erro_na_coleta(votacao.id):
-            return SituacaoDosVotos(
-                ERRO_NA_COLETA, "A coleta dos votos desta votação falhou e será repetida.", placar, votos
-            )
-        return SituacaoDosVotos(PENDENTE, "Os votos desta votação ainda estão sendo coletados.", placar, votos)
     if total == 0:
         return SituacaoDosVotos(
             SIMBOLICA, "Votação simbólica: a Câmara não registra o voto de cada deputado.", placar, votos
@@ -113,6 +113,33 @@ def situacao_dos_votos(votacao):
             votos,
         )
     return SituacaoDosVotos(NOMINAL, f"Votação nominal: {total} votos registrados.", placar, votos)
+
+
+def contar_votos(votacao_ids):
+    """{votacao_id: Counter por tipo} de varias votacoes numa consulta so."""
+    contagem = {votacao_id: Counter() for votacao_id in votacao_ids}
+    if not contagem:
+        return contagem
+    for votacao_id, tipo, total in db.session.execute(
+        db.select(Voto.votacao_id, Voto.tipo_voto, db.func.count())
+        .where(Voto.votacao_id.in_(list(contagem)))
+        .group_by(Voto.votacao_id, Voto.tipo_voto)
+    ):
+        contagem[votacao_id][tipo] = total
+    return contagem
+
+
+def situacao_dos_votos(votacao):
+    """Classifica os votos da votacao: pendente, erro na coleta, so o placar, simbolica, nominal ou inconsistente."""
+    votos = contar_votos([votacao.id])[votacao.id]
+    if votacao.filhos_sincronizados_em is None:
+        placar = placar_da_camara(votacao.descricao)
+        if _teve_erro_na_coleta(votacao.id):
+            return SituacaoDosVotos(
+                ERRO_NA_COLETA, "A coleta dos votos desta votação falhou e será repetida.", placar, votos
+            )
+        return SituacaoDosVotos(PENDENTE, "Os votos desta votação ainda estão sendo coletados.", placar, votos)
+    return classificar_votos(votacao, votos)
 
 
 # ======================================================

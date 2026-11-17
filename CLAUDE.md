@@ -1730,7 +1730,7 @@ Rotas finas em `routes.py`, regras nos `services.py`; auxiliares HTTP comuns em 
 | `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/eu`, `POST /api/auth/eu/senha` | equipe | login (sessão Flask, limite de falhas), sair, quem está logado, trocar a própria senha |
 | `GET/POST /api/auth/equipe`, `PATCH /api/auth/equipe/<id>` | admin | listar, criar e editar ou desativar alguém da equipe (sempre sobra um admin ativo) |
 | `GET /api/noticias` (`?tema=`), `GET /api/noticias/principal` (`?por_tema=`), `GET /api/noticias/busca` (`?q=&dia=&mes=&ano=&tema=`), `GET /api/noticias/<slug>` | público | publicadas por tema, página principal por tema, busca com período em horário de Brasília, detalhe com fontes, "como foi feita" e +1 visualização |
-| `GET /api/noticias/admin` (`?status=&tema=&caso=&origem=`), `GET/PATCH /api/noticias/admin/<id>`, `POST /api/noticias/admin` | equipe | fila de revisão (mais antigas primeiro), detalhe com histórico e o que a IA usou, edição (slug acompanha o título até publicar), notícia escrita pela equipe (fontes conferidas) |
+| `GET /api/noticias/admin` (`?status=&tema=&caso=&origem=&prioridade=&ordem=`, 25.15), `GET/PATCH /api/noticias/admin/<id>`, `POST /api/noticias/admin` | equipe | fila de revisão (mais antigas primeiro), detalhe com histórico e o que a IA usou, edição (slug acompanha o título até publicar), notícia escrita pela equipe (fontes conferidas) |
 | `POST /api/noticias/admin/<id>/<acao>`, `POST /api/noticias/admin/lote` | equipe | `aprovar` (rascunho → em_revisao), `publicar`, `rejeitar` (comentário obrigatório) e `arquivar`; em lote, até 200 por vez, com a lista do que falhou |
 | `DELETE /api/noticias/admin/<id>` | admin | apaga só rascunho ou rejeitada (10.4) |
 | `GET /api/proposicoes/<id>`, `GET /api/proposicoes/<id>/tramitacoes`, `GET /api/proposicoes/temas` | público | situação (ou "não informado pela Câmara"), autores, temas, 20 tramitações mais recentes, votações e notícias publicadas; andamento completo em páginas; temas com o número de notícias publicadas |
@@ -1851,7 +1851,7 @@ Pedido do Lucas, depois do panorama do código. Nada muda no comportamento do po
 - **Atualizado em 25.13:** nenhum fato deixa de ser noticiado, mas a forma muda: os fatos da mesma proposição se juntam numa notícia viva, e os fatos pequenos entram nos boletins do dia.
 
 ### 25.13 Plano das notícias: nada se perde, menos redundância e transparência total (16 e 17/11)
-Decisões do Lucas. Ordem prevista no fim; o item 1 foi feito em 17/11 (25.14).
+Decisões do Lucas. Ordem prevista no fim; os itens 1 e 2 foram feitos em 17/11 (25.14 e 25.15).
 - **O coletor grava tudo.** O filtro vale para as notícias (e pode servir para outras coisas, como os destaques), nunca para o que entra no banco (22.5).
 - **Notícia viva:** uma notícia por proposição. Cada fato novo entra como atualização; o "novo" é o fato que ainda não está nas fontes da notícia (`noticia_fonte`), sem comparar textos. Notícia ainda em rascunho recebe o fato direto; notícia publicada recebe um **rascunho de atualização** com só o trecho novo, que entra depois da revisão e fica guardado como histórico. O slug não muda; `alterado_em` mostra a atualização. Sem tabela nova.
 - **Boletins do dia** para os fatos pequenos (procedimentos do Plenário, votações de cada comissão, passos de andamento, PDLs novos), cada fato com o seu link, gerados depois que o dia termina (rotina `diaria`), como notícia do tipo `relatorio`. Medido de 03 a 16/11: cerca de 29 itens por dia útil (25 notícias próprias e 4 boletins), contra 146, com todos os fatos cobertos.
@@ -1874,3 +1874,16 @@ Decisões do Lucas. Ordem prevista no fim; o item 1 foi feito em 17/11 (25.14).
 - **Medido numa cópia do banco real (17/11):** 9.861 proposições acompanhadas em 20 s (2 ms cada) e 1.818 votações em 4 s. Lacunas: 385 sem tema (39 há mais de 30 dias), 1.724 sem situação, 735 sem regime, 3 sem inteiro teor, 4 votações sem resultado, 1 só com o placar (PDL 995/2026) e 1.800 simbólicas; nenhuma contradição. Nenhum código de situação fora do dicionário. Exemplos dos rascunhos novos gerados na cópia, sem tocar no banco real.
 - Os rascunhos que já estão na fila continuam com o texto antigo (sem seções); a API os mostra como uma seção só.
 - 845 testes.
+
+### 25.15 Fila por prioridade (17/11, item 2 da 25.13)
+- **Interna:** só a equipe vê. Ordena a revisão sem esconder nada; toda notícia continua na fila.
+- **Calculada na hora** (`desperta/noticias/prioridade.py`), sem coluna nova: a partir do caso da geração (`geracao_ia.entrada`), das fontes e das lacunas da Câmara. As lacunas de muitas notícias saem de `lacunas_em_lote` (`desperta/sistema/lacunas.py`), com poucas consultas e o mesmo resultado do cálculo de uma por vez (há teste que compara).
+- **Regras (o grupo pode ajustar):**
+  - **alta:** relatório; votação do próprio projeto no Plenário (aprovou ou rejeitou o projeto, `e_votacao_de_merito`); marco de situação (lista `MARCOS`, 25.14); PEC ou MPV nova; qualquer notícia cuja fonte tenha falha grave da Câmara (contradição ou ocultação).
+  - **média:** votação de procedimento no Plenário (requerimento, destaque, urgência); votação do projeto em comissão; mudança de situação que não é marco; PL ou PLP novo; notícia escrita pela equipe; caso sem regra (seguro na dúvida).
+  - **baixa:** votação de procedimento em comissão; PDL novo; passo do andamento sem situação informada.
+- **Motivos:** cada notícia traz os motivos do nível. Rascunho de situação cuja proposição mudou de novo depois de escrito ganha o motivo "a situação mudou de novo depois deste rascunho". A situação usada é a atual da proposição.
+- **API:** `GET /api/noticias/admin` ordena por prioridade (alta, média, baixa) e, dentro de cada nível, das mais antigas para as mais novas. `?prioridade=alta|media|baixa` filtra; `?ordem=antigas` volta à ordem só por data. Cada item e o detalhe da revisão trazem `prioridade: {nivel, motivos}`.
+- A expressão da votação de mérito saiu do gerador para `desperta/votacoes/services.py` (`e_votacao_de_merito`), e a classificação dos votos virou uma função pura (`classificar_votos`, com `contar_votos` em lote).
+- **Medido numa cópia do banco real (17/11):** 2.114 rascunhos em 0,08 s: 301 de prioridade alta (271 marcos, 28 votações do projeto no Plenário, 1 MPV nova e 1 relatório), 1.163 média e 650 baixa. 492 rascunhos de situação já estão desatualizados (a situação mudou de novo).
+- 863 testes.

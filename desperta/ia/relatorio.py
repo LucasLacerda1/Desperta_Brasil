@@ -23,13 +23,13 @@ from desperta.proposicoes.services import situacao_mudou, tema_principal
 from desperta.sistema.models import LogSistema
 from desperta.sistema.services import ultima_coleta_concluida
 from desperta.votacoes.models import Votacao
+from desperta.votacoes.services import e_votacao_de_merito
 
 from .geracao import ErroDeGeracao, _dados_da_votacao, _geracao_existente, _proposicao_da_votacao, _registrar_erro
 from .gerador import (
     LIMITE_RESUMO,
     LIMITE_TITULO,
     SITUACOES_DE_AVANCO,
-    VOTACAO_DE_MERITO,
     _cortar,
     _descricao_da_votacao,
     _frase,
@@ -162,7 +162,7 @@ def _votacoes(dados, tipos):
         dados.votacoes_no_plenario += 1
         descricao = _descricao_da_votacao(votacao)
         # So aprovacao ou rejeicao de projeto, como no GeradorFrases; requerimento nao entra na lista
-        if not VOTACAO_DE_MERITO.match(descricao):
+        if not e_votacao_de_merito(descricao):
             continue
         try:
             proposicao = _proposicao_da_votacao(votacao)
