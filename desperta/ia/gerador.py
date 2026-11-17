@@ -388,10 +388,7 @@ class GeradorFrases(Gerador):
         proposicao = dados.proposicao
         passo = dados.tramitacoes[-1]
         titulo = f"{_identificacao(proposicao)}: {passo.descricao.strip()}"
-        resumo = (
-            f"{_tramitacao_em_frase(passo)} "
-            f"A situação {_de_nome(proposicao)} não foi informada pela Câmara."
-        )
+        resumo = f"{_tramitacao_em_frase(passo)} A situação {_de_nome(proposicao)} não foi informada pela Câmara."
         return titulo, resumo
 
     def _corpo(self, dados):

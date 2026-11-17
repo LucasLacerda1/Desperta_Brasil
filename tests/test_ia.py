@@ -11,7 +11,7 @@ import pytest
 import fabricas
 from desperta import create_app
 from desperta.config import TestConfig
-from desperta.ia import centralizacao, embeddings, palavras, services, trechos, vetores
+from desperta.ia import embeddings, palavras, services, trechos, vetores
 from desperta.ia.embeddings import ModeloEmbedding, preparar_ambiente
 from desperta.ia.gerador import Gerador, GeradorFalso
 from desperta.ia.models import GeracaoIA, GeracaoTrecho, TrechoRAG
@@ -443,48 +443,6 @@ def test_indice_das_raizes_acompanha_o_trecho(origem, modelo):
 # ======================================================
 # DECISAO 16.1: CENTRALIZACAO
 # ======================================================
-def _vetor(embedding):
-    return struct.unpack("768f", embedding)
-
-
-def test_centralizar_grava_o_vetor_medio_e_nao_muda_trecho_rag(app, origem, modelo, tmp_path):
-    app.instance_path = str(tmp_path)
-    services.indexar(modelo)
-    trecho = _trecho(origem, "votacao", "2310837-8")
-    original = trecho.embedding
-    assert centralizacao.calcular(MODELO) == 5
-    assert (tmp_path / centralizacao.ARQUIVO).exists()
-
-    app.config["RAG_CENTRALIZAR"] = True
-    services.reconstruir_indice(MODELO)
-
-    assert _trecho(origem, "votacao", "2310837-8").embedding == original
-    centralizado = centralizacao.transformador()(original)
-    assert centralizado != original
-    assert math.sqrt(sum(valor * valor for valor in _vetor(centralizado))) == pytest.approx(1.0, abs=1e-5)
-    assert vetores.buscar(MODELO, centralizado, 1)[0][0] == trecho.id
-
-
-def test_consulta_e_trechos_novos_tambem_sao_centralizados(app, origem, modelo, tmp_path):
-    app.instance_path = str(tmp_path)
-    services.indexar(modelo)
-    centralizacao.calcular(MODELO)
-    app.config["RAG_CENTRALIZAR"] = True
-    services.reconstruir_indice(MODELO)
-    origem.session.add(fabricas.evento(id=70002, descricao="Audiencia sobre previdencia"))
-    origem.session.commit()
-    services.indexar(modelo)
-    resultados = services.buscar(modelo, "Sessao Deliberativa. Audiencia sobre previdencia", top_k=1, modo="vetorial")
-    assert _referencias(resultados) == [("evento", "70002")]
-    assert resultados[0].similaridade == pytest.approx(1.0, abs=1e-4)
-
-
-def test_centralizar_sem_trechos_nao_grava_arquivo(app, db, tmp_path):
-    app.instance_path = str(tmp_path)
-    assert centralizacao.calcular(MODELO) == 0
-    assert not (tmp_path / centralizacao.ARQUIVO).exists()
-
-
 # ======================================================
 # DECISAO 16.2: MEDIR A BUSCA
 # ======================================================
@@ -918,15 +876,6 @@ def test_reconstruir_refaz_o_indice_de_cada_modelo(origem, os_dois):
     assert services.reconstruir_indice(E5) == 5
     assert services.reconstruir_indice(MODELO) == 5
     assert len(_ids_no_indice(origem, "vec_trecho_e5")) == len(_ids_no_indice(origem, "vec_trecho")) == 5
-
-
-def test_centralizacao_nao_vale_para_o_e5(app, origem, tmp_path, monkeypatch):
-    monkeypatch.setattr(app, "instance_path", str(tmp_path))
-    app.config["RAG_CENTRALIZAR"] = True
-    e5 = ModeloFalsoE5()
-    services.indexar(e5)
-    trecho = origem.session.scalar(db_select_trechos(origem, E5).filter_by(tipo="votacao"))
-    assert vetores.buscar(E5, trecho.embedding, 1) == [(trecho.id, pytest.approx(0, abs=1e-5))]
 
 
 def test_verificacao_confere_cada_indice_com_os_trechos_do_seu_modelo(app, origem, os_dois):

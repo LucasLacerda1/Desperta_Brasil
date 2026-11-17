@@ -72,8 +72,8 @@ def remover(trecho_id):
             _conexao().execute(text(f"DELETE FROM {nome_tabela} WHERE trecho_id = :id"), {"id": trecho_id})
 
 
-def reconstruir(nome_modelo, preparar):
-    """Refaz o indice do modelo a partir de trecho_rag; preparar transforma cada embedding. Devolve o total."""
+def reconstruir(nome_modelo):
+    """Refaz o indice do modelo a partir de trecho_rag. Devolve o total de trechos."""
     conexao = _conexao()
     nome_tabela = tabela(nome_modelo)
     conexao.execute(text(f"DROP TABLE IF EXISTS {nome_tabela}"))
@@ -92,7 +92,7 @@ def reconstruir(nome_modelo, preparar):
             return total
         conexao.execute(
             text(f"INSERT INTO {nome_tabela} (trecho_id, embedding) VALUES (:id, :embedding)"),
-            [{"id": id_trecho, "embedding": preparar(embedding)} for id_trecho, embedding in linhas],
+            [{"id": id_trecho, "embedding": embedding} for id_trecho, embedding in linhas],
         )
         total += len(linhas)
         ultimo = linhas[-1][0]

@@ -7,7 +7,7 @@ import click
 from flask import current_app
 from flask.cli import AppGroup
 
-from . import automatico, centralizacao, embeddings, geracao, relatorio, services
+from . import automatico, embeddings, geracao, relatorio, services
 from .gerador import CASOS
 from .models import TRECHO_RAG_TIPOS
 
@@ -225,13 +225,6 @@ def relatorio_semanal(ate, simular):
     if registro is not None and registro.status == "erro":
         raise click.ClickException(f"Geracao {registro.id} com erro: {registro.erro}")
     click.echo(relatorio.em_texto(registro, novo))
-
-
-@ia.command("centralizar")
-def centralizar():
-    """Calcula o vetor medio dos trechos; depois, use RAG_CENTRALIZAR=1 e flask ia reconstruir."""
-    total = centralizacao.calcular(current_app.config["EMBEDDING_MODEL"])
-    click.echo(f"Vetor medio de {total} trechos gravado em instance/{centralizacao.ARQUIVO}")
 
 
 @ia.command("reconstruir")

@@ -1,5 +1,7 @@
 [flake8]
 max-line-length = 120
+# E203: o Black poe espaco antes do ':' em fatias (lista[a : b]); a documentacao do Black manda ignorar
+extend-ignore = E203
 per-file-ignores =
     # import tardio: os modelos so precisam entrar no metadata
     desperta/ext/db/__init__.py: F401

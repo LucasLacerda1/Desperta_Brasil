@@ -55,10 +55,9 @@ class Config:
     # Item 4 da 22.10: flask ia gerar-novos olha os fatos destes ultimos dias
     GERACAO_JANELA_DIAS = int(os.getenv("GERACAO_JANELA_DIAS", "3"))
     RAG_TOP_K = int(os.getenv("RAG_TOP_K", "8"))
-    # Decisao 16.1: busca hibrida com RRF e experimento de centralizacao (descartado na 19.1)
+    # Decisao 16.1: busca hibrida com RRF
     RAG_CANDIDATOS = int(os.getenv("RAG_CANDIDATOS", "50"))
     RAG_RRF_K = int(os.getenv("RAG_RRF_K", "60"))
-    RAG_CENTRALIZAR = os.getenv("RAG_CENTRALIZAR", "0") == "1"
     # Decisao 19.2: peso da lista vetorial no modo hibrida_peso (a de palavras pesa 1,0)
     RAG_PESO_VETOR = float(os.getenv("RAG_PESO_VETOR", "0.5"))
     # Decisao 16.3: so as tramitacoes recentes viram trecho

@@ -133,18 +133,9 @@ A busca é híbrida: junta o índice vetorial do modelo e o de palavras (`trecho
 
 Em `tests/dados/consultas_busca.json`, cada consulta pode ter a lista `fora_do_assunto`, com as proposições marcadas à mão, e o `medir-busca` conta quantas aparecem nos 8 primeiros.
 
-As notícias são escritas pelo `GERADOR` (padrão: `frases`). O `GeradorFrases` usa frases prontas, sem IA: todo número, nome e data vem dos registros do banco. Votação de requerimento ou de redação final não vira "Câmara aprova projeto". Toda notícia entra como `rascunho`, e cada execução grava `geracao_ia`, mesmo com erro. Proposição sem tema não gera notícia, porque `noticia.cod_tema` é obrigatório.
+As notícias são escritas pelo `GERADOR` (padrão: `frases`). O `GeradorFrases` usa frases prontas, sem IA: todo número, nome e data vem dos registros do banco. Votação de requerimento ou de redação final não vira "Câmara aprova projeto". Toda notícia entra como `rascunho`, e cada execução grava `geracao_ia`, mesmo com erro. Proposição sem tema da Câmara vira notícia no tema especial 0, "Sem tema informado pela Câmara", e o texto diz isso (decisão 25.6).
 
-O `gerar-novos` (item 4 da 22.10) procura os fatos dos últimos `GERACAO_JANELA_DIAS` dias (padrão: 3) e escreve um rascunho para cada: toda votação, no Plenário ou em comissão, que afeta um tipo acompanhado; toda mudança de situação depois do dia da apresentação; e toda proposição nova dos tipos acompanhados. Votações vêm primeiro. Ele pula o que já tem geração (inclusive notícia rejeitada pela equipe e geração com erro, que só volta com `--refazer-erros`), a proposição sem tema e o que ainda está pendente na coleta, que entra na próxima execução. Rodar de novo não duplica nada, e cada execução deixa um resumo em `log_sistema` (`acao = gerar_novos`). Rode depois da coleta e do `flask ia indexar`; `invoke gerar-novos` faz o mesmo.
-
-Para medir a centralização dos embeddings:
-
-```bash
-flask ia centralizar
-RAG_CENTRALIZAR=1 flask ia reconstruir
-RAG_CENTRALIZAR=1 flask ia medir-busca
-flask ia reconstruir               # volta ao índice sem centralização
-```
+O `gerar-novos` (item 4 da 22.10) procura os fatos dos últimos `GERACAO_JANELA_DIAS` dias (padrão: 3) e escreve um rascunho para cada: toda votação, no Plenário ou em comissão, que afeta um tipo acompanhado; toda mudança de situação depois do dia da apresentação; e toda proposição nova dos tipos acompanhados. Votações vêm primeiro. Ele pula o que já tem geração (inclusive notícia rejeitada pela equipe e geração com erro, que só volta com `--refazer-erros`) e o que ainda está pendente na coleta, que entra na próxima execução. Rodar de novo não duplica nada, e cada execução deixa um resumo em `log_sistema` (`acao = gerar_novos`). Rode depois da coleta e do `flask ia indexar`; `invoke gerar-novos` faz o mesmo.
 
 ## Análise da PEC com a Roberta original (estudo, fora do portal)
 

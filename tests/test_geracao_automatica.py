@@ -302,9 +302,12 @@ def test_quando_a_camara_informa_o_tema_a_noticia_muda_de_tema(banco):
     assert noticia.cod_tema == 46 and (noticia.titulo, noticia.resumo, noticia.corpo) == texto
     log = banco.session.scalar(banco.select(LogSistema).filter_by(acao="tema_atualizado"))
     assert (log.entidade, log.entidade_id) == ("noticia", str(noticia.id))
-    assert banco.session.scalar(
-        banco.select(banco.func.count()).select_from(Noticia).filter_by(cod_tema=TEMA_SEM_CLASSIFICACAO)
-    ) == 0
+    assert (
+        banco.session.scalar(
+            banco.select(banco.func.count()).select_from(Noticia).filter_by(cod_tema=TEMA_SEM_CLASSIFICACAO)
+        )
+        == 0
+    )
 
 
 def test_noticia_arquivada_fica_no_tema_em_que_estava(banco):

@@ -11,7 +11,7 @@ from desperta.proposicoes.models import Proposicao, Tramitacao
 from desperta.sistema.models import LogSistema
 from desperta.votacoes.models import Votacao
 
-from . import centralizacao, embeddings, palavras, trechos, vetores
+from . import embeddings, palavras, trechos, vetores
 from .models import GeracaoTrecho, TrechoRAG
 
 LOTE_INDEXACAO = 64
@@ -38,13 +38,6 @@ def nome_do_modelo(qual):
     return current_app.config["EMBEDDING_MODEL" if qual == "roberta" else "E5_MODEL"]
 
 
-def _preparador(nome_modelo):
-    """A centralizacao (experimento da 16.1) foi calculada so para a RoBERTaLexPT."""
-    if nome_modelo == current_app.config["E5_MODEL"]:
-        return lambda embedding: embedding
-    return centralizacao.transformador()
-
-
 def _existentes(nome_modelo, tipos):
     consulta = db.select(TrechoRAG.tipo, TrechoRAG.ref_id, TrechoRAG.parte, TrechoRAG.id, TrechoRAG.hash_texto).where(
         TrechoRAG.modelo_embedding == nome_modelo
@@ -54,7 +47,7 @@ def _existentes(nome_modelo, tipos):
     return {(tipo, ref_id, parte): (id_, hash_) for tipo, ref_id, parte, id_, hash_ in db.session.execute(consulta)}
 
 
-def _gravar_lote(modelo, lote, existentes, preparar):
+def _gravar_lote(modelo, lote, existentes):
     """Gera os embeddings fora da transacao, grava e confirma: parar no meio nao perde o que ja foi feito."""
     embeddings = modelo.embutir([item["texto"] for item in lote])
     for item, embedding in zip(lote, embeddings):
@@ -69,7 +62,7 @@ def _gravar_lote(modelo, lote, existentes, preparar):
         trecho.embedding = embedding
         trecho.modelo_embedding = modelo.nome
         db.session.flush()
-        vetores.gravar(modelo.nome, trecho.id, preparar(embedding))
+        vetores.gravar(modelo.nome, trecho.id, embedding)
     db.session.commit()
     db.session.expunge_all()
 
@@ -99,7 +92,6 @@ def indexar(modelo, tipos=None, limite=None):
     vetores.criar_indice(modelo.nome)
     palavras.criar_indice()
     db.session.commit()
-    preparar = _preparador(modelo.nome)
     existentes = _existentes(modelo.nome, tipos)
     vistos = set()
     lote = []
@@ -133,11 +125,11 @@ def indexar(modelo, tipos=None, limite=None):
                 }
             )
         if len(lote) >= LOTE_INDEXACAO:
-            _gravar_lote(modelo, lote, existentes, preparar)
+            _gravar_lote(modelo, lote, existentes)
             resumo["indexados"] += len(lote)
             lote = []
     if lote:
-        _gravar_lote(modelo, lote, existentes, preparar)
+        _gravar_lote(modelo, lote, existentes)
         resumo["indexados"] += len(lote)
 
     # Com limite, parte da origem nao foi lida: nao da para saber o que sumiu
@@ -162,7 +154,7 @@ def indexar(modelo, tipos=None, limite=None):
 
 def reconstruir_indice(nome_modelo):
     """Refaz o indice vetorial do modelo e os de palavras a partir de trecho_rag, sem gerar embeddings."""
-    total = vetores.reconstruir(nome_modelo, _preparador(nome_modelo))
+    total = vetores.reconstruir(nome_modelo)
     palavras.criar_indice()
     palavras.reconstruir()
     db.session.add(
@@ -246,13 +238,13 @@ def buscar(modelo, consulta, top_k=None, tipos=None, inicio=None, fim=None, modo
 
     limite = max(k, current_app.config["RAG_CANDIDATOS"])
     if modo == "vetorial":
-        embedding = _preparador(nome)(modelo.embutir_consulta(consulta))
+        embedding = modelo.embutir_consulta(consulta)
         notas = {trecho_id: 1 - distancia for trecho_id, distancia in vetores.buscar(nome, embedding, k, candidatos)}
     else:
         # Decisao 25.10: so os trechos do modelo da busca, para o mesmo texto nao aparecer duas vezes
         listas = [(palavras.buscar(consulta, limite, candidatos, modelo=nome), 1.0)]
         if modo in ("hibrida", "hibrida_peso"):
-            embedding = _preparador(nome)(modelo.embutir_consulta(consulta))
+            embedding = modelo.embutir_consulta(consulta)
             lista = [trecho_id for trecho_id, _ in vetores.buscar(nome, embedding, limite, candidatos)]
             # Decisao 19.2: hibrida_peso tenta manter os acertos do vetor sem derrubar os das palavras
             listas.append((lista, current_app.config["RAG_PESO_VETOR"] if modo == "hibrida_peso" else 1.0))
