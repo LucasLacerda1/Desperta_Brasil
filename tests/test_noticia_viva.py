@@ -306,3 +306,26 @@ def test_juntar_conta_uma_vez_o_fato_escrito_mais_de_uma_vez(banco, admin, fila_
     assert "Câmara aprova (de novo)" not in juntada.corpo and juntada.corpo.count("### 20/05/2024") == 1
     assert banco.session.get(Noticia, repetida.id) is None
     assert "1 repetiam um fato já contado" in juntada.revisoes[-1].comentario
+
+
+# ======================================================
+# O LEITOR VE QUE A NOTICIA FOI ATUALIZADA, COM O TITULO E O TEMA ORIGINAIS
+# ======================================================
+def test_api_avisa_a_atualizacao_e_mantem_titulo_e_tema(app, banco, admin):
+    original = _gerar("nova", 2310837)
+    titulo, tema = original.titulo, original.cod_tema
+    mudar_status(original, admin, "publicar")
+    cliente = app.test_client()
+    antes = cliente.get(f"/api/noticias/{original.slug}").get_json()
+    assert (antes["atualizada"], antes["atualizacoes"], antes["lista_de_atualizacoes"]) == (False, 0, [])
+
+    mudar_status(_gerar("votacao", "2310837-8"), admin, "publicar")
+    depois = cliente.get(f"/api/noticias/{original.slug}").get_json()
+    assert depois["titulo"] == titulo and depois["tema"]["cod_tema"] == tema
+    assert (depois["atualizada"], depois["atualizacoes"], depois["ultima_atualizacao"]) == (True, 1, "20/05/2024")
+    [atualizacao] = depois["lista_de_atualizacoes"]
+    assert atualizacao["data"] == "20/05/2024"
+    assert atualizacao["titulo"].startswith("Câmara aprova projeto de lei")
+    assert atualizacao["texto"].startswith("O Plenário aprovou")
+    cartao = cliente.get("/api/noticias").get_json()["itens"][0]
+    assert (cartao["titulo"], cartao["atualizada"]) == (titulo, True)

@@ -104,6 +104,29 @@ def texto_da_atualizacao(fato):
     return "\n\n".join(parte.strip() for parte in partes if parte and parte.strip())
 
 
+def atualizacoes_do_corpo(corpo):
+    """
+    As atualizacoes da noticia, para o leitor ver que ela foi atualizada (decisao 25.16):
+    [{"data": "dd/mm/aaaa", "titulo", "texto"}], da mais recente para a mais antiga.
+    """
+    titulo_da_secao = f"{MARCA_SECAO}{SECAO_ATUALIZACOES}"
+    linhas = (corpo or "").split("\n")
+    if titulo_da_secao not in linhas:
+        return []
+    inicio = linhas.index(titulo_da_secao) + 1
+    fim = next((i for i in range(inicio, len(linhas)) if linhas[i].startswith(MARCA_SECAO)), len(linhas))
+    atualizacoes = []
+    for linha in linhas[inicio:fim]:
+        if linha.startswith(MARCA_ATUALIZACAO):
+            data, _, titulo = linha[len(MARCA_ATUALIZACAO) :].partition(": ")
+            atualizacoes.append({"data": data.strip(), "titulo": titulo.strip(), "texto": []})
+        elif atualizacoes:
+            atualizacoes[-1]["texto"].append(linha)
+    for atualizacao in atualizacoes:
+        atualizacao["texto"] = "\n".join(atualizacao["texto"]).strip()
+    return atualizacoes
+
+
 def _inserir_na_secao(corpo, texto):
     """Poe o texto logo abaixo do titulo "## Atualizacoes" (a mais recente primeiro); cria a secao se nao houver."""
     titulo = f"{MARCA_SECAO}{SECAO_ATUALIZACOES}"

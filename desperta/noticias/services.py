@@ -180,6 +180,10 @@ def _tema_dict(tema):
 
 def como_cartao(noticia):
     """O que aparece na lista e na pagina principal."""
+    from .viva import atualizacoes_do_corpo
+
+    # 25.16: o titulo continua o original; o cartao avisa que a noticia foi atualizada
+    atualizacoes = atualizacoes_do_corpo(noticia.corpo)
     return {
         "id": noticia.id,
         "titulo": noticia.titulo,
@@ -190,6 +194,9 @@ def como_cartao(noticia):
         "publicado_em": iso(noticia.publicado_em),
         "alterado_em": iso(noticia.alterado_em),
         "visualizacoes": noticia.visualizacoes,
+        "atualizada": bool(atualizacoes),
+        "atualizacoes": len(atualizacoes),
+        "ultima_atualizacao": atualizacoes[0]["data"] if atualizacoes else None,
     }
 
 
@@ -296,9 +303,17 @@ def como_completa(noticia):
             "fontes": fontes_com_links(noticia),
             "como_foi_feita": como_foi_feita(noticia),
             "transparencia": transparencia(noticia),
+            # 25.16: as atualizacoes separadas, da mais recente para a mais antiga
+            "lista_de_atualizacoes": _lista_de_atualizacoes(noticia),
         }
     )
     return dados
+
+
+def _lista_de_atualizacoes(noticia):
+    from .viva import atualizacoes_do_corpo
+
+    return atualizacoes_do_corpo(noticia.corpo)
 
 
 def _publicadas():
