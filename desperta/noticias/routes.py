@@ -70,8 +70,12 @@ def fila():
         parametro_texto("ordem", 20) or "prioridade",
     )
     calculadas = services.prioridades(itens)
+    conferidas = services.conferencias(itens)
     return paginado(
-        [services.como_item_de_revisao(n, calculadas[n.id]) for n in itens], total, pagina_atual, por_pagina
+        [services.como_item_de_revisao(n, calculadas[n.id], conferidas[n.id]) for n in itens],
+        total,
+        pagina_atual,
+        por_pagina,
     )
 
 
