@@ -280,8 +280,12 @@ def test_proposicao_sem_tema_vira_noticia_no_tema_especial(banco):
     )
     assert noticia.cod_tema == TEMA_SEM_CLASSIFICACAO
     assert noticia.tema.nome == TEMA_SEM_CLASSIFICACAO_NOME and noticia.tema.icone == "help"
-    aviso = "Quando este texto foi escrito, a Câmara ainda não tinha informado o tema do PL 3/2024."
-    assert aviso in noticia.resumo and noticia.corpo.endswith(aviso)
+    # Decisao 25.13: a falta de tema e uma lacuna, na secao propria, fora do paragrafo principal
+    assert (
+        "A Câmara ainda não informou o tema desta proposição."
+        in noticia.corpo.split("## O que a Câmara não informou")[1]
+    )
+    assert "informou o tema" not in noticia.resumo
     # O tema especial e criado uma vez so
     assert banco.session.scalar(banco.select(banco.func.count()).select_from(fabricas.Tema)) == 2
 

@@ -26,6 +26,8 @@ class Config:
     LIMITE_BUSCA = int(os.getenv("LIMITE_BUSCA", "60"))
     # RNF05: sem coleta concluida ha mais que isto, o portal avisa que os dados podem estar desatualizados
     AVISO_DESATUALIZADO_HORAS = int(os.getenv("AVISO_DESATUALIZADO_HORAS", "6"))
+    # Decisao 25.13: proposicao sem tema ha mais dias que isto sobe de nivel (atraso -> ocultacao)
+    LACUNA_ATRASO_DIAS = int(os.getenv("LACUNA_ATRASO_DIAS", "30"))
 
     # Fases seguintes (ja deixar declarado)
     CAMARA_API_URL = os.getenv("CAMARA_API_URL", "https://dadosabertos.camara.leg.br/api/v2")
