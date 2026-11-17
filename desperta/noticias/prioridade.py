@@ -33,7 +33,7 @@ class Prioridade:
 
 
 def _casos(ids):
-    """{noticia_id: entrada da ultima geracao ok} (o caso e os ids usados)."""
+    """{noticia_id: [entradas das geracoes ok, da mais antiga para a mais nova]} (25.16: a noticia viva tem varias)."""
     from desperta.ia.models import GeracaoIA
 
     entradas = {}
@@ -43,9 +43,9 @@ def _casos(ids):
         .order_by(GeracaoIA.id)
     ):
         try:
-            entradas[noticia_id] = json.loads(entrada)
+            entradas.setdefault(noticia_id, []).append(json.loads(entrada))
         except ValueError:
-            entradas[noticia_id] = {}
+            entradas.setdefault(noticia_id, []).append({})
     return entradas
 
 
@@ -119,30 +119,39 @@ def calcular(noticias):
     lacunas_p, lacunas_v = lacunas_em_lote(list(proposicoes.values()), list(votacoes.values()))
 
     resultado = {}
-    for noticia in noticias:
-        entrada = casos.get(noticia.id, {})
+
+    def do_fato(noticia, entrada, proposicao, votacao_padrao):
         caso = entrada.get("caso")
+        votacao = votacoes.get(entrada.get("votacao_id")) or votacao_padrao
+        if noticia.tipo == "relatorio" or caso == "relatorio_semanal":
+            return ALTA, "relatório"
+        if noticia.origem == "equipe":
+            return MEDIA, "escrita pela equipe"
+        if caso == "votacao" and votacao is not None:
+            return _da_votacao(votacao, proposicao)
+        if caso == "situacao":
+            return _da_situacao(proposicao, entrada)
+        if caso == "nova":
+            return _da_nova(proposicao)
+        return MEDIA, "sem regra para este caso"
+
+    resultado = {}
+    for noticia in noticias:
+        entradas = casos.get(noticia.id) or [{}]
         lista = fontes.get(noticia.id, [])
         proposicao = next((proposicoes.get(int(ref)) for tipo, ref in lista if tipo == "proposicao"), None)
         votacao = next((votacoes.get(ref) for tipo, ref in lista if tipo == "votacao"), None)
 
-        if noticia.tipo == "relatorio" or caso == "relatorio_semanal":
-            nivel, motivo = ALTA, "relatório"
-        elif noticia.origem == "equipe":
-            nivel, motivo = MEDIA, "escrita pela equipe"
-        elif caso == "votacao" and votacao is not None:
-            nivel, motivo = _da_votacao(votacao, proposicao)
-        elif caso == "situacao":
-            nivel, motivo = _da_situacao(proposicao, entrada)
-        elif caso == "nova":
-            nivel, motivo = _da_nova(proposicao)
-        else:
-            nivel, motivo = MEDIA, "sem regra para este caso"
-        motivos = [motivo]
+        # 25.16: a noticia viva junta varios fatos; vale o nivel mais alto, com o motivo de cada fato
+        por_fato = [do_fato(noticia, entrada, proposicao, votacao) for entrada in entradas]
+        nivel = min((nivel for nivel, _ in por_fato), key=ORDEM.get)
+        motivos = list(dict.fromkeys(motivo for _, motivo in sorted(por_fato, key=lambda item: ORDEM[item[0]])))
 
-        # A Camara mudou de novo depois do rascunho: a equipe precisa saber antes de publicar
-        if caso == "situacao" and proposicao is not None and proposicao.data_status is not None:
-            if entrada.get("data_status") and entrada["data_status"] != proposicao.data_status.isoformat():
+        # A Camara mudou de novo depois do ultimo fato de situacao: a equipe precisa saber antes de publicar
+        situacoes = [entrada for entrada in entradas if entrada.get("caso") == "situacao"]
+        if situacoes and proposicao is not None and proposicao.data_status is not None:
+            ultima = situacoes[-1].get("data_status")
+            if ultima and ultima != proposicao.data_status.isoformat():
                 motivos.append("a situação mudou de novo depois deste rascunho")
 
         graves = [

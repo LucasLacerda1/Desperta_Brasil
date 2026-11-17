@@ -139,7 +139,12 @@ def test_gera_um_rascunho_por_fato_e_conta_o_que_pulou(banco):
     assert dict(resumo.gerados) == {"votacao": 1, "situacao": 1, "nova": 2}
     assert (resumo.candidatos, resumo.sem_tema, resumo.pendentes, resumo.erros) == (6, 1, 2, 0)
     noticias = banco.session.scalars(banco.select(Noticia)).all()
-    assert len(noticias) == 4 and {n.status for n in noticias} == {"rascunho"}
+    # 25.16: a votacao e a proposicao nova do PL 1234 sao a mesma noticia viva (4 fatos, 3 noticias)
+    assert len(noticias) == 3 and {n.status for n in noticias} == {"rascunho"}
+    viva = banco.session.scalars(banco.select(Noticia).order_by(Noticia.id)).first()
+    assert viva.titulo.startswith("Câmara aprova projeto de lei")
+    assert "## Atualizações\n\n### 14/05/2024: Projeto institui o Dia Nacional da Merenda" in viva.corpo
+    assert _contar(banco, GeracaoIA) == 4
     log = banco.session.scalar(banco.select(LogSistema).filter_by(acao="gerar_novos"))
     assert log.nivel == "info" and "sem_tema_da_camara=1" in log.descricao and "pendentes_na_coleta=2" in log.descricao
 
@@ -150,7 +155,7 @@ def test_rodar_de_novo_nao_duplica_nem_refaz_a_rejeitada(banco):
     banco.session.commit()
     resumo = _rodar()
     assert sum(resumo.gerados.values()) == 0 and resumo.ja_feitos == 4
-    assert _contar(banco, Noticia) == 4
+    assert _contar(banco, Noticia) == 3
 
 
 def test_situacao_que_muda_de_verdade_gera_de_novo(banco):
@@ -179,7 +184,7 @@ def test_so_a_data_do_status_andar_nao_e_mudanca_de_situacao(banco):
     resumo = _rodar()
     assert sum(resumo.gerados.values()) == 0
     assert (resumo.candidatos, resumo.ja_feitos) == (5, 3)
-    assert _contar(banco, Noticia) == 4
+    assert _contar(banco, Noticia) == 3
 
 
 def test_proposicao_sem_situacao_na_camara_nao_e_mudanca_de_situacao(banco):
@@ -212,7 +217,7 @@ def test_gerar_novos_refaz_o_indice_das_raizes_incompleto(banco):
     banco.session.execute(banco.text("DELETE FROM noticia_fts_raiz"))
     banco.session.commit()
     _rodar()
-    assert banco.session.execute(banco.text("SELECT COUNT(*) FROM noticia_fts_raiz_docsize")).scalar() == 4
+    assert banco.session.execute(banco.text("SELECT COUNT(*) FROM noticia_fts_raiz_docsize")).scalar() == 3
     avisos = banco.select(banco.func.count()).select_from(LogSistema).filter_by(acao="busca_raiz_refeita")
     assert banco.session.scalar(avisos) == 1
     # Com o indice completo, a execucao seguinte nao refaz nem avisa de novo
@@ -251,7 +256,7 @@ def test_erro_nao_e_repetido_a_cada_hora_mas_pode_ser_refeito(app, banco):
     assert (segunda.erros, segunda.ja_feitos) == (0, 4)
     app.config["GERADOR"] = "frases"
     assert sum(_rodar(refazer_erros=True).gerados.values()) == 4
-    assert _contar(banco, Noticia) == 4
+    assert _contar(banco, Noticia) == 3
 
 
 def test_comando_simula_e_gera_so_com_palavras_sem_o_pendrive(app, banco, tmp_path):
@@ -265,7 +270,7 @@ def test_comando_simula_e_gera_so_com_palavras_sem_o_pendrive(app, banco, tmp_pa
     gerado = executor.invoke(args=["ia", "gerar-novos", "--dias", dias])
     assert gerado.exit_code == 0, gerado.output
     assert "Usando só a busca por palavras" in gerado.output and "nova=2" in gerado.output
-    assert _contar(banco, Noticia) == 4
+    assert _contar(banco, Noticia) == 3
 
 
 # ======================================================

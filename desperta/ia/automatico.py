@@ -25,7 +25,7 @@ from desperta.proposicoes.services import situacao_mudou, tema_principal
 from desperta.sistema.models import LogSistema
 from desperta.votacoes.models import Votacao, VotacaoProposicao
 
-from .geracao import _entrada, _ler_origem, gerar_noticia
+from .geracao import _entrada, _ler_origem, chave_do_fato, gerar_noticia
 from .gerador import CASO_NOVA, CASO_SITUACAO, CASO_VOTACAO
 from .models import GeracaoIA
 
@@ -131,7 +131,8 @@ def _entradas_feitas(refazer_erros):
     consulta = db.select(GeracaoIA.entrada)
     if refazer_erros:
         consulta = consulta.where(GeracaoIA.status == "ok")
-    return set(db.session.scalars(consulta))
+    # 25.16: compara o que identifica o fato, e nao a entrada inteira (ver chave_do_fato)
+    return {chave_do_fato(entrada) for entrada in db.session.scalars(consulta)}
 
 
 def _tem_tema(proposicao_id):
@@ -211,7 +212,7 @@ def gerar_novos(modelo, dias=None, limite=None, simular=False, refazer_erros=Fal
             resumo.pendentes += 1
             continue
         proposicao, votacao = _ler_origem(caso, ref)
-        entrada = _entrada(caso, proposicao, votacao)
+        entrada = chave_do_fato(_entrada(caso, proposicao, votacao))
         if entrada in feitas:
             resumo.ja_feitos += 1
             continue
