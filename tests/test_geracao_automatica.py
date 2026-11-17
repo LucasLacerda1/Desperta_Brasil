@@ -231,7 +231,12 @@ def test_pendente_entra_quando_a_coleta_completa(banco):
     banco.session.get(fabricas.Proposicao, 4).filhos_sincronizados_em = SINCRONIZADO
     banco.session.get(fabricas.Votacao, "4-1").filhos_sincronizados_em = SINCRONIZADO
     banco.session.commit()
-    assert dict(_rodar().gerados) == {"votacao": 1, "nova": 1}
+    # 25.17: a votacao 4-1 e de procedimento no Plenario (fato pequeno) e o PL 4 ainda nao tinha
+    # noticia viva: fica so para o boletim; o PL novo vira noticia propria
+    segunda = _rodar()
+    assert dict(segunda.gerados) == {"nova": 1} and segunda.para_o_boletim == 1
+    # Na execucao seguinte o PL 4 ja tem noticia viva: a votacao entra nela tambem (escolha do Lucas)
+    assert dict(_rodar().gerados) == {"votacao": 1}
 
 
 def test_simular_nao_grava_nada(banco):

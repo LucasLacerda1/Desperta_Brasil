@@ -227,6 +227,31 @@ def relatorio_semanal(ate, simular):
     click.echo(relatorio.em_texto(registro, novo))
 
 
+@ia.command("boletins")
+@click.option("--dia", callback=_data, help="Dia dos fatos (AAAA-MM-DD); padrao: ontem.")
+@click.option("--simular", is_flag=True, help="So mostra o boletim, sem gravar nada.")
+def boletins(dia, simular):
+    """Decisao 25.17: os boletins do dia (fatos pequenos), um por tipo de fato, como rascunhos."""
+    from datetime import date, timedelta
+
+    from . import boletim
+
+    dia = dia or date.today() - timedelta(days=1)
+    if simular:
+        dados = boletim.ler_dia(dia)
+        for categoria, itens in dados.itens.items():
+            if itens:
+                titulo, resumo, corpo = boletim.escrever(categoria, dados)
+                click.echo(f"{titulo}\n{resumo}\n\n{corpo}\n")
+        click.echo(f"Simulação: nada foi gravado. {boletim.em_texto(dia, boletim.gerar_boletins(dia, simular=True))}")
+        return
+    resultado = boletim.gerar_boletins(dia)
+    click.echo(boletim.em_texto(dia, resultado))
+    erros = [geracao for _, geracao, _ in resultado if geracao.status == "erro"]
+    if erros:
+        raise click.ClickException(f"Geracao {erros[0].id} com erro: {erros[0].erro}")
+
+
 @ia.command("reconstruir")
 def reconstruir():
     """Refaz os indices vetoriais (um por modelo) e os de palavras a partir de trecho_rag, sem gerar embeddings."""

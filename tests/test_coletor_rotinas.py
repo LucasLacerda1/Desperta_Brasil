@@ -785,6 +785,31 @@ def test_so_a_agendada_semanal_escreve_o_relatorio_da_semana(comandos, db, api, 
     assert sem_ia.exit_code == 0 and chamadas == [True]
 
 
+def test_so_a_agendada_diaria_escreve_os_boletins_de_ontem(comandos, db, api, ia_falsa, monkeypatch):
+    """Decisao 25.17: os boletins do dia anterior saem na diaria, depois da coleta e ainda com a trava."""
+    from datetime import date, timedelta
+
+    from desperta.ia import boletim
+
+    chamadas = []
+
+    def gerar_boletins(dia):
+        chamadas.append((dia, os.path.exists(comandos.caminho_trava)))
+        return []
+
+    monkeypatch.setattr(boletim, "gerar_boletins", gerar_boletins)
+    for rotina in ("horaria", "diaria", "mensal", "semanal"):
+        monkeypatch.setitem(modulo_cli.ROTINAS_AGENDADAS, rotina, lambda cliente: None)
+    for rotina in ("horaria", "mensal", "semanal"):
+        resultado = comandos.invoke(args=["coletar", "agendada", rotina])
+        assert resultado.exit_code == 0 and "boletins" not in resultado.output
+    assert chamadas == []
+    resultado = comandos.invoke(args=["coletar", "agendada", "diaria"])
+    assert resultado.exit_code == 0, resultado.output
+    assert chamadas == [(date.today() - timedelta(days=1), True)]
+    assert "boletins: " in resultado.output and "nenhum fato pequeno" in resultado.output
+
+
 def test_agendada_horaria_nao_espera_outra_coleta(comandos, db, api, ia_falsa):
     assert trava.adquirir(comandos.caminho_trava)
     resultado = comandos.invoke(args=["coletar", "agendada", "horaria"])
