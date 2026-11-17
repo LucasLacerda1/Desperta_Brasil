@@ -163,15 +163,15 @@ CONTAGEM = " UNION ALL ".join(
 CONSULTAS = {
     "contagem_das_tabelas": ("Quantas linhas tem cada tabela", CONTAGEM + " ORDER BY linhas DESC"),
     "votacoes_secretas": (
-        "Votações secretas (todos os votos sem tipo)",
+        "Votações só com o placar (todos os votos sem tipo)",
         "SELECT v.id, v.data, v.sigla_orgao, v.descricao, COUNT(*) AS presentes FROM votacao v "
         "JOIN voto x ON x.votacao_id = v.id GROUP BY v.id HAVING COUNT(x.tipo_voto) = 0",
     ),
     "situacao_das_votacoes": (
-        "Votações nominais, secretas, simbólicas e pendentes",
+        "Votações nominais, só com o placar, simbólicas e pendentes",
         "SELECT CASE WHEN v.filhos_sincronizados_em IS NULL THEN 'pendente' "
         "WHEN (SELECT COUNT(*) FROM voto x WHERE x.votacao_id = v.id) = 0 THEN 'simbolica' "
-        "WHEN (SELECT COUNT(tipo_voto) FROM voto x WHERE x.votacao_id = v.id) = 0 THEN 'secreta' "
+        "WHEN (SELECT COUNT(tipo_voto) FROM voto x WHERE x.votacao_id = v.id) = 0 THEN 'só placar' "
         "ELSE 'nominal' END AS situacao, COUNT(*) AS votacoes FROM votacao v GROUP BY situacao ORDER BY votacoes DESC",
     ),
     "placar_por_partido": (

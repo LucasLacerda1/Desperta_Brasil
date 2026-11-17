@@ -189,6 +189,10 @@ def listar_tramitacoes(proposicao_id, pagina=1, por_pagina=20):
 
 def como_dict(proposicao):
     """Pagina da proposicao: situacao (ou o que a Camara nao informou), autores, temas, andamento e votacoes."""
+    from desperta.sistema.lacunas import lacunas_da_proposicao
+
+    from .situacoes import explicar_situacao
+
     recentes, total = listar_tramitacoes(proposicao.id, 1, TRAMITACOES_NO_DETALHE)
     votacoes = db.session.scalars(
         db.select(Votacao)
@@ -212,6 +216,8 @@ def como_dict(proposicao):
         "palavras_chave": informado(proposicao.keywords),
         "data_apresentacao": iso_camara(proposicao.data_apresentacao),
         "situacao": ou_nao_informado(proposicao.situacao, feminino=True),
+        # Decisao 25.13: o nome da Camara e a explicacao em linguagem popular
+        "situacao_explicada": explicar_situacao(proposicao.cod_situacao, proposicao.situacao),
         "data_situacao": iso_camara(proposicao.data_status),
         "regime": ou_nao_informado(proposicao.regime),
         "apreciacao": ou_nao_informado(proposicao.apreciacao, feminino=True),
@@ -229,6 +235,8 @@ def como_dict(proposicao):
         ],
         # Transparencia (25.6): a falta de tema e dita, e nao so uma lista vazia
         "aviso_tema": None if proposicao.temas else AVISO_SEM_TEMA,
+        # Decisao 25.13: o que a Camara nao informou, com prova (sem o nivel, que e interno)
+        "lacunas": [lacuna.publica() for lacuna in lacunas_da_proposicao(proposicao)],
         "tramitacoes": {"itens": [como_tramitacao(t) for t in recentes], "total": total},
         "votacoes": [
             {

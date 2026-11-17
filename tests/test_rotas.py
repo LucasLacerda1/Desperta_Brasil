@@ -325,13 +325,19 @@ def test_detalhe_da_votacao(db, cliente, dados):
     assert cliente.get("/api/votacoes/1-1").status_code == 404
 
 
-def test_votacao_secreta_sem_tipo_de_voto(db, cliente, dados):
+def test_votacao_so_com_o_placar_sem_tipo_de_voto(db, cliente, dados):
     dados.votacao.filhos_sincronizados_em = datetime(2026, 11, 10)
     db.session.get(Voto, ("2310837-8", 204554)).tipo_voto = None
     db.session.commit()
     v = cliente.get("/api/votacoes/2310837-8").get_json()
-    assert v["situacao_dos_votos"]["codigo"] == "secreta"
+    assert v["situacao_dos_votos"]["codigo"] == "so_placar"
     assert v["votos"][0]["voto"] == "não informado pela Câmara"
+    # Decisao 25.13: a lacuna vem com a prova e sem o nivel, que e interno
+    lacuna = next(item for item in v["lacunas"] if item["codigo"] == "so_placar")
+    assert "nivel" not in lacuna and lacuna["certeza"] == "sem_explicacao"
+    assert lacuna["provas"][0]["endereco"].endswith("/votacoes/2310837-8/votos")
+    assert lacuna["provas"][0]["consultado_em"] == "2026-11-10T00:00:00Z"
+    assert lacuna["mais_informacoes"]["texto"] == "Para mais informações, acesse o site da Câmara dos Deputados"
 
 
 # ======================================================

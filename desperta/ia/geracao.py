@@ -9,6 +9,8 @@ from desperta.noticias.services import criar_rascunho
 from desperta.orgaos.models import Orgao
 from desperta.proposicoes.models import Proposicao, ProposicaoAutor, Tramitacao
 from desperta.proposicoes.services import tema_da_noticia
+from desperta.proposicoes.situacoes import SITUACOES, situacao_conhecida
+from desperta.sistema.lacunas import URL_FICHA, lacunas_das_fontes
 from desperta.sistema.models import LogSistema
 from desperta.votacoes.models import Votacao, VotacaoProposicao
 from desperta.votacoes.services import situacao_dos_votos
@@ -16,6 +18,7 @@ from desperta.votacoes.services import situacao_dos_votos
 from . import services
 from .gerador import (
     CASO_VOTACAO,
+    DadosLacuna,
     DadosNoticia,
     DadosProposicao,
     DadosTramitacao,
@@ -42,7 +45,7 @@ def _nome_do_orgao(orgao_id, sigla):
     return orgao.nome if orgao else "órgão não informado"
 
 
-def _dados_da_proposicao(proposicao, tem_tema=True):
+def _dados_da_proposicao(proposicao):
     autores = db.session.scalars(
         db.select(ProposicaoAutor).filter_by(proposicao_id=proposicao.id).order_by(ProposicaoAutor.ordem)
     ).all()
@@ -58,8 +61,37 @@ def _dados_da_proposicao(proposicao, tem_tema=True):
         situacao=proposicao.situacao,
         regime=proposicao.regime,
         apreciacao=proposicao.apreciacao,
-        tem_tema=tem_tema,
+        cod_situacao=proposicao.cod_situacao,
+        explicacao_situacao=SITUACOES.get(proposicao.cod_situacao),
     )
+
+
+def _avisar_situacao_desconhecida(proposicao):
+    """Decisao 25.13: codigo fora do dicionario mostra so o nome da Camara e avisa a equipe."""
+    if situacao_conhecida(proposicao.cod_situacao, proposicao.situacao):
+        return
+    db.session.add(
+        LogSistema(
+            nivel="aviso",
+            modulo="IA",
+            acao="situacao_desconhecida",
+            descricao=(
+                f"Codigo de situacao {proposicao.cod_situacao} ({proposicao.situacao!r}) fora do dicionario "
+                "de desperta/proposicoes/situacoes.py: a noticia mostra so o nome da Camara."
+            ),
+            entidade="proposicao",
+            entidade_id=str(proposicao.id),
+        )
+    )
+
+
+def _lacunas(fontes):
+    """Decisao 25.13: so as falhas da Camara entram na secao; a pratica normal ja esta no resultado."""
+    return [
+        DadosLacuna(texto=lacuna.texto, provas=[prova.em_texto() for prova in lacuna.provas])
+        for lacuna in lacunas_das_fontes(fontes)
+        if lacuna.falha_da_camara
+    ]
 
 
 def _tramitacoes(proposicao_id):
@@ -216,15 +248,19 @@ def gerar_noticia(modelo, caso, ref, gerador=None):
         gerador = gerador or criar_gerador(config["GERADOR"])
         nome, versao = gerador.nome, gerador.versao_prompt
 
-        # 25.2 e 25.6: o tema principal, ou o tema especial quando a Camara nao informou nenhum
-        cod_tema, tem_tema = tema_da_noticia(proposicao.id)
+        # 25.2 e 25.6: o tema principal, ou o tema especial quando a Camara nao informou nenhum;
+        # a falta de tema entra nas lacunas (25.13)
+        cod_tema, _ = tema_da_noticia(proposicao.id)
+        fontes = _fontes(proposicao, votacao)
         dados = DadosNoticia(
             caso=caso,
-            proposicao=_dados_da_proposicao(proposicao, tem_tema),
+            proposicao=_dados_da_proposicao(proposicao),
             votacao=_dados_da_votacao(votacao) if votacao else None,
             tramitacoes=_tramitacoes(proposicao.id),
+            lacunas=_lacunas(fontes),
+            url_mais_informacoes=URL_FICHA.format(proposicao.id),
         )
-        fontes = _fontes(proposicao, votacao)
+        _avisar_situacao_desconhecida(proposicao)
         achados = services.buscar(modelo, consulta, modo="hibrida" if modelo else "palavras")
         texto = gerador.escrever(consulta, [achado.trecho.texto for achado in achados], dados)
 

@@ -3,7 +3,9 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import List, Optional
 
-from desperta.proposicoes.services import informado, ou_nao_informado
+from desperta.noticias.services import MARCA_SECAO
+from desperta.proposicoes.services import ou_nao_informado
+from desperta.proposicoes.situacoes import situacao_informada
 
 # Decisao 17.2: GeradorFrases e o plano B e o padrao do MVP; GeradorRoberta so entra depois da Fase 3b.
 
@@ -15,6 +17,15 @@ CASOS = (CASO_NOVA, CASO_SITUACAO, CASO_VOTACAO)
 LIMITE_TITULO = 200
 LIMITE_RESUMO = 500
 TRAMITACOES_NO_CORPO = 3
+
+# Decisao 25.13: estrutura da noticia. O resumo (paragrafo principal) traz so o fato; o resto
+# vai para secoes do corpo, cada uma comecando com "## " (a API entrega as partes separadas)
+SECAO_PROPOE = "O que propõe"
+SECAO_VOTACAO = "Resultado da votação"
+SECAO_ONDE_ESTA = "Onde está na Câmara"
+SECAO_LACUNAS = "O que a Câmara não informou"
+INTRO_LACUNAS = "Situação dos dados abertos da Câmara quando este texto foi escrito:"
+MAIS_INFORMACOES = "Para mais informações, acesse o site da Câmara dos Deputados"
 
 # sigla: (nome por extenso, artigo, sujeito do titulo)
 TIPOS = {
@@ -129,7 +140,7 @@ class DadosVotacao:
     sim: int = 0
     nao: int = 0
     abstencao: int = 0
-    # Transparencia: nominal, secreta, simbolica, pendente, erro_na_coleta ou inconsistente
+    # Transparencia: nominal, so_placar, simbolica, pendente, erro_na_coleta ou inconsistente
     situacao: str = "nominal"
     explicacao: str = ""
 
@@ -147,8 +158,17 @@ class DadosProposicao:
     situacao: Optional[str] = None
     regime: Optional[str] = None
     apreciacao: Optional[str] = None
-    # Decisao 25.6: False quando a Camara ainda nao informou o tema da proposicao
-    tem_tema: bool = True
+    cod_situacao: Optional[int] = None
+    # Decisao 25.13: explicacao popular da situacao (None se o codigo nao esta no dicionario)
+    explicacao_situacao: Optional[str] = None
+
+
+@dataclass
+class DadosLacuna:
+    """Lacuna da Camara ja em texto (desperta/sistema/lacunas.py): o que falta e a prova."""
+
+    texto: str
+    provas: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -159,6 +179,9 @@ class DadosNoticia:
     proposicao: DadosProposicao
     votacao: Optional[DadosVotacao] = None
     tramitacoes: List[DadosTramitacao] = field(default_factory=list)
+    # So as falhas da Camara (sem a pratica normal) e o link da ficha da proposicao
+    lacunas: List[DadosLacuna] = field(default_factory=list)
+    url_mais_informacoes: Optional[str] = None
 
 
 # === Gerador (interface de quem escreve as noticias) ===
@@ -263,7 +286,7 @@ def _titulo_da_votacao(votacao):
 
 
 def _placar(votacao):
-    # Secreta, simbolica, pendente: a explicacao diz por que nao ha o voto de cada deputado
+    # So o placar, simbolica, pendente: a explicacao diz o que os dados mostram
     if votacao.situacao != "nominal":
         return _frase(votacao.explicacao) if votacao.explicacao else ""
     if not (votacao.sim or votacao.nao or votacao.abstencao):
@@ -286,8 +309,9 @@ def _tramitacao_em_frase(tramitacao):
 
 # === GeradorFrases (frases prontas: nunca escreve fato que nao esteja nos registros) ===
 class GeradorFrases(Gerador):
-    nome = "frases-v1"
-    versao_prompt = "frases-v1"
+    nome = "frases-v2"
+    # v2 (decisao 25.13): paragrafo principal so com o fato; placar, situacao e lacunas em secoes
+    versao_prompt = "frases-v2"
 
     def escrever(self, consulta, trechos, dados=None):
         if dados is None:
@@ -300,14 +324,6 @@ class GeradorFrases(Gerador):
             dados.caso
         ](dados)
         corpo = self._corpo(dados)
-        if not dados.proposicao.tem_tema:
-            # A frase continua verdadeira mesmo depois que a Camara classificar a proposicao
-            aviso = (
-                "Quando este texto foi escrito, a Câmara ainda não tinha informado "
-                f"o tema {_de_nome(dados.proposicao)}."
-            )
-            resumo = f"{resumo} {aviso}" if len(resumo) + len(aviso) < LIMITE_RESUMO else resumo
-            corpo = f"{corpo}\n\n{aviso}"
         return TextoGerado(
             titulo=_cortar(titulo, LIMITE_TITULO),
             resumo=_cortar(resumo, LIMITE_RESUMO),
@@ -333,9 +349,9 @@ class GeradorFrases(Gerador):
 
     def _situacao(self, dados):
         proposicao = dados.proposicao
-        situacao = informado(proposicao.situacao)
-        if situacao is None:
+        if not situacao_informada(proposicao.cod_situacao, proposicao.situacao):
             return self._sem_situacao(dados)
+        situacao = proposicao.situacao.strip()
         if situacao.lower() in SITUACOES_DE_AVANCO:
             titulo = f"{_identificacao(proposicao)} avança na Câmara"
         else:
@@ -356,13 +372,12 @@ class GeradorFrases(Gerador):
             feito = "aprovou" if votacao.aprovacao else "rejeitou"
             titulo = f"{_titulo_da_votacao(votacao)} {verbo} {self._o_que_foi_votado(proposicao)}"
             artigo = _tipo(proposicao)[1]
-            resumo = (
-                f"{_quem_votou(votacao)} {feito}, {_no_dia(votacao.data)}, {artigo} {identificacao}. {_placar(votacao)}"
-            )
+            # 25.13: o placar sai do paragrafo principal e vai para a secao "Resultado da votacao"
+            resumo = f"{_quem_votou(votacao)} {feito}, {_no_dia(votacao.data)}, {artigo} {identificacao}."
         else:
             # Requerimento, destaque, redacao final: conta o que a Camara registrou, sem dizer que o projeto passou
             titulo = f"{identificacao}: {descricao}"
-            resumo = f"Votação {_no_dia(votacao.data)} sobre {identificacao}: {_frase(descricao)} {_placar(votacao)}"
+            resumo = f"Votação {_no_dia(votacao.data)} sobre {identificacao}: {_frase(descricao)}"
         return titulo, resumo.strip()
 
     def _o_que_foi_votado(self, proposicao):
@@ -380,37 +395,70 @@ class GeradorFrases(Gerador):
     def _sem_situacao(self, dados):
         """
         Decisao 25.1: quando a Camara nao informa a situacao, a noticia conta o ultimo passo
-        do andamento e diz que a situacao nao foi informada; a descricao do passo nunca e
-        apresentada como se fosse a situacao.
+        do andamento; a descricao do passo nunca e apresentada como se fosse a situacao.
+        Decisao 25.13: que a situacao nao foi informada vai para as secoes, nao para o resumo.
         """
         if not dados.tramitacoes:
             raise ValueError("A proposicao nao tem situacao nem tramitacao.")
         proposicao = dados.proposicao
         passo = dados.tramitacoes[-1]
         titulo = f"{_identificacao(proposicao)}: {passo.descricao.strip()}"
-        resumo = f"{_tramitacao_em_frase(passo)} A situação {_de_nome(proposicao)} não foi informada pela Câmara."
+        resumo = _tramitacao_em_frase(passo)
         return titulo, resumo
 
     def _corpo(self, dados):
+        """Decisao 25.13: secoes na ordem; cada uma comeca com "## " e o titulo."""
+        secoes = [(SECAO_PROPOE, self._o_que_propoe(dados))]
+        if dados.votacao:
+            secoes.append((SECAO_VOTACAO, self._resultado(dados.votacao)))
+        secoes.append((SECAO_ONDE_ESTA, self._onde_esta(dados)))
+        if dados.lacunas:
+            secoes.append((SECAO_LACUNAS, self._lacunas(dados)))
+        return "\n\n".join(f"{MARCA_SECAO}{titulo}\n\n{texto}" for titulo, texto in secoes)
+
+    def _o_que_propoe(self, dados):
         proposicao = dados.proposicao
         partes = [f"Ementa oficial: {_frase(_limpar_ementa(proposicao.ementa))}"]
         if proposicao.autor:
             partes.append(f"Autoria: {self._autoria(proposicao)}.")
-        if dados.votacao:
-            votacao = dados.votacao
-            partes.append(
-                f"Votação em {votacao.data:%d/%m/%Y}, em {votacao.orgao}: "
-                f"{_frase(_descricao_da_votacao(votacao))} {_placar(votacao)}".strip()
-            )
+        return "\n\n".join(partes)
+
+    def _resultado(self, votacao):
+        resultado = {True: "aprovado", False: "rejeitado", None: "não informado pela Câmara"}[votacao.aprovacao]
+        partes = [
+            f"Votação em {votacao.data:%d/%m/%Y}, em {votacao.orgao}: {_frase(_descricao_da_votacao(votacao))}",
+            f"Resultado: {resultado}.",
+        ]
+        placar = _placar(votacao)
+        if placar:
+            partes.append(placar)
+        return "\n\n".join(partes)
+
+    def _onde_esta(self, dados):
+        proposicao = dados.proposicao
+        if situacao_informada(proposicao.cod_situacao, proposicao.situacao):
+            situacao = f'Situação: "{proposicao.situacao.strip()}".'
+            if proposicao.explicacao_situacao:
+                situacao += f" {proposicao.explicacao_situacao}"
+        else:
+            situacao = "Situação: não informada pela Câmara."
         # Transparencia: o que a Camara nao informou aparece como nao informado
-        partes.append(f"Situação atual: {_frase(ou_nao_informado(proposicao.situacao, feminino=True))}")
-        partes.append(
+        partes = [
+            situacao,
             f"Regime de tramitação: {ou_nao_informado(proposicao.regime)}. "
-            f"Apreciação: {ou_nao_informado(proposicao.apreciacao, feminino=True)}."
-        )
+            f"Apreciação: {ou_nao_informado(proposicao.apreciacao, feminino=True)}.",
+        ]
         recentes = dados.tramitacoes[-TRAMITACOES_NO_CORPO:]
         if recentes:
             partes.append("Últimos passos:\n" + "\n".join(_tramitacao_em_frase(passo) for passo in recentes))
+        return "\n\n".join(partes)
+
+    def _lacunas(self, dados):
+        """A introducao mantem o texto verdadeiro mesmo depois que a Camara corrigir os dados."""
+        itens = [" ".join([f"- {lacuna.texto}", *lacuna.provas]) for lacuna in dados.lacunas]
+        partes = [INTRO_LACUNAS, "\n".join(itens)]
+        if dados.url_mais_informacoes:
+            partes.append(f"{MAIS_INFORMACOES}: {dados.url_mais_informacoes}")
         return "\n\n".join(partes)
 
 

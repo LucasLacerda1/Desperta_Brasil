@@ -17,11 +17,12 @@ from .models import Orientacao, Votacao, VotacaoProposicao, Voto
 # ----------------------------------------------------------
 PENDENTE = "pendente"
 ERRO_NA_COLETA = "erro_na_coleta"
-SECRETA = "secreta"
+# Decisao 25.13: os dados abertos nao dizem que a votacao foi secreta; dizem so que veio o placar
+SO_PLACAR = "so_placar"
 SIMBOLICA = "simbolica"
 NOMINAL = "nominal"
 INCONSISTENTE = "inconsistente"
-SITUACOES_DOS_VOTOS = (PENDENTE, ERRO_NA_COLETA, SECRETA, SIMBOLICA, NOMINAL, INCONSISTENTE)
+SITUACOES_DOS_VOTOS = (PENDENTE, ERRO_NA_COLETA, SO_PLACAR, SIMBOLICA, NOMINAL, INCONSISTENTE)
 
 PLACAR = re.compile(r"(Sim|Não|Abstenção|Obstrução|Total): (\d+)")
 # Tabelas filhas da votacao que podem registrar erro no log
@@ -73,7 +74,7 @@ def _teve_erro_na_coleta(id_votacao):
 
 
 def situacao_dos_votos(votacao):
-    """Classifica os votos da votacao: pendente, erro na coleta, secreta, simbolica, nominal ou inconsistente."""
+    """Classifica os votos da votacao: pendente, erro na coleta, so o placar, simbolica, nominal ou inconsistente."""
     votos = Counter(
         dict(
             db.session.execute(
@@ -94,10 +95,16 @@ def situacao_dos_votos(votacao):
             SIMBOLICA, "Votação simbólica: a Câmara não registra o voto de cada deputado.", placar, votos
         )
     if votos[None] == total:
-        explicacao = "Votação secreta: a Câmara divulgou só o placar total"
+        # Decisao 25.13: o texto afirma so o que os dados abertos mostram, sem dizer por que
         frase = placar_em_frase(placar)
-        explicacao += f" ({frase})." if frase else "."
-        return SituacaoDosVotos(SECRETA, explicacao, placar, votos)
+        if frase:
+            explicacao = f"Os dados abertos da Câmara trazem só o placar total ({frase}), sem o voto de cada deputado."
+        else:
+            presencas = "1 presença" if total == 1 else f"{total} presenças"
+            explicacao = (
+                f"Os dados abertos da Câmara registram {presencas}, sem o voto de cada deputado e sem o placar."
+            )
+        return SituacaoDosVotos(SO_PLACAR, explicacao, placar, votos)
     if votos[None]:
         return SituacaoDosVotos(
             INCONSISTENTE,
@@ -147,6 +154,8 @@ def orientacoes_em_grupos(votacao_id):
 
 def como_dict(votacao):
     """Resultado, situacao dos votos (22.5), voto de cada deputado e orientacoes (RF09)."""
+    from desperta.sistema.lacunas import lacunas_da_votacao
+
     situacao = situacao_dos_votos(votacao)
     votos = db.session.execute(
         db.select(Voto, Deputado)
@@ -201,5 +210,7 @@ def como_dict(votacao):
             for voto, deputado in votos
         ],
         "orientacoes": orientacoes_em_grupos(votacao.id),
+        # Decisao 25.13: o que a Camara nao informou, com prova (sem o nivel, que e interno)
+        "lacunas": [lacuna.publica() for lacuna in lacunas_da_votacao(votacao)],
         "url_dados_abertos": url_camara(f"votacoes/{votacao.id}"),
     }

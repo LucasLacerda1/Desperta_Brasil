@@ -37,6 +37,7 @@ def _proposicao(**campos):
             "apresentada_em": date(2024, 5, 14),
             "autor": "Fulana de Tal",
             "situacao": "Aguardando Parecer",
+            "cod_situacao": 915,
             **campos,
         }
     )
@@ -127,10 +128,10 @@ def test_proposicao_nova_com_ementa_sem_verbo():
 def test_votacao_de_merito_aprovada():
     texto = _escrever(CASO_VOTACAO, votacao=_votacao())
     assert texto.titulo == "Câmara aprova projeto de lei que institui o Dia Nacional da Merenda"
-    assert (
-        texto.resumo
-        == "O Plenário aprovou, na terça-feira (14/05/2024), o PL 1234/2024. Foram 300 votos a favor e 100 contra."
-    )
+    # Decisao 25.13: o paragrafo principal so traz o fato; o placar vem logo abaixo, no resultado
+    assert texto.resumo == "O Plenário aprovou, na terça-feira (14/05/2024), o PL 1234/2024."
+    assert "## Resultado da votação\n\n" in texto.corpo
+    assert "Resultado: aprovado.\n\nForam 300 votos a favor e 100 contra." in texto.corpo
 
 
 def test_votacao_de_merito_rejeitada_e_em_comissao():
@@ -151,7 +152,7 @@ def test_votacao_simbolica_nao_tem_placar():
 def test_placar_com_abstencao_e_fim_de_semana():
     texto = _escrever(CASO_VOTACAO, votacao=_votacao(abstencao=2, data=date(2024, 5, 18)))
     assert "no sábado (18/05/2024)" in texto.resumo
-    assert "com 2 de abstenção" in texto.resumo
+    assert "com 2 de abstenção" in texto.corpo and "abstenção" not in texto.resumo
 
 
 @pytest.mark.parametrize(
@@ -182,23 +183,27 @@ def test_requerimento_nunca_e_votacao_de_merito():
 @pytest.mark.parametrize(
     "situacao,explicacao",
     [
-        ("secreta", "Votação secreta: a Câmara divulgou só o placar total (404 a favor, 61 contra e 1 abstenção)."),
+        (
+            "so_placar",
+            "Os dados abertos da Câmara trazem só o placar total (404 a favor, 61 contra e 1 abstenção), "
+            "sem o voto de cada deputado.",
+        ),
         ("simbolica", "Votação simbólica: a Câmara não registra o voto de cada deputado."),
         ("pendente", "Os votos desta votação ainda estão sendo coletados."),
     ],
 )
 def test_votacao_explica_quando_nao_ha_o_voto_de_cada_deputado(situacao, explicacao):
-    """Transparencia (05/11/2026): o texto diz por que nao ha placar por deputado."""
+    """Transparencia (05/11/2026): o texto diz por que nao ha placar por deputado; 25.13: fora do resumo."""
     votacao = _votacao(sim=0, nao=0, situacao=situacao, explicacao=explicacao)
     texto = _escrever(CASO_VOTACAO, votacao=votacao)
-    assert texto.resumo.endswith(explicacao)
-    assert explicacao in texto.corpo
+    assert explicacao not in texto.resumo
+    assert explicacao in texto.corpo.split("## Resultado da votação")[1]
 
 
 def test_corpo_mostra_o_que_a_camara_nao_informou():
     proposicao = _proposicao(situacao=None, regime=".", apreciacao=None)
     corpo = _escrever(CASO_NOVA, proposicao=proposicao).corpo
-    assert "Situação atual: não informada pela Câmara." in corpo
+    assert "Situação: não informada pela Câmara." in corpo
     assert "Regime de tramitação: não informado pela Câmara. Apreciação: não informada pela Câmara." in corpo
 
 
@@ -245,9 +250,9 @@ def test_situacao_nula_conta_o_ultimo_passo_sem_chama_lo_de_situacao():
         tramitacoes=[_passo(descricao="Designado relator", despacho="")],
     )
     assert texto.titulo == "PL 1234/2024: Designado relator"
-    assert texto.resumo == (
-        "Em 03/06/2024, em CCJC: Designado relator. A situação do PL 1234/2024 não foi informada pela Câmara."
-    )
+    # 25.13: que a situacao nao foi informada fica nas secoes, fora do paragrafo principal
+    assert texto.resumo == "Em 03/06/2024, em CCJC: Designado relator."
+    assert "Situação: não informada pela Câmara." in texto.corpo
     assert "situação agora" not in texto.titulo and "está com a situação" not in texto.resumo
     assert "Em 03/06/2024, em CCJC: Designado relator." in texto.corpo
 
@@ -260,7 +265,8 @@ def test_situacao_que_a_camara_manda_vazia_tambem_e_nao_informada():
         tramitacoes=[_passo(descricao="Prorrogação de Prazo", despacho="")],
     )
     assert texto.titulo == "PEC 2/2023: Prorrogação de Prazo"
-    assert texto.resumo.endswith("A situação da PEC 2/2023 não foi informada pela Câmara.")
+    assert "não foi informada" not in texto.resumo
+    assert "Situação: não informada pela Câmara." in texto.corpo
 
 
 def test_sem_situacao_e_sem_tramitacao_nao_escreve():
@@ -328,7 +334,7 @@ def test_cabe_nos_tamanhos_de_noticia_sem_partir_palavra():
 # ======================================================
 def test_padrao_e_o_gerador_de_frases(app):
     assert app.config["GERADOR"] == "frases"
-    assert criar_gerador("frases").nome == "frases-v1"
+    assert criar_gerador("frases").nome == "frases-v2"
     assert isinstance(criar_gerador("falso"), GeradorFalso)
 
 
@@ -409,7 +415,7 @@ def test_gerar_grava_rascunho_geracao_trechos_e_fontes(banco):
     assert noticia.cod_tema == 47
     assert noticia.titulo == "Projeto institui o Dia Nacional da Merenda."[:-1]
     assert noticia.slug == "projeto-institui-o-dia-nacional-da-merenda"
-    assert (geracao.status, geracao.modelo_geracao, geracao.versao_prompt) == ("ok", "frases-v1", "frases-v1")
+    assert (geracao.status, geracao.modelo_geracao, geracao.versao_prompt) == ("ok", "frases-v2", "frases-v2")
     assert geracao.duracao_ms >= 0 and geracao.tokens_saida > 0
     assert json.loads(geracao.entrada)["proposicao_id"] == 2310837
     ligado = banco.session.scalar(banco.select(GeracaoTrecho).filter_by(geracao_id=geracao.id))
@@ -453,7 +459,8 @@ def test_gerar_votacao_tem_a_votacao_como_fonte_principal(banco):
     banco.session.commit()
     geracao, _ = _gerar("votacao", "2310837-8")
     assert geracao.noticia.titulo.startswith("Câmara aprova projeto de lei que institui")
-    assert "Foi 1 voto a favor e 0 contra." in geracao.noticia.resumo
+    assert "Foi 1 voto a favor e 0 contra." in geracao.noticia.corpo
+    assert "voto" not in geracao.noticia.resumo
     assert [(f.tipo, f.ref_id) for f in geracao.noticia.fontes] == [
         ("votacao", "2310837-8"),
         ("proposicao", "2310837"),
@@ -514,17 +521,23 @@ def test_erro_grava_geracao_sem_noticia_e_log(banco, caso, ref, mensagem):
 
 def test_proposicao_sem_tema_vira_noticia_que_diz_isso(banco):
     # Decisao 25.6: a falta de tema e informada, em vez de a proposicao ficar sem noticia
-    banco.session.add(fabricas.proposicao(id=7, numero=7))
+    # A falta de tema so conta depois que os temas foram consultados na API
+    banco.session.add(fabricas.proposicao(id=7, numero=7, filhos_sincronizados_em=datetime(2024, 5, 15)))
     banco.session.commit()
     geracao, nova = _gerar(ref=7)
     assert geracao.status == "ok" and nova is True
     assert geracao.noticia.cod_tema == 0
-    assert "a Câmara ainda não tinha informado o tema do PL 7/2024" in geracao.noticia.corpo
+    # 25.13: a falta de tema e uma lacuna da Camara, com a prova, na secao propria
+    lacunas = geracao.noticia.corpo.split("## O que a Câmara não informou")[1]
+    assert "A Câmara ainda não informou o tema desta proposição." in lacunas
+    assert "/proposicoes/7/temas (campo dados: [] (lista vazia))" in lacunas
+    assert "fichadetramitacao?idProposicao=7" in lacunas
+    assert "informou o tema" not in geracao.noticia.resumo
 
 
 def test_tema_informado_nao_ganha_o_aviso(banco):
     geracao, _ = _gerar()
-    assert "informado o tema" not in geracao.noticia.corpo + geracao.noticia.resumo
+    assert "informou o tema" not in geracao.noticia.corpo + geracao.noticia.resumo
 
 
 def test_falha_do_gerador_nao_deixa_noticia_pela_metade(banco):
@@ -579,4 +592,10 @@ def test_gerar_votacao_secreta_usa_o_placar_da_camara(banco):
     banco.session.add(fabricas.voto(tipo_voto=None))
     banco.session.commit()
     geracao, _ = _gerar("votacao", "2310837-8")
-    assert "Votação secreta: a Câmara divulgou só o placar total (1 a favor e 0 contra)." in geracao.noticia.resumo
+    corpo = geracao.noticia.corpo
+    assert "Os dados abertos da Câmara trazem só o placar total (1 a favor e 0 contra)" in corpo
+    # 25.13: os dados abertos nao dizem que foi secreta; a lacuna diz o que eles mostram e manda ao site
+    assert "secreta" not in corpo + geracao.noticia.resumo
+    lacunas = corpo.split("## O que a Câmara não informou")[1]
+    assert "registram 1 presença nesta votação, mas não informam o voto de cada deputado" in lacunas
+    assert "Para mais informações, acesse o site da Câmara dos Deputados" in lacunas

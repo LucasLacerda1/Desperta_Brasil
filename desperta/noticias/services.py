@@ -34,6 +34,8 @@ noticia_fts_raiz = db.table("noticia_fts_raiz", db.column("rowid"))
 TAMANHO_SLUG = 220
 # Caminhos fixos das rotas de /api/noticias: uma noticia nao pode ter um destes como slug
 SLUGS_RESERVADOS = ("admin", "busca", "principal")
+# Decisao 25.13: o corpo e dividido em secoes que comecam com esta marca ("## O que propoe")
+MARCA_SECAO = "## "
 # Decisao 10.4: o fluxo normal e arquivar; apagar de verdade so estes, e so o admin
 STATUS_QUE_PODEM_SER_APAGADOS = ("rascunho", "rejeitada")
 
@@ -234,10 +236,67 @@ def como_foi_feita(noticia):
     }
 
 
+def secoes_do_corpo(corpo):
+    """
+    Separa o corpo nas secoes "## " (decisao 25.13): [{"titulo", "texto"}].
+    Texto antes da primeira secao (ou noticia antiga, sem secoes) vem com titulo None.
+    """
+    secoes = []
+    titulo, linhas = None, []
+
+    def fechar():
+        texto = "\n".join(linhas).strip()
+        if texto or titulo:
+            secoes.append({"titulo": titulo, "texto": texto})
+
+    for linha in (corpo or "").split("\n"):
+        if linha.startswith(MARCA_SECAO):
+            fechar()
+            titulo, linhas = linha[len(MARCA_SECAO) :].strip(), []
+        else:
+            linhas.append(linha)
+    fechar()
+    return secoes
+
+
+def _proposicao_principal(noticia):
+    for fonte in noticia.fontes:
+        if fonte.tipo == "proposicao":
+            return db.session.get(Proposicao, int(fonte.ref_id))
+    return None
+
+
+def transparencia(noticia, interna=False):
+    """
+    Decisao 25.13: a situacao da proposicao em linguagem popular e as lacunas da Camara,
+    calculadas na hora a partir das fontes (o texto da noticia guarda como estava ao ser escrito).
+    O leitor nao ve o nivel da lacuna; a equipe ve (interna=True).
+    """
+    from desperta.proposicoes.situacoes import explicar_situacao
+    from desperta.sistema.lacunas import lacunas_das_fontes
+
+    proposicao = _proposicao_principal(noticia)
+    lacunas = lacunas_das_fontes([(fonte.tipo, fonte.ref_id) for fonte in noticia.fontes])
+    return {
+        "situacao": (
+            dict(explicar_situacao(proposicao.cod_situacao, proposicao.situacao), proposicao_id=proposicao.id)
+            if proposicao
+            else None
+        ),
+        "lacunas": [lacuna.interna() if interna else lacuna.publica() for lacuna in lacunas],
+    }
+
+
 def como_completa(noticia):
     dados = como_cartao(noticia)
     dados.update(
-        {"corpo": noticia.corpo, "fontes": fontes_com_links(noticia), "como_foi_feita": como_foi_feita(noticia)}
+        {
+            "corpo": noticia.corpo,
+            "secoes": secoes_do_corpo(noticia.corpo),
+            "fontes": fontes_com_links(noticia),
+            "como_foi_feita": como_foi_feita(noticia),
+            "transparencia": transparencia(noticia),
+        }
     )
     return dados
 
@@ -404,7 +463,14 @@ def como_detalhe_de_revisao(noticia):
     """Tudo o que a equipe precisa para revisar: texto, fontes, historico e o que a IA usou."""
     ia = _ia()
     dados = como_item_de_revisao(noticia)
-    dados.update({"corpo": noticia.corpo, "fontes": fontes_com_links(noticia)})
+    dados.update(
+        {
+            "corpo": noticia.corpo,
+            "secoes": secoes_do_corpo(noticia.corpo),
+            "fontes": fontes_com_links(noticia),
+            "transparencia": transparencia(noticia, interna=True),
+        }
+    )
     dados["revisoes"] = [
         {
             "acao": r.acao,
