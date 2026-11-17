@@ -1245,7 +1245,7 @@ Significa **só edição de cadastro** (nome, e-mail, papel, ativo, senha). Para
 - Toda mudança de `nullable` (Fase 2b) é migração, testada antes numa cópia do banco com os dados da carga (`cp instance/desperta.db /tmp/teste.db` e `DATABASE_URL=sqlite:////tmp/teste.db flask db upgrade`).
 
 ### 11.5 Manutenção
-O aviso de depreciação de `get_engine` no `migrations/env.py` não afeta nada hoje. Ao atualizar o Flask-SQLAlchemy, simplificar esse trecho.
+O aviso de depreciação de `get_engine` no `migrations/env.py` não afeta nada hoje. Ao atualizar o Flask-SQLAlchemy, simplificar esse trecho. **Feito em 25.11.**
 
 ---
 
@@ -1463,7 +1463,7 @@ O Claude Code não escolhe: só cria o `LICENSE` depois da decisão do grupo. Ao
 ## 19. Decisões depois da Fase 3, parte 2 (01/11/2026)
 
 ### 19.1 Centralização: descartada
-Piorou nos dois modos (híbrida 63% → 54%, vetorial 41% → 29%). Não adotar. `RAG_CENTRALIZAR` fica com padrão desligado e o código pode ficar, mas não entra em nenhum fluxo. Se o grupo confirmar com as consultas corrigidas, remover o comando, a variável e `instance/vetor_medio.npy` num commit separado.
+Piorou nos dois modos (híbrida 63% → 54%, vetorial 41% → 29%). Não adotar. `RAG_CENTRALIZAR` fica com padrão desligado e o código pode ficar, mas não entra em nenhum fluxo. Se o grupo confirmar com as consultas corrigidas, remover o comando, a variável e `instance/vetor_medio.npy` num commit separado. **Removido em 25.11**, depois da decisão da busca (25.10).
 
 ### 19.2 Busca: ainda sem decisão final
 A medida preliminar favorece a busca por palavras, porque as esperadas vieram de palavras nas ementas. A decisão entre híbrida e só palavras espera as consultas corrigidas (16.2). Enquanto isso:
@@ -1835,4 +1835,12 @@ Pedido do Lucas, para quem pega o projeto pelo GitHub instalar tudo com um coman
 - **Gabarito principal da busca (decisão do Lucas, 16/11): as notas do Caio** (`julgamento_caio.json`). Ele é o leitor mais central (kappa ponderado médio de 0,69 com os outros três, contra 0,66 do Claude, 0,63 do Rhuan e 0,55 do Lucas) e o mais criterioso com a nota 2. Toda mudança futura na busca do RAG é medida primeiro contra ele; o consenso das três pessoas serve de conferência. A medição usa `services.buscar` no banco real e conta as 8 primeiras proposições distintas de cada uma das 20 consultas.
 - **Aplicado no banco real em 16/11, às 20h06** (backup `instance/desperta-antes-e5.db`; a pasta do projeto passou para a `busca-e5`): 35.642 trechos do e5 em 3 min 30 s; `flask banco verificar` com 23 aprovados e 0 falhas; `flask db check` sem diferenças. Para voltar atrás: pôr a pasta de novo na `fase-4-api` (os trechos do e5 ficam no banco, mas a busca por palavras do código antigo veria cada texto duas vezes) ou restaurar o backup.
 - 822 testes.
+
+### 25.11 Limpeza do código (16/11)
+Pedido do Lucas, depois do panorama do código. Nada muda no comportamento do portal nem no banco.
+- **Centralização removida (19.1):** saíram `desperta/ia/centralizacao.py`, o comando `flask ia centralizar`, a variável `RAG_CENTRALIZAR`, o trecho do README e os 4 testes do experimento. Os índices vetoriais guardam os embeddings como estão. Os scripts de estudo (`scripts/temas_prototipo` e `scripts/analise_pec`) têm a própria centralização e ficaram como estavam.
+- **Avisos dos testes: de cerca de 400 para zero.** Quase todos eram `ResourceWarning` de conexões SQLite abertas: a fixture `app` agora fecha os engines no fim de cada teste. Também apareceu um vazamento no próprio código: o `with sqlite3.connect(...)` só confirma a transação e não fecha a conexão; a cópia do `flask banco testar-persistencia` e a conferência de leitura do teste de persistência passaram a usar `contextlib.closing`. O `migrations/env.py` usa `db.engine` no lugar do `get_engine()` depreciado (11.5).
+- **Black:** os 7 arquivos que estavam fora do padrão foram formatados (só aparência). O `.flake8` passou a ignorar o E203, a única regra em que o Black e o flake8 discordam (espaço antes do `:` em fatias), como manda a documentação do Black. `invoke format` e `invoke lint` concordam.
+- README: a frase "proposição sem tema não gera notícia", desatualizada desde a 25.6, foi corrigida.
+- 818 testes, sem nenhum aviso.
 

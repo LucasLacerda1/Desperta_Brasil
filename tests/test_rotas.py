@@ -102,9 +102,7 @@ def test_trocar_senha_sem_a_nova_da_400(admin):
 
 
 def test_admin_cria_lista_e_edita_a_equipe(admin):
-    criado = admin.post(
-        "/api/auth/equipe", json={"nome": "Rhuan", "email": "rhuan@desperta.org", "senha": SENHA}
-    )
+    criado = admin.post("/api/auth/equipe", json={"nome": "Rhuan", "email": "rhuan@desperta.org", "senha": SENHA})
     assert criado.status_code == 201
     novo = criado.get_json()["administrador"]
     assert novo["papel"] == "editor"
@@ -177,8 +175,13 @@ def test_area_administrativa_exige_login(cliente, dados):
 def test_fila_e_detalhe_de_revisao(db, editor, dados):
     db.session.add(
         GeracaoIA(
-            noticia_id=dados.noticia.id, modelo_geracao="frases", modelo_embedding="m", consulta="c",
-            versao_prompt="v1", entrada='{"caso": "votacao", "votacao_id": "2310837-8"}', status="ok",
+            noticia_id=dados.noticia.id,
+            modelo_geracao="frases",
+            modelo_embedding="m",
+            consulta="c",
+            versao_prompt="v1",
+            entrada='{"caso": "votacao", "votacao_id": "2310837-8"}',
+            status="ok",
         )
     )
     db.session.commit()
@@ -308,8 +311,12 @@ def test_detalhe_da_votacao(db, cliente, dados):
     assert v["data_hora_registro"].endswith("-03:00")
     assert v["situacao_dos_votos"]["codigo"] == "nominal"
     assert v["votos"][0] == {
-        "deputado_id": 204554, "nome": "Fulana de Tal", "sigla_partido": "PL", "sigla_uf": "ES",
-        "url_foto": "https://www.camara.leg.br/foto.jpg", "voto": "Sim",
+        "deputado_id": 204554,
+        "nome": "Fulana de Tal",
+        "sigla_partido": "PL",
+        "sigla_uf": "ES",
+        "url_foto": "https://www.camara.leg.br/foto.jpg",
+        "voto": "Sim",
     }
     grupos = v["orientacoes"]
     assert [o["nome"] for o in grupos["partidos"]] == ["PL"]

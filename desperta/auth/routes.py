@@ -54,7 +54,10 @@ def listar_equipe():
 def criar_membro():
     dados = corpo_json()
     admin = services.criar_administrador(
-        dados.get("nome"), dados.get("email"), dados.get("senha"), dados.get("papel", "editor"),
+        dados.get("nome"),
+        dados.get("email"),
+        dados.get("senha"),
+        dados.get("papel", "editor"),
         por=sessao.admin_atual(),
     )
     return {"administrador": services.como_dict(admin)}, 201

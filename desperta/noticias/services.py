@@ -213,10 +213,7 @@ def como_foi_feita(noticia):
     """Transparencia (22.5): quem escreveu, quem revisou e publicou."""
     ia = _ia()
     geracao = db.session.scalar(
-        db.select(ia.GeracaoIA)
-        .filter_by(noticia_id=noticia.id, status="ok")
-        .order_by(ia.GeracaoIA.id.desc())
-        .limit(1)
+        db.select(ia.GeracaoIA).filter_by(noticia_id=noticia.id, status="ok").order_by(ia.GeracaoIA.id.desc()).limit(1)
     )
     publicou = db.session.execute(
         db.select(Administrador.nome, NoticiaRevisao.data_hora)
@@ -291,7 +288,7 @@ def buscar_publicadas(termo, inicio=None, fim=None, cod_tema=None, pagina=1, por
     fim_incluso = fim - timedelta(microseconds=1) if fim is not None else None
     achadas = buscar_noticias(termo, inicio, fim_incluso, cod_tema)[:LIMITE_DA_BUSCA]
     inicio_da_pagina = (pagina - 1) * por_pagina
-    return achadas[inicio_da_pagina:inicio_da_pagina + por_pagina], len(achadas)
+    return achadas[inicio_da_pagina : inicio_da_pagina + por_pagina], len(achadas)
 
 
 def publicada_pelo_slug(slug):
@@ -388,9 +385,7 @@ def listar_para_revisao(status=None, cod_tema=None, caso=None, origem=None, pagi
             raise DadosInvalidos(f"Caso invalido: use {', '.join(CASOS_DA_IA)}.")
         # O caso fica no JSON de entrada da geracao; LIKE serve em qualquer banco (11.1)
         consulta = consulta.where(
-            Noticia.id.in_(
-                db.select(ia.GeracaoIA.noticia_id).where(ia.GeracaoIA.entrada.like(f'%"caso": "{caso}"%'))
-            )
+            Noticia.id.in_(db.select(ia.GeracaoIA.noticia_id).where(ia.GeracaoIA.entrada.like(f'%"caso": "{caso}"%')))
         )
     total = db.session.scalar(db.select(db.func.count()).select_from(consulta.subquery()))
     itens = db.session.scalars(
@@ -489,7 +484,11 @@ def criar_pela_equipe(admin, titulo, resumo, corpo, cod_tema, fontes=None, tipo=
 def _fonte_existe(tipo, ref_id):
     """noticia_fonte nao tem FK (5.1): o back-end confere se o registro existe."""
     modelos = {
-        "proposicao": Proposicao, "deputado": Deputado, "evento": Evento, "orgao": Orgao, "partido": Partido,
+        "proposicao": Proposicao,
+        "deputado": Deputado,
+        "evento": Evento,
+        "orgao": Orgao,
+        "partido": Partido,
     }
     if tipo == "votacao":
         return db.session.get(Votacao, ref_id) is not None

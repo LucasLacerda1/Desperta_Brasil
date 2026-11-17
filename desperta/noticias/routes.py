@@ -30,7 +30,8 @@ def busca():
     """RF12: ?q= com ?dia=, ?mes= e ?ano= em horario de Brasilia, e ?tema=."""
     pagina_atual, por_pagina = pagina()
     inicio, fim = periodo_em_utc(
-        parametro_int("dia", minimo=1, maximo=31), parametro_int("mes", minimo=1, maximo=12),
+        parametro_int("dia", minimo=1, maximo=31),
+        parametro_int("mes", minimo=1, maximo=12),
         parametro_int("ano", minimo=1900, maximo=2999),
     )
     itens, total = services.buscar_publicadas(
@@ -56,8 +57,12 @@ def fila():
     """Fila da equipe: ?status=, ?tema=, ?caso= (votacao, situacao, nova) e ?origem= (ia, equipe)."""
     pagina_atual, por_pagina = pagina()
     itens, total = services.listar_para_revisao(
-        parametro_texto("status", 20), parametro_int("tema"), parametro_texto("caso", 20),
-        parametro_texto("origem", 20), pagina_atual, por_pagina,
+        parametro_texto("status", 20),
+        parametro_int("tema"),
+        parametro_texto("caso", 20),
+        parametro_texto("origem", 20),
+        pagina_atual,
+        por_pagina,
     )
     return paginado([services.como_item_de_revisao(n) for n in itens], total, pagina_atual, por_pagina)
 
@@ -67,8 +72,13 @@ def fila():
 def criar():
     dados = corpo_json()
     noticia = services.criar_pela_equipe(
-        sessao.admin_atual(), dados.get("titulo"), dados.get("resumo"), dados.get("corpo"), dados.get("cod_tema"),
-        dados.get("fontes"), dados.get("tipo", "noticia"),
+        sessao.admin_atual(),
+        dados.get("titulo"),
+        dados.get("resumo"),
+        dados.get("corpo"),
+        dados.get("cod_tema"),
+        dados.get("fontes"),
+        dados.get("tipo", "noticia"),
     )
     return services.como_detalhe_de_revisao(noticia), 201
 

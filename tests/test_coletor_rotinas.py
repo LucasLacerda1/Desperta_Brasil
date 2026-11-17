@@ -491,7 +491,8 @@ def test_trava_segura_a_segunda_coleta(tmp_path):
     caminho = str(tmp_path / "sub" / "coletor.lock")
     assert trava.adquirir(caminho) is True
     assert trava.adquirir(caminho) is False
-    dados = json.load(open(caminho, encoding="utf-8"))
+    with open(caminho, encoding="utf-8") as arquivo:
+        dados = json.load(arquivo)
     assert dados["pid"] == os.getpid() and dados["inicio"]
     trava.liberar(caminho)
     assert trava.adquirir(caminho) is True
