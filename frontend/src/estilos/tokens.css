@@ -2,86 +2,86 @@
   Cores do Desperta Brasil (paleta lapis, cobre e marfim, com verde e vermelho para votos e avisos).
   Tema claro e escuro: segue o aparelho (prefers-color-scheme) ate a pessoa escolher no botao,
   que grava data-tema="claro" ou "escuro" no <html>.
-  Todo texto passa de 4,5:1 de contraste no seu fundo.
+  Todo texto passa de 7:1 de contraste no seu fundo (nivel AAA); ajuste pedido pelo Lucas em 17/11.
 */
 :root,
 :root[data-tema="claro"] {
-  --fundo: #f3eee6;
+  --fundo: #fbf9f5;
   --superficie: #ffffff;
-  --superficie-2: #f3eee6;
-  --faixa: #e1dad4;
+  --superficie-2: #fbf9f5;
+  --faixa: #ebe5de;
   --cabecalho: #263b5c;
   --cabecalho-texto: #f3eee6;
   --cabecalho-texto-2: #e1dad4;
   --rodape: #242731;
   --rodape-texto: #e1dad4;
 
-  --texto: #242731;
-  --texto-2: #5f6d73;
-  --linha: #e1dad4;
+  --texto: #121419;
+  --texto-2: #3d474d;
+  --linha: #e3ddd5;
   --borda: #9c836f;
 
   --principal: #263b5c;
   --sobre-principal: #ffffff;
-  --link: #263b5c;
-  --link-hover: #6d4727;
-  --destaque: #6d4727;
-  --destaque-forte: #956036;
+  --link: #1b2c47;
+  --link-hover: #5a3a1f;
+  --destaque: #5a3a1f;
+  --destaque-forte: #7a4c28;
   --sobre-destaque: #ffffff;
   --marca: #dcb48f;
   --foco: #386a81;
 
   --sim: #276b44;
-  --sim-texto: #276b44;
+  --sim-texto: #1f5a39;
   --nao: #d0473a;
-  --nao-texto: #a8342a;
-  --outro-voto: #5f6d73;
+  --nao-texto: #8e2a21;
+  --outro-voto: #3d474d;
   --barra-fundo: #e1dad4;
-  --ok: #276b44;
+  --ok: #1f5a39;
   --aviso-fundo: #f6e3a8;
-  --aviso-texto: #242731;
-  --erro: #a8342a;
+  --aviso-texto: #121419;
+  --erro: #8e2a21;
 
   --sombra: 0 -2px 12px rgba(36, 39, 49, 0.12);
   color-scheme: light;
 }
 
 :root[data-tema="escuro"] {
-  --fundo: #242731;
-  --superficie: #2e323d;
-  --superficie-2: #242731;
-  --faixa: #2e323d;
+  --fundo: #1f222a;
+  --superficie: #2a2e38;
+  --superficie-2: #1f222a;
+  --faixa: #2a2e38;
   --cabecalho: #1d2028;
   --cabecalho-texto: #f3eee6;
-  --cabecalho-texto-2: #b8a798;
+  --cabecalho-texto-2: #d2c4b7;
   --rodape: #1d2028;
   --rodape-texto: #e1dad4;
 
-  --texto: #f3eee6;
-  --texto-2: #b8a798;
+  --texto: #faf7f2;
+  --texto-2: #d2c4b7;
   --linha: #3a3f4b;
   --borda: #5f6d73;
 
-  --principal: #8fa3c4;
-  --sobre-principal: #242731;
-  --link: #8fa3c4;
-  --link-hover: #dcb48f;
-  --destaque: #dcb48f;
-  --destaque-forte: #dcb48f;
-  --sobre-destaque: #242731;
+  --principal: #a9bbd8;
+  --sobre-principal: #1f222a;
+  --link: #b6c6e0;
+  --link-hover: #e3bf9d;
+  --destaque: #e3bf9d;
+  --destaque-forte: #e3bf9d;
+  --sobre-destaque: #1f222a;
   --marca: #dcb48f;
   --foco: #7fb0c0;
 
   --sim: #7cc59a;
-  --sim-texto: #7cc59a;
+  --sim-texto: #93d6ae;
   --nao: #ef8f80;
-  --nao-texto: #ef8f80;
-  --outro-voto: #b8a798;
+  --nao-texto: #f6ab9e;
+  --outro-voto: #d2c4b7;
   --barra-fundo: #38495b;
-  --ok: #7cc59a;
+  --ok: #93d6ae;
   --aviso-fundo: #5c4a1e;
   --aviso-texto: #f3eee6;
-  --erro: #ef8f80;
+  --erro: #f6ab9e;
 
   --sombra: 0 -2px 12px rgba(0, 0, 0, 0.35);
   color-scheme: dark;
@@ -90,38 +90,38 @@
 /* Sem escolha da pessoa: segue o aparelho */
 @media (prefers-color-scheme: dark) {
   :root:not([data-tema]) {
-    --fundo: #242731;
-    --superficie: #2e323d;
-    --superficie-2: #242731;
-    --faixa: #2e323d;
+    --fundo: #1f222a;
+    --superficie: #2a2e38;
+    --superficie-2: #1f222a;
+    --faixa: #2a2e38;
     --cabecalho: #1d2028;
     --cabecalho-texto: #f3eee6;
-    --cabecalho-texto-2: #b8a798;
+    --cabecalho-texto-2: #d2c4b7;
     --rodape: #1d2028;
     --rodape-texto: #e1dad4;
-    --texto: #f3eee6;
-    --texto-2: #b8a798;
+    --texto: #faf7f2;
+    --texto-2: #d2c4b7;
     --linha: #3a3f4b;
     --borda: #5f6d73;
-    --principal: #8fa3c4;
-    --sobre-principal: #242731;
-    --link: #8fa3c4;
-    --link-hover: #dcb48f;
-    --destaque: #dcb48f;
-    --destaque-forte: #dcb48f;
-    --sobre-destaque: #242731;
+    --principal: #a9bbd8;
+    --sobre-principal: #1f222a;
+    --link: #b6c6e0;
+    --link-hover: #e3bf9d;
+    --destaque: #e3bf9d;
+    --destaque-forte: #e3bf9d;
+    --sobre-destaque: #1f222a;
     --marca: #dcb48f;
     --foco: #7fb0c0;
     --sim: #7cc59a;
-    --sim-texto: #7cc59a;
+    --sim-texto: #93d6ae;
     --nao: #ef8f80;
-    --nao-texto: #ef8f80;
-    --outro-voto: #b8a798;
+    --nao-texto: #f6ab9e;
+    --outro-voto: #d2c4b7;
     --barra-fundo: #38495b;
-    --ok: #7cc59a;
+    --ok: #93d6ae;
     --aviso-fundo: #5c4a1e;
     --aviso-texto: #f3eee6;
-    --erro: #ef8f80;
+    --erro: #f6ab9e;
     --sombra: 0 -2px 12px rgba(0, 0, 0, 0.35);
     color-scheme: dark;
   }
