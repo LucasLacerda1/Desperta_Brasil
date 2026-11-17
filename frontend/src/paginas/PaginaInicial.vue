@@ -17,7 +17,7 @@ onMounted(async () => {
   try {
     const [recentes, principal] = await Promise.all([portal.recentes({ por_pagina: 6 }), portal.principal(3)])
     manchete.value = recentes.itens[0] || null
-    ultimas.value = recentes.itens.slice(1)
+    ultimas.value = recentes.itens.slice(1, 6)
     secoes.value = principal.secoes
   } catch (e) {
     erro.value = mensagemDeErro(e)
@@ -109,7 +109,7 @@ onMounted(async () => {
 <style scoped>
 .pagina { display: flex; flex-direction: column; gap: 48px; padding-block: 16px 0; }
 
-.topo { display: flex; flex-wrap: wrap; gap: 24px; align-items: stretch; }
+.topo { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
 .manchete { flex: 999 1 560px; min-width: 0; padding: 32px; display: flex; flex-direction: column; justify-content: center; gap: 20px; }
 .linha-tema { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: 14px; }
 .manchete h1 { margin: 0; font-size: clamp(30px, 4.6vw, 48px); line-height: 1.12; font-weight: 700; }
@@ -122,7 +122,7 @@ onMounted(async () => {
 .ultimas h2 .icone { color: var(--link); }
 .ultima { display: block; padding: 12px 0; border-top: 1px solid var(--linha); text-decoration: none; color: var(--texto); }
 .ultima:hover .ultima-titulo { text-decoration: underline; }
-.ultima-titulo { display: block; font-weight: 500; line-height: 1.35; }
+.ultima-titulo { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-weight: 500; line-height: 1.35; }
 .ultima-meta { display: block; font-size: 13px; margin-top: 4px; }
 
 .titulo-secao { margin: 0 0 20px; font-size: 28px; font-weight: 700; }
