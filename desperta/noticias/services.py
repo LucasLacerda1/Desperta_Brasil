@@ -504,8 +504,12 @@ def como_item_de_revisao(noticia, prioridade=None):
 
 def como_detalhe_de_revisao(noticia):
     """Tudo o que a equipe precisa para revisar: texto, fontes, historico e o que a IA usou."""
+    from . import viva
+
     ia = _ia()
     dados = como_item_de_revisao(noticia, prioridades([noticia])[noticia.id])
+    # 25.16: rascunho de atualizacao mostra qual noticia publicada ele atualiza
+    dados["atualiza"] = viva.como_dict_da_original(noticia)
     dados.update(
         {
             "corpo": noticia.corpo,
@@ -641,6 +645,15 @@ def mudar_status(noticia, admin, acao, comentario=None):
     comentario = _comentario(comentario, obrigatorio=acao == "rejeitar")
     if noticia.status not in de_onde:
         raise Conflito(f"Nao da para {acao} uma noticia com status '{noticia.status}'.")
+    if acao == "publicar":
+        from . import viva
+
+        # 25.16: rascunho de atualizacao nao vira pagina propria; entra na noticia publicada
+        original = viva.original_da_atualizacao(noticia)
+        if original is not None:
+            viva.publicar_atualizacao(noticia, original, admin)
+            db.session.commit()
+            return noticia
     noticia.status = status_novo
     if status_novo == "publicada" and noticia.publicado_em is None:
         noticia.publicado_em = _agora()

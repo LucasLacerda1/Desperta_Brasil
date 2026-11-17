@@ -5,7 +5,8 @@ from flask import current_app
 
 from desperta.ext.db import db
 from desperta.noticias.models import Noticia
-from desperta.noticias.services import criar_rascunho
+from desperta.noticias import viva
+from desperta.noticias.services import criar_rascunho, secoes_do_corpo
 from desperta.orgaos.models import Orgao
 from desperta.proposicoes.models import Proposicao, ProposicaoAutor, Tramitacao
 from desperta.proposicoes.services import tema_da_noticia
@@ -18,6 +19,8 @@ from desperta.votacoes.services import situacao_dos_votos
 from . import services
 from .gerador import (
     CASO_VOTACAO,
+    SECAO_ONDE_ESTA,
+    SECAO_VOTACAO,
     DadosLacuna,
     DadosNoticia,
     DadosProposicao,
@@ -169,14 +172,54 @@ def _entrada(caso, proposicao, votacao):
     )
 
 
+def chave_do_fato(entrada):
+    """
+    O que identifica o fato (25.16). A entrada gravada traz tambem a data da situacao da proposicao,
+    que muda a cada passo do andamento: comparar a entrada inteira fazia a mesma votacao (ou a mesma
+    proposicao nova) ser escrita de novo a cada passo. Votacao: o id da votacao; proposicao nova: o id
+    da proposicao; mudanca de situacao: a proposicao e a data da situacao.
+    entrada: o JSON (texto) ou o dict.
+    """
+    if isinstance(entrada, str):
+        try:
+            entrada = json.loads(entrada)
+        except ValueError:
+            return ("texto", entrada)
+    caso = entrada.get("caso")
+    if "ref" in entrada:
+        # Geracao que falhou antes de ler o registro
+        return (caso, "ref", str(entrada["ref"]))
+    if caso == CASO_VOTACAO:
+        return (caso, entrada.get("votacao_id"))
+    if caso == "situacao":
+        return (caso, entrada.get("proposicao_id"), entrada.get("data_status"))
+    return (caso, entrada.get("proposicao_id"))
+
+
 def _geracao_existente(entrada):
     """Gerar de novo o mesmo fato nao duplica a noticia; so a rejeitada pode ser refeita."""
-    return db.session.scalar(
+    chave = chave_do_fato(entrada)
+    dados = json.loads(entrada)
+    if "proposicao_id" not in dados:
+        # Relatorio semanal e outros sem proposicao: a entrada inteira identifica o fato
+        return db.session.scalar(
+            db.select(GeracaoIA)
+            .join(Noticia, Noticia.id == GeracaoIA.noticia_id)
+            .where(GeracaoIA.entrada == entrada, GeracaoIA.status == "ok", Noticia.status != "rejeitada")
+            .limit(1)
+        )
+    # A entrada e JSON com as chaves em ordem: "proposicao_id" vem sempre antes de "votacao_id"
+    candidatas = db.session.scalars(
         db.select(GeracaoIA)
         .join(Noticia, Noticia.id == GeracaoIA.noticia_id)
-        .where(GeracaoIA.entrada == entrada, GeracaoIA.status == "ok", Noticia.status != "rejeitada")
-        .limit(1)
+        .where(
+            GeracaoIA.entrada.like(f'%"proposicao_id": {dados["proposicao_id"]},%'),
+            GeracaoIA.status == "ok",
+            Noticia.status != "rejeitada",
+        )
+        .order_by(GeracaoIA.id)
     )
+    return next((geracao for geracao in candidatas if chave_do_fato(geracao.entrada) == chave), None)
 
 
 def _fontes(proposicao, votacao):
@@ -188,6 +231,31 @@ def _fontes(proposicao, votacao):
     if votacao:
         fontes.append(("orgao", str(votacao.orgao_id)))
     return fontes
+
+
+def _data_do_fato(caso, proposicao, votacao):
+    if votacao is not None:
+        return votacao.data
+    if caso == "situacao" and proposicao.data_status is not None:
+        return proposicao.data_status.date()
+    return proposicao.data_apresentacao.date()
+
+
+def _fato(caso, proposicao, votacao, texto, fontes):
+    """Decisao 25.16: o fato novo como atualizacao da noticia viva (titulo, paragrafo e o placar ou a situacao)."""
+    secoes = {secao["titulo"]: secao["texto"] for secao in secoes_do_corpo(texto.corpo)}
+    detalhes = []
+    if SECAO_VOTACAO in secoes:
+        detalhes.append(secoes[SECAO_VOTACAO])
+    if caso == "situacao" and SECAO_ONDE_ESTA in secoes:
+        detalhes.append(secoes[SECAO_ONDE_ESTA].split("\n\n")[0])
+    return viva.Fato(
+        data=_data_do_fato(caso, proposicao, votacao),
+        titulo=texto.titulo,
+        resumo=texto.resumo,
+        detalhes=detalhes,
+        fontes=fontes,
+    )
 
 
 def _modelo_da_busca(modelo):
@@ -264,7 +332,15 @@ def gerar_noticia(modelo, caso, ref, gerador=None):
         achados = services.buscar(modelo, consulta, modo="hibrida" if modelo else "palavras")
         texto = gerador.escrever(consulta, [achado.trecho.texto for achado in achados], dados)
 
-        noticia = criar_rascunho(texto.titulo, texto.resumo, texto.corpo, cod_tema, fontes)
+        # 25.16: noticia viva; o fato entra na noticia aberta da proposicao, vira rascunho de
+        # atualizacao da publicada, ou abre uma noticia nova
+        noticia = viva.destino_do_fato(
+            proposicao.id,
+            _fato(caso, proposicao, votacao, texto, fontes),
+            cod_tema,
+            fontes,
+            lambda: criar_rascunho(texto.titulo, texto.resumo, texto.corpo, cod_tema, fontes),
+        )
         geracao = GeracaoIA(
             noticia_id=noticia.id,
             modelo_geracao=gerador.nome,
