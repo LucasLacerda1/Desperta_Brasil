@@ -54,7 +54,10 @@ def detalhe(slug):
 @bp.get("/admin")
 @sessao.login_obrigatorio
 def fila():
-    """Fila da equipe: ?status=, ?tema=, ?caso= (votacao, situacao, nova) e ?origem= (ia, equipe)."""
+    """
+    Fila da equipe: ?status=, ?tema=, ?caso= (votacao, situacao, nova, relatorio_semanal), ?origem= (ia, equipe),
+    ?prioridade= (alta, media, baixa) e ?ordem= (prioridade, o padrao, ou antigas).
+    """
     pagina_atual, por_pagina = pagina()
     itens, total = services.listar_para_revisao(
         parametro_texto("status", 20),
@@ -63,8 +66,13 @@ def fila():
         parametro_texto("origem", 20),
         pagina_atual,
         por_pagina,
+        parametro_texto("prioridade", 20),
+        parametro_texto("ordem", 20) or "prioridade",
     )
-    return paginado([services.como_item_de_revisao(n) for n in itens], total, pagina_atual, por_pagina)
+    calculadas = services.prioridades(itens)
+    return paginado(
+        [services.como_item_de_revisao(n, calculadas[n.id]) for n in itens], total, pagina_atual, por_pagina
+    )
 
 
 @bp.post("/admin")

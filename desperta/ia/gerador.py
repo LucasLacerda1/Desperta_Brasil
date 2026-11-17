@@ -6,6 +6,7 @@ from typing import List, Optional
 from desperta.noticias.services import MARCA_SECAO
 from desperta.proposicoes.services import ou_nao_informado
 from desperta.proposicoes.situacoes import situacao_informada
+from desperta.votacoes.services import e_votacao_de_merito
 
 # Decisao 17.2: GeradorFrases e o plano B e o padrao do MVP; GeradorRoberta so entra depois da Fase 3b.
 
@@ -96,10 +97,6 @@ VERBOS_DE_EMENTA = VERBOS_DE_ALTERACAO + (
     "torna",
     "transforma",
     "veda",
-)
-# Decisao tomada com os dados reais: "aprovada" quase sempre e requerimento ou redacao final, nao o projeto
-VOTACAO_DE_MERITO = re.compile(
-    r"^(?:Aprovad|Rejeitad)[oa] (?:o|a) (?:Projeto de|Proposta de Emenda|Medida Provis[oó]ria|Substitutivo)"
 )
 PLACAR_NA_DESCRICAO = re.compile(r"\s*Sim: \d+.*$")
 # "Arquivada" ou "Aguardando Parecer" nao sao avanco: so estas situacoes podem dizer "avanca"
@@ -366,7 +363,7 @@ class GeradorFrases(Gerador):
         proposicao = dados.proposicao
         identificacao = _identificacao(proposicao)
         descricao = _descricao_da_votacao(votacao)
-        merito = proposicao.sigla in TIPOS and VOTACAO_DE_MERITO.match(descricao)
+        merito = proposicao.sigla in TIPOS and e_votacao_de_merito(descricao)
         if merito and votacao.aprovacao is not None:
             verbo = "aprova" if votacao.aprovacao else "rejeita"
             feito = "aprovou" if votacao.aprovacao else "rejeitou"

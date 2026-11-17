@@ -119,6 +119,10 @@ def valor_como_veio(valor):
     return f'"{texto}"'
 
 
+# Sentinela: "consultar o banco agora"; o calculo em lote passa o valor ja consultado
+_CONSULTAR = object()
+
+
 def _agora():
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
@@ -139,8 +143,11 @@ def _ausente_na_camara(tabela, ref_id, desde):
     return aviso
 
 
-def _lacuna_404(tabela, ref_id, caminho, nome, proposicao_id, sincronizado_em):
-    aviso = _ausente_na_camara(tabela, ref_id, sincronizado_em)
+def _lacuna_404(tabela, ref_id, caminho, nome, proposicao_id, sincronizado_em, aviso=_CONSULTAR):
+    if aviso is _CONSULTAR:
+        aviso = _ausente_na_camara(tabela, ref_id, sincronizado_em)
+    elif aviso is not None and sincronizado_em is not None and aviso.data_hora <= sincronizado_em:
+        aviso = None
     if aviso is None:
         return None
     return Lacuna(
@@ -159,7 +166,8 @@ def _lacuna_404(tabela, ref_id, caminho, nome, proposicao_id, sincronizado_em):
 # ======================================================
 # PROPOSICAO
 # ======================================================
-def lacunas_da_proposicao(proposicao, agora=None):
+def lacunas_da_proposicao(proposicao, agora=None, tem_tema=None, aviso_404=_CONSULTAR):
+    """tem_tema e aviso_404 vem prontos no calculo em lote (lacunas_em_lote); sozinha, consulta o banco."""
     from desperta.proposicoes.services import informado
     from desperta.proposicoes.situacoes import situacao_informada
 
@@ -181,13 +189,21 @@ def lacunas_da_proposicao(proposicao, agora=None):
         )
 
     sumiu = _lacuna_404(
-        "proposicao", proposicao.id, f"proposicoes/{proposicao.id}", "A proposição", proposicao.id, consultado
+        "proposicao",
+        proposicao.id,
+        f"proposicoes/{proposicao.id}",
+        "A proposição",
+        proposicao.id,
+        consultado,
+        aviso_404,
     )
     if sumiu:
         lacunas.append(sumiu)
 
     # Tema: so conta depois que os temas foram consultados (filhos_sincronizados_em)
-    if not proposicao.temas and proposicao.filhos_sincronizados_em is not None:
+    if tem_tema is None:
+        tem_tema = bool(proposicao.temas)
+    if not tem_tema and proposicao.filhos_sincronizados_em is not None:
         dias = (agora.date() - proposicao.data_apresentacao.date()).days
         limite = current_app.config["LACUNA_ATRASO_DIAS"]
         texto = "A Câmara ainda não informou o tema desta proposição."
@@ -253,8 +269,11 @@ def lacunas_da_proposicao(proposicao, agora=None):
 # ======================================================
 # VOTACAO
 # ======================================================
-def lacunas_da_votacao(votacao, proposicao_id=None):
-    """Pendente e erro na coleta sao do portal, nao da Camara: nao viram lacuna (a explicacao ja diz)."""
+def lacunas_da_votacao(votacao, proposicao_id=None, votos=None, aviso_404=_CONSULTAR):
+    """
+    Pendente e erro na coleta sao do portal, nao da Camara: nao viram lacuna (a explicacao ja diz).
+    votos (Counter por tipo) e aviso_404 vem prontos no calculo em lote; sozinha, consulta o banco.
+    """
     from desperta.votacoes import services as votacoes
 
     proposicao_id = proposicao_id or votacao.proposicao_id
@@ -263,7 +282,7 @@ def lacunas_da_votacao(votacao, proposicao_id=None):
     endereco_votos = url_camara(f"votacoes/{votacao.id}/votos")
 
     sumiu = _lacuna_404(
-        "votacao", votacao.id, f"votacoes/{votacao.id}", "A votação", proposicao_id, votacao.sincronizado_em
+        "votacao", votacao.id, f"votacoes/{votacao.id}", "A votação", proposicao_id, votacao.sincronizado_em, aviso_404
     )
     if sumiu:
         lacunas.append(sumiu)
@@ -280,7 +299,11 @@ def lacunas_da_votacao(votacao, proposicao_id=None):
             )
         )
 
-    situacao = votacoes.situacao_dos_votos(votacao)
+    if votacao.filhos_sincronizados_em is None:
+        return lacunas
+    if votos is None:
+        votos = votacoes.contar_votos([votacao.id])[votacao.id]
+    situacao = votacoes.classificar_votos(votacao, votos)
     total = sum(situacao.votos.values())
     placar = situacao.placar_da_camara
     prova_votos = Prova(
@@ -383,3 +406,58 @@ def lacunas_das_fontes(fontes):
             if votacao is not None:
                 lacunas.extend(lacunas_da_votacao(votacao, proposicao_principal))
     return sorted(lacunas, key=lambda lacuna: lacuna.nivel)
+
+
+# ======================================================
+# EM LOTE (fila por prioridade, 25.15)
+# ======================================================
+def _avisos_404(tabela, ids):
+    """{id em texto: ultimo aviso de 404} numa consulta so."""
+    avisos = {}
+    if not ids:
+        return avisos
+    for aviso in db.session.scalars(
+        db.select(LogSistema)
+        .where(
+            LogSistema.acao == ACAO_AUSENTE,
+            LogSistema.entidade == tabela,
+            LogSistema.entidade_id.in_([str(ref) for ref in ids]),
+        )
+        .order_by(LogSistema.data_hora, LogSistema.id)
+    ):
+        avisos[aviso.entidade_id] = aviso
+    return avisos
+
+
+def lacunas_em_lote(proposicoes, votacoes, agora=None):
+    """
+    As mesmas lacunas de lacunas_da_proposicao e lacunas_da_votacao, para muitos registros com
+    poucas consultas: ({proposicao_id: [Lacuna]}, {votacao_id: [Lacuna]}).
+    """
+    from desperta.proposicoes.models import ProposicaoTema
+    from desperta.votacoes.services import contar_votos
+
+    agora = agora or _agora()
+    ids_proposicoes = [proposicao.id for proposicao in proposicoes]
+    com_tema = set()
+    if ids_proposicoes:
+        com_tema = set(
+            db.session.scalars(
+                db.select(ProposicaoTema.proposicao_id).where(ProposicaoTema.proposicao_id.in_(ids_proposicoes))
+            )
+        )
+    avisos = _avisos_404("proposicao", ids_proposicoes)
+    das_proposicoes = {
+        proposicao.id: lacunas_da_proposicao(
+            proposicao, agora, tem_tema=proposicao.id in com_tema, aviso_404=avisos.get(str(proposicao.id))
+        )
+        for proposicao in proposicoes
+    }
+    sincronizadas = [votacao.id for votacao in votacoes if votacao.filhos_sincronizados_em is not None]
+    votos = contar_votos(sincronizadas)
+    avisos = _avisos_404("votacao", [votacao.id for votacao in votacoes])
+    das_votacoes = {
+        votacao.id: lacunas_da_votacao(votacao, votos=votos.get(votacao.id), aviso_404=avisos.get(str(votacao.id)))
+        for votacao in votacoes
+    }
+    return das_proposicoes, das_votacoes

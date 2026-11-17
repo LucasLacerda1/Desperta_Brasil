@@ -309,3 +309,28 @@ def test_api_da_proposicao_entrega_situacao_explicada_e_lacunas(app, db, proposi
     pagina = app.test_client().get("/api/proposicoes/2310837").get_json()
     assert pagina["situacao_explicada"]["explicacao"] == SITUACOES[915]
     assert [lacuna["codigo"] for lacuna in pagina["lacunas"]] == ["sem_inteiro_teor"]
+
+
+def test_calculo_em_lote_da_as_mesmas_lacunas(db, votacao):
+    """25.15: a fila por prioridade usa o lote; ele nao pode divergir do calculo de um por vez."""
+    db.session.add_all([fabricas.voto(tipo_voto=None), fabricas.voto(deputado_id=2, tipo_voto=None)])
+    proposicao = db.session.get(Proposicao, 2310837)
+    proposicao.regime, proposicao.filhos_sincronizados_em = ".", CONSULTA
+    db.session.add(
+        LogSistema(
+            data_hora=datetime(2026, 11, 11),
+            nivel="aviso",
+            modulo="coletor",
+            acao="nao_encontrado_na_camara",
+            descricao="404",
+            entidade="votacao",
+            entidade_id="2310837-8",
+        )
+    )
+    db.session.commit()
+    agora = datetime(2026, 12, 31)
+    das_proposicoes, das_votacoes = lacunas.lacunas_em_lote([proposicao], [votacao], agora)
+    assert das_proposicoes[2310837] == lacunas.lacunas_da_proposicao(proposicao, agora)
+    assert das_votacoes["2310837-8"] == lacunas.lacunas_da_votacao(votacao)
+    assert _codigos(das_votacoes["2310837-8"]) == ["registro_sumiu", "so_placar"]
+    assert "sem_tema" in _codigos(das_proposicoes[2310837])

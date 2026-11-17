@@ -425,8 +425,23 @@ def buscar_para_revisao(noticia_id):
     return noticia
 
 
-def listar_para_revisao(status=None, cod_tema=None, caso=None, origem=None, pagina=1, por_pagina=20):
-    """Fila da equipe: mais antigas primeiro, para nada ficar esquecido; caso = votacao, situacao ou nova."""
+ORDENS_DA_FILA = ("prioridade", "antigas")
+
+
+def listar_para_revisao(
+    status=None, cod_tema=None, caso=None, origem=None, pagina=1, por_pagina=20, prioridade=None, ordem="prioridade"
+):
+    """
+    Fila da equipe; caso = votacao, situacao, nova ou relatorio_semanal.
+    Decisao 25.15: por padrao, as de prioridade alta primeiro e, dentro de cada nivel, as mais
+    antigas, para nada ficar esquecido; ordem="antigas" e so por data. prioridade filtra o nivel.
+    """
+    from . import prioridade as regras
+
+    if ordem not in ORDENS_DA_FILA:
+        raise DadosInvalidos(f"Ordem invalida: use {', '.join(ORDENS_DA_FILA)}.")
+    if prioridade is not None and prioridade not in regras.PRIORIDADES:
+        raise DadosInvalidos(f"Prioridade invalida: use {', '.join(regras.PRIORIDADES)}.")
     ia = _ia()
     consulta = db.select(Noticia)
     if status is not None:
@@ -446,23 +461,51 @@ def listar_para_revisao(status=None, cod_tema=None, caso=None, origem=None, pagi
         consulta = consulta.where(
             Noticia.id.in_(db.select(ia.GeracaoIA.noticia_id).where(ia.GeracaoIA.entrada.like(f'%"caso": "{caso}"%')))
         )
-    total = db.session.scalar(db.select(db.func.count()).select_from(consulta.subquery()))
-    itens = db.session.scalars(
-        consulta.order_by(Noticia.criado_em, Noticia.id).offset((pagina - 1) * por_pagina).limit(por_pagina)
+    if ordem == "antigas" and prioridade is None:
+        total = db.session.scalar(db.select(db.func.count()).select_from(consulta.subquery()))
+        itens = db.session.scalars(
+            consulta.order_by(Noticia.criado_em, Noticia.id).offset((pagina - 1) * por_pagina).limit(por_pagina)
+        ).all()
+        return itens, total
+
+    # A prioridade e calculada na hora (sem coluna no banco): primeiro so as colunas leves
+    candidatas = db.session.execute(
+        consulta.with_only_columns(Noticia.id, Noticia.origem, Noticia.tipo, Noticia.criado_em).order_by(
+            Noticia.criado_em, Noticia.id
+        )
     ).all()
-    return itens, total
+    calculadas = regras.calcular(candidatas)
+    if prioridade is not None:
+        candidatas = [linha for linha in candidatas if calculadas[linha.id].nivel == prioridade]
+    if ordem == "prioridade":
+        # sorted e estavel: dentro do mesmo nivel, continua a ordem por data
+        candidatas = sorted(candidatas, key=lambda linha: regras.ORDEM[calculadas[linha.id].nivel])
+    pagina_ids = [linha.id for linha in candidatas[(pagina - 1) * por_pagina : pagina * por_pagina]]
+    por_id = {
+        noticia.id: noticia for noticia in db.session.scalars(db.select(Noticia).where(Noticia.id.in_(pagina_ids)))
+    }
+    return [por_id[noticia_id] for noticia_id in pagina_ids], len(candidatas)
 
 
-def como_item_de_revisao(noticia):
+def prioridades(noticias):
+    """{noticia_id: {"nivel", "motivos"}} (interno, so a equipe ve; 25.15)."""
+    from . import prioridade as regras
+
+    return {noticia_id: valor.como_dict() for noticia_id, valor in regras.calcular(noticias).items()}
+
+
+def como_item_de_revisao(noticia, prioridade=None):
     dados = como_cartao(noticia)
     dados.update({"status": noticia.status, "origem": noticia.origem, "criado_em": iso(noticia.criado_em)})
+    if prioridade is not None:
+        dados["prioridade"] = prioridade
     return dados
 
 
 def como_detalhe_de_revisao(noticia):
     """Tudo o que a equipe precisa para revisar: texto, fontes, historico e o que a IA usou."""
     ia = _ia()
-    dados = como_item_de_revisao(noticia)
+    dados = como_item_de_revisao(noticia, prioridades([noticia])[noticia.id])
     dados.update(
         {
             "corpo": noticia.corpo,
