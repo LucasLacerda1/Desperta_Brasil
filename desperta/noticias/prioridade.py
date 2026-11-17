@@ -123,6 +123,8 @@ def calcular(noticias):
     def do_fato(noticia, entrada, proposicao, votacao_padrao):
         caso = entrada.get("caso")
         votacao = votacoes.get(entrada.get("votacao_id")) or votacao_padrao
+        if caso == "boletim":
+            return MEDIA, "boletim do dia"
         if noticia.tipo == "relatorio" or caso == "relatorio_semanal":
             return ALTA, "relatório"
         if noticia.origem == "equipe":

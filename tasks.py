@@ -76,6 +76,12 @@ def gerar_novos(c, simular=False):
     c.run(f"flask --app app.py ia gerar-novos{' --simular' if simular else ''}", echo=True)
 
 
+@task
+def boletins(c, simular=False):
+    """Escreve os boletins de ontem (fatos pequenos, 25.17) como rascunhos; --simular so mostra."""
+    c.run(f"flask --app app.py ia boletins{' --simular' if simular else ''}", echo=True)
+
+
 @task(name="relatorio-semanal")
 def relatorio_semanal(c, simular=False):
     """Escreve o relatorio dos ultimos sete dias (RF07) como rascunho; --simular so mostra."""

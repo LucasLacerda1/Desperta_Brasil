@@ -3,7 +3,7 @@ import functools
 import os
 import signal
 import time
-from datetime import date
+from datetime import date, timedelta
 
 import click
 from flask import current_app
@@ -203,6 +203,12 @@ def coletar_agendada(rotina, esperar, sem_ia):
                         f"removidos={indexacao['removidos']}"
                     )
             click.echo(f"  rascunhos: {geracao.em_texto()}")
+            if rotina == "diaria":
+                # Decisao 25.17: os boletins de ontem (fatos pequenos), depois da coleta da madrugada
+                from desperta.ia import boletim
+
+                ontem = date.today() - timedelta(days=1)
+                click.echo(f"  boletins: {boletim.em_texto(ontem, boletim.gerar_boletins(ontem))}")
             if rotina == "semanal":
                 # RF07 (decisao 25.5): o relatorio dos sete dias que terminaram ontem
                 from desperta.ia import relatorio

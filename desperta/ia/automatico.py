@@ -8,6 +8,9 @@ ja tem geracao e pulado, entao rodar de novo nao duplica nada.
 
 Decisao 25.1 (14/11/2026): mudanca de situacao e a situacao ser outra, e nao a data do
 status ter andado (a Camara muda essa data a cada passo do andamento).
+
+Decisao 25.17 (17/11/2026): o fato pequeno (desperta/ia/boletim.py) vai para o boletim do dia;
+so vira atualizacao se a proposicao ja tem noticia viva.
 """
 
 from collections import Counter
@@ -25,6 +28,7 @@ from desperta.proposicoes.services import situacao_mudou, tema_principal
 from desperta.sistema.models import LogSistema
 from desperta.votacoes.models import Votacao, VotacaoProposicao
 
+from . import boletim
 from .geracao import _entrada, _ler_origem, chave_do_fato, gerar_noticia
 from .gerador import CASO_NOVA, CASO_SITUACAO, CASO_VOTACAO
 from .models import GeracaoIA
@@ -44,6 +48,8 @@ class Resumo:
     temas_atualizados: int = 0
     pendentes: int = 0
     nao_feitos_pelo_limite: int = 0
+    # Decisao 25.17: fatos pequenos de proposicao sem noticia viva, que ficam so para o boletim do dia
+    para_o_boletim: int = 0
     # Na simulacao: os (caso, ref) que seriam gerados
     simulados: list = field(default_factory=list)
 
@@ -52,7 +58,7 @@ class Resumo:
         return (
             f"desde {self.inicio:%d/%m/%Y}: candidatos={self.candidatos} gerados=({gerados}) erros={self.erros} "
             f"ja_feitos={self.ja_feitos} sem_tema_da_camara={self.sem_tema} temas_atualizados={self.temas_atualizados} "
-            f"pendentes_na_coleta={self.pendentes} "
+            f"pendentes_na_coleta={self.pendentes} para_o_boletim={self.para_o_boletim} "
             f"deixados_pelo_limite={self.nao_feitos_pelo_limite}"
         )
 
@@ -215,6 +221,11 @@ def gerar_novos(modelo, dias=None, limite=None, simular=False, refazer_erros=Fal
         entrada = chave_do_fato(_entrada(caso, proposicao, votacao))
         if entrada in feitas:
             resumo.ja_feitos += 1
+            continue
+        # 25.17: fato pequeno de proposicao sem noticia viva fica so para o boletim do dia
+        classificacao = boletim.classificar(caso, proposicao, votacao)
+        if classificacao.destino == boletim.BOLETIM and not boletim.tem_noticia_viva(proposicao.id):
+            resumo.para_o_boletim += 1
             continue
         sem_tema = not _tem_tema(proposicao.id)
         if limite is not None and sum(resumo.gerados.values()) + resumo.erros >= limite:

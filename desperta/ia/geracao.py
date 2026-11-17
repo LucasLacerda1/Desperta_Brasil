@@ -193,7 +193,10 @@ def chave_do_fato(entrada):
         return (caso, entrada.get("votacao_id"))
     if caso == "situacao":
         return (caso, entrada.get("proposicao_id"), entrada.get("data_status"))
-    return (caso, entrada.get("proposicao_id"))
+    if caso == "nova":
+        return (caso, entrada.get("proposicao_id"))
+    # Relatorio, boletim e outros: a entrada inteira identifica
+    return ("entrada", json.dumps(entrada, sort_keys=True))
 
 
 def _geracao_existente(entrada):
