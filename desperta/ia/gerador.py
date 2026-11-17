@@ -140,7 +140,7 @@ class DadosVotacao:
     sim: int = 0
     nao: int = 0
     abstencao: int = 0
-    # Transparencia: nominal, secreta, simbolica, pendente, erro_na_coleta ou inconsistente
+    # Transparencia: nominal, so_placar, simbolica, pendente, erro_na_coleta ou inconsistente
     situacao: str = "nominal"
     explicacao: str = ""
 
@@ -286,7 +286,7 @@ def _titulo_da_votacao(votacao):
 
 
 def _placar(votacao):
-    # Secreta, simbolica, pendente: a explicacao diz por que nao ha o voto de cada deputado
+    # So o placar, simbolica, pendente: a explicacao diz o que os dados mostram
     if votacao.situacao != "nominal":
         return _frase(votacao.explicacao) if votacao.explicacao else ""
     if not (votacao.sim or votacao.nao or votacao.abstencao):
