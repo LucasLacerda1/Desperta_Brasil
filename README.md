@@ -36,8 +36,14 @@ npm run dev                        # site em http://localhost:5173
 
 O Vite repassa as chamadas `/api` para o Flask na porta 5000, então os dois precisam estar rodando.
 
-**3. Área da equipe** (http://localhost:5173/equipe): para criar o primeiro admin, rode `flask equipe criar-admin`
-na pasta do projeto, com o `.venv` ativo.
+**3. Área da equipe** (http://localhost:5173/equipe): com o banco de exemplo que vem no zip da entrega
+(`instance/desperta.db`), entre com `prototipo@desperta.local` e a senha `prototipo123`. Num banco novo, crie o
+primeiro admin com `flask equipe criar-admin`, na pasta do projeto e com o `.venv` ativo.
+
+O banco de exemplo é uma cópia reduzida dos dados reais de 18/11/2026: 171 notícias publicadas, a fila de revisão,
+as votações com o voto de cada deputado e o andamento das proposições citadas. Ele não traz os vetores da IA
+(`flask ia indexar` refaz, com a IA instalada). Por isso a faixa amarela avisa que os dados estão desatualizados:
+é o aviso de quando a última coleta tem mais de 6 horas (RNF05).
 
 **4. Testes e estilo:**
 
