@@ -6,6 +6,7 @@ const routes = [
   { path: '/tema/:cod', name: 'tema', component: () => import('./paginas/PaginaTema.vue') },
   { path: '/temas', name: 'temas', component: () => import('./paginas/PaginaTemas.vue') },
   { path: '/busca', name: 'busca', component: () => import('./paginas/PaginaBusca.vue') },
+  { path: '/como-funciona', name: 'como-funciona', component: () => import('./paginas/PaginaComoFunciona.vue') },
   { path: '/equipe/entrar', name: 'entrar', component: () => import('./paginas/equipe/PaginaEntrar.vue') },
   { path: '/equipe', name: 'fila', component: () => import('./paginas/equipe/PaginaFila.vue') },
   { path: '/:caminho(.*)*', name: 'nao-encontrada', component: () => import('./paginas/NaoEncontrada.vue') },

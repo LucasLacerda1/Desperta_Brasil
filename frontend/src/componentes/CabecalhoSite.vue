@@ -43,7 +43,7 @@ function trocarTema() {
 
       <nav class="menu" aria-label="Principal">
         <RouterLink to="/temas">Temas</RouterLink>
-        <RouterLink :to="{ path: '/', hash: '#como-funciona' }">Como funciona</RouterLink>
+        <RouterLink to="/como-funciona">Como funciona</RouterLink>
         <button type="button" class="botao-tema" :aria-label="tema === 'escuro' ? 'Mudar para o tema claro' : 'Mudar para o tema escuro'" @click="trocarTema">
           <span class="icone" aria-hidden="true">{{ tema === 'escuro' ? 'light_mode' : 'dark_mode' }}</span>
         </button>

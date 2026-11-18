@@ -17,7 +17,6 @@ const votacao = ref(null)
 const proposicao = ref(null)
 const carregando = ref(true)
 const erro = ref('')
-const avisoOuvir = ref(false)
 
 // O corpo vem dividido em secoes (25.14): cada uma com titulo e texto. Dentro do texto,
 // "### " abre uma atualizacao e linhas com "- " viram lista.
@@ -89,18 +88,12 @@ watch(() => rota.params.slug, (slug) => slug && carregar(slug), { immediate: tru
           <p class="lide">{{ noticia.resumo }}</p>
 
           <div class="barra-acoes">
-            <button type="button" class="botao ouvir" @click="avisoOuvir = !avisoOuvir">
-              <span class="icone" aria-hidden="true">play_arrow</span>Ouvir a notícia
-            </button>
             <span class="texto-2 datas">
               Publicada em {{ dataHora(noticia.publicado_em) }}
               <template v-if="noticia.alterado_em"> · alterada em {{ dataHora(noticia.alterado_em) }}</template>
               <span v-if="noticia.atualizada" class="selo-atualizada"><span class="icone" aria-hidden="true">update</span>{{ noticia.atualizacoes }} {{ noticia.atualizacoes === 1 ? 'atualização' : 'atualizações' }}</span>
             </span>
           </div>
-          <p v-if="avisoOuvir" class="texto-2 aviso" role="status">
-            A leitura em voz alta (Piper) entra na Fase 5. Neste protótipo o botão só mostra onde ela vai ficar.
-          </p>
 
           <div class="corpo serifa">
             <section v-for="(s, i) in secoes" :key="i" class="secao" :class="{ lacunas: s.lacunas, atualizacoes: s.atualizacoes }">
@@ -157,9 +150,7 @@ h1 { margin: 0; font-size: clamp(30px, 4.5vw, 44px); line-height: 1.15; font-wei
   border-top: 1px solid var(--linha);
   border-bottom: 1px solid var(--linha);
 }
-.ouvir { background: var(--destaque-forte); color: var(--sobre-destaque); }
 .datas { font-size: 14px; }
-.aviso { margin: -12px 0 0; font-size: 14px; }
 
 .corpo { font-size: 19px; line-height: 1.7; display: flex; flex-direction: column; gap: 16px; }
 .corpo p { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }

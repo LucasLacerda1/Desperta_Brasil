@@ -98,10 +98,11 @@ onMounted(async () => {
         </div>
         <div class="passo">
           <span class="icone" aria-hidden="true">fact_check</span>
-          <strong>3. Uma pessoa revisa</strong>
-          <span>Nada é publicado sem revisão da equipe. Toda notícia mostra a fonte oficial e quem publicou.</span>
+          <strong>3. A notícia é conferida</strong>
+          <span>Regras fixas conferem cada texto; o que falha vai para a revisão da equipe. Toda notícia mostra a fonte oficial e como foi feita.</span>
         </div>
       </div>
+      <RouterLink to="/como-funciona" class="saiba-mais">Saiba como funciona<span class="icone" aria-hidden="true">arrow_forward</span></RouterLink>
     </section>
   </div>
 </template>
@@ -144,6 +145,8 @@ hr { width: 100%; border: none; border-top: 1px solid var(--linha); margin: 0; }
 .ver-tudo { font-size: 14px; font-weight: 500; margin-top: auto; }
 
 .como { background: #263b5c; color: #f3eee6; border-radius: 16px; padding: 32px; scroll-margin-top: 16px; }
+.saiba-mais { display: inline-flex; align-items: center; gap: 6px; margin-top: 24px; color: #dcb48f; font-weight: 600; }
+.saiba-mais:hover { color: #f3eee6; }
 .passos { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; }
 .passo { display: flex; flex-direction: column; gap: 8px; }
 .passo .icone { font-size: 32px; color: #dcb48f; }

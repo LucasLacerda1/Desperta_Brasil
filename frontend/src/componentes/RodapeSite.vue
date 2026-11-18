@@ -6,7 +6,7 @@
         Sem propaganda e sem cadastro. Código aberto. Fonte dos dados: API de Dados Abertos da Câmara dos Deputados.
       </div>
       <nav aria-label="Rodapé" class="links">
-        <RouterLink :to="{ path: '/', hash: '#como-funciona' }">Como funciona</RouterLink>
+        <RouterLink to="/como-funciona">Como funciona</RouterLink>
         <RouterLink to="/temas">Todos os temas</RouterLink>
         <RouterLink to="/equipe">Área da equipe</RouterLink>
       </nav>
