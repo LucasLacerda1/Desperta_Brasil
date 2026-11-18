@@ -9,6 +9,7 @@ import SecaoVotacao from '../componentes/SecaoVotacao.vue'
 import SecaoAndamento from '../componentes/SecaoAndamento.vue'
 import QuadroProposicao from '../componentes/QuadroProposicao.vue'
 import ComoFoiFeita from '../componentes/ComoFoiFeita.vue'
+import CartaoNoticia from '../componentes/CartaoNoticia.vue'
 
 const rota = useRoute()
 const noticia = ref(null)
@@ -118,6 +119,10 @@ watch(() => rota.params.slug, (slug) => slug && carregar(slug), { immediate: tru
           <SecaoVotacao v-if="votacao" :votacao="votacao" />
           <SecaoAndamento v-if="proposicao" :proposicao="proposicao" />
           <ComoFoiFeita :noticia="noticia" />
+          <section v-if="noticia.relacionadas?.length" class="relacionadas" aria-labelledby="titulo-relacionadas">
+            <h2 id="titulo-relacionadas" class="titulo-secao"><span class="icone" aria-hidden="true">link</span>Notícias relacionadas</h2>
+            <CartaoNoticia v-for="r in noticia.relacionadas" :key="r.slug" :noticia="r" com-tema :com-resumo="false" />
+          </section>
         </article>
 
         <aside v-if="proposicao" class="lateral" aria-label="O projeto">
@@ -168,6 +173,7 @@ h1 { margin: 0; font-size: clamp(30px, 4.5vw, 44px); line-height: 1.15; font-wei
 .selo-atualizada { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; padding: 2px 10px; border-radius: 999px; background: var(--faixa); color: var(--texto); font-size: 13px; }
 .selo-atualizada .icone { font-size: 16px; }
 
+.relacionadas { display: flex; flex-direction: column; gap: 16px; border-top: 1px solid var(--linha); padding-top: 8px; }
 .outras { display: flex; flex-direction: column; gap: 10px; font-size: 15px; }
 .outras h2 { margin: 0; font-size: 16px; }
 
