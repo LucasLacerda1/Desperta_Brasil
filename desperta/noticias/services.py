@@ -311,9 +311,17 @@ def como_completa(noticia):
             "transparencia": transparencia(noticia),
             # 25.16: as atualizacoes separadas, da mais recente para a mais antiga
             "lista_de_atualizacoes": _lista_de_atualizacoes(noticia),
+            # 25.13 (item 5): ate 5 publicadas com fontes em comum
+            "relacionadas": [como_cartao(n) for n in _relacionadas(noticia)],
         }
     )
     return dados
+
+
+def _relacionadas(noticia):
+    from .relacionadas import relacionadas
+
+    return relacionadas(noticia)
 
 
 def _lista_de_atualizacoes(noticia):
