@@ -18,36 +18,20 @@ onMounted(async () => {
 </script>
 
 <template>
-  <nav class="temas conteudo" aria-label="Temas">
-    <RouterLink to="/" class="chip" :class="{ ativo: atual === null }">
-      <span class="icone" aria-hidden="true">home</span>Início
+  <nav class="conteudo flex gap-2 overflow-x-auto pt-5 pb-2 [scrollbar-color:var(--borda)_transparent] [scrollbar-width:thin]" aria-label="Temas">
+    <RouterLink
+      to="/" class="flex flex-none items-center gap-1.5 rounded-[20px] border px-4 py-2 text-[14px] no-underline"
+      :class="atual === null ? 'border-principal bg-principal font-medium text-sobre-principal hover:text-sobre-principal' : 'border-borda text-texto'"
+    >
+      <span class="icone text-[18px]" :class="atual === null ? 'text-sobre-principal' : 'text-destaque'" aria-hidden="true">home</span>Início
     </RouterLink>
     <RouterLink
       v-for="t in temas" :key="t.cod_tema" :to="{ name: 'tema', params: { cod: t.cod_tema } }"
-      class="chip" :class="{ ativo: atual === t.cod_tema }"
+      class="flex flex-none items-center gap-1.5 rounded-[20px] border px-4 py-2 text-[14px] no-underline"
+      :class="atual === t.cod_tema ? 'border-principal bg-principal font-medium text-sobre-principal hover:text-sobre-principal' : 'border-borda text-texto'"
     >
-      <span class="icone" aria-hidden="true">{{ iconeDoTema(t) }}</span>{{ t.nome }}
+      <span class="icone text-[18px]" :class="atual === t.cod_tema ? 'text-sobre-principal' : 'text-destaque'" aria-hidden="true">{{ iconeDoTema(t) }}</span>{{ t.nome }}
     </RouterLink>
-    <RouterLink to="/temas" class="todos">Todos os 32 temas</RouterLink>
+    <RouterLink to="/temas" class="flex-none self-center px-3 py-2 text-[14px] font-medium">Todos os 32 temas</RouterLink>
   </nav>
 </template>
-
-<style scoped>
-.temas { display: flex; gap: 8px; overflow-x: auto; padding-block: 20px 8px; scrollbar-width: thin; scrollbar-color: var(--borda) transparent; }
-.chip {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: 20px;
-  border: 1px solid var(--borda);
-  color: var(--texto);
-  text-decoration: none;
-  font-size: 14px;
-}
-.chip .icone { font-size: 18px; color: var(--destaque); }
-.chip.ativo { background: var(--principal); border-color: var(--principal); color: var(--sobre-principal); font-weight: 500; }
-.chip.ativo .icone { color: var(--sobre-principal); }
-.todos { flex: none; align-self: center; padding: 8px 12px; font-size: 14px; font-weight: 500; }
-</style>

@@ -1,0 +1,105 @@
+/*
+  Entrada do CSS do site: Tailwind CSS (framework de CSS, MIT) com as cores do estudo
+  dos leoes da Babilonia como tema.
+
+  Camadas, da mais fraca para a mais forte: theme (variaveis do Tailwind), base (o nosso reset,
+  em base.css), components (pecas comuns: botao, cartao...) e utilities (as classes do Tailwind
+  usadas no HTML). Assim uma classe do Tailwind no HTML sempre vence a peca comum.
+  Sem o "preflight" do Tailwind: o base.css ja faz esse papel.
+*/
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@import "./tokens.css";
+@import "./base.css" layer(base);
+
+/*
+  Tema do Tailwind: so as cores do Desperta (as padrao do Tailwind saem). Cada cor aponta para a
+  variavel de tokens.css, entao a mesma classe (bg-fundo, text-texto...) muda sozinha no tema escuro.
+*/
+@theme inline {
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-fundo: var(--fundo);
+  --color-superficie: var(--superficie);
+  --color-superficie-2: var(--superficie-2);
+  --color-faixa: var(--faixa);
+  --color-cabecalho: var(--cabecalho);
+  --color-cabecalho-texto: var(--cabecalho-texto);
+  --color-cabecalho-texto-2: var(--cabecalho-texto-2);
+  --color-rodape: var(--rodape);
+  --color-rodape-texto: var(--rodape-texto);
+  --color-texto: var(--texto);
+  --color-texto-2: var(--texto-2);
+  --color-linha: var(--linha);
+  --color-borda: var(--borda);
+  --color-principal: var(--principal);
+  --color-sobre-principal: var(--sobre-principal);
+  --color-link: var(--link);
+  --color-link-hover: var(--link-hover);
+  --color-destaque: var(--destaque);
+  --color-destaque-forte: var(--destaque-forte);
+  --color-sobre-destaque: var(--sobre-destaque);
+  --color-marca: var(--marca);
+  --color-foco: var(--foco);
+  --color-sim: var(--sim);
+  --color-sim-texto: var(--sim-texto);
+  --color-nao: var(--nao);
+  --color-nao-texto: var(--nao-texto);
+  --color-outro-voto: var(--outro-voto);
+  --color-barra-fundo: var(--barra-fundo);
+  --color-ok: var(--ok);
+  --color-erro: var(--erro);
+  --color-aviso-fundo: var(--aviso-fundo);
+  --color-aviso-texto: var(--aviso-texto);
+}
+
+/* Fontes (viram tambem variaveis de CSS, usadas no base.css): font-sans e font-serifa */
+@theme {
+  --font-sans: 'Roboto', system-ui, sans-serif;
+  --font-serifa: 'Source Serif 4 Variable', Georgia, serif;
+}
+
+/* Pecas comuns do site, montadas com as classes do Tailwind */
+@layer components {
+  .conteudo { @apply mx-auto max-w-[1200px] px-4 sm:px-6; }
+  .cartao { @apply rounded-2xl bg-superficie p-6; }
+  .botao {
+    @apply inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-[22px] border border-transparent px-5 font-medium no-underline;
+    font: inherit;
+    font-weight: 500;
+  }
+  .botao:disabled { @apply cursor-not-allowed opacity-55; }
+  .botao-principal { @apply bg-principal text-sobre-principal hover:text-sobre-principal hover:brightness-110; }
+  .botao-contorno { @apply border-principal bg-transparent text-link; }
+  .botao-destaque { @apply border-destaque-forte bg-transparent text-destaque; }
+  .botao-perigo { @apply border-erro bg-transparent text-erro; }
+  .etiqueta-tema { @apply inline-flex items-center gap-1.5 text-[14px] font-bold text-destaque no-underline; }
+  .texto-2 { @apply text-texto-2; }
+  .carregando { @apply py-12 text-center text-texto-2; }
+  /* Campos de formulario (area da equipe e busca) */
+  .campo-texto { @apply rounded-lg border border-borda bg-superficie-2 text-texto; font: inherit; }
+  .campo-texto[aria-invalid='true'] { @apply border-2 border-erro; }
+  .erro-campo { @apply flex items-center gap-1.5 text-[14px] font-medium text-erro; }
+  .chip {
+    @apply min-h-10 cursor-pointer rounded-[20px] border border-borda bg-superficie px-4 text-[14px] text-texto;
+    font: inherit;
+    font-size: 0.875rem;
+  }
+  .chip.ativo { @apply border-principal bg-principal font-medium text-sobre-principal; }
+
+  /* Area da equipe: tabelas, selos de situacao, avisos e filtros */
+  .tabela { @apply w-full border-collapse text-[14px]; }
+  .tabela th { @apply border-b-2 border-linha px-2.5 py-2 text-left text-[13px] font-semibold whitespace-nowrap text-texto-2; }
+  .tabela td { @apply border-b border-linha p-2.5 align-middle; }
+  .selo { @apply rounded-full border border-linha px-2.5 py-0.5 text-[13px] font-semibold whitespace-nowrap; }
+  .aviso-ok { @apply m-0 flex items-center gap-2 rounded-[10px] border-l-4 border-ok bg-superficie px-3.5 py-2.5; }
+  .aviso-ok > .icone:first-child { @apply text-ok; }
+  .texto-erro { @apply m-0 font-medium text-erro; }
+  .filtro {
+    @apply min-h-10 rounded-lg border border-borda bg-superficie px-3 text-texto;
+    font: inherit;
+  }
+  .botao-baixo { @apply min-h-9 px-3.5; }
+}

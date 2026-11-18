@@ -5,8 +5,8 @@ import '@fontsource/roboto/700.css'
 import '@fontsource-variable/source-serif-4/index.css'
 import 'material-symbols/outlined.css'
 
-import './estilos/tokens.css'
-import './estilos/base.css'
+// CSS do site: Tailwind com as cores do estudo (tokens.css e base.css entram por ele)
+import './estilos/principal.css'
 
 import { createApp } from 'vue'
 import App from './App.vue'

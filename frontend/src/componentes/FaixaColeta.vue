@@ -17,8 +17,11 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div v-if="situacao || falhou" class="faixa" :class="{ alerta: falhou || situacao?.dados_desatualizados }" role="status">
-    <div class="conteudo linha">
+  <div
+    v-if="situacao || falhou" role="status" class="text-[14px]"
+    :class="falhou || situacao?.dados_desatualizados ? 'bg-aviso-fundo text-aviso-texto' : 'bg-faixa text-texto'"
+  >
+    <div class="conteudo flex flex-wrap items-center gap-x-3.5 gap-y-1.5 py-2.5 [&_strong]:font-medium">
       <template v-if="falhou">
         <span class="icone" aria-hidden="true">cloud_off</span>
         <strong>Não conseguimos falar com o servidor do portal.</strong>
@@ -29,19 +32,10 @@ onMounted(async () => {
         <span>{{ situacao.aviso || `A última coleta concluída foi ${quando(situacao.ultima_coleta_concluida)}.` }}</span>
       </template>
       <template v-else>
-        <span class="bolinha" aria-hidden="true"></span>
+        <span class="size-2.5 rounded-full bg-ok" aria-hidden="true"></span>
         <strong>Dados da Câmara atualizados {{ quando(situacao.ultima_coleta_concluida) }}.</strong>
-        <RouterLink :to="{ path: '/', hash: '#como-funciona' }">De onde vêm os dados?</RouterLink>
+        <RouterLink to="/como-funciona" class="font-medium">De onde vêm os dados?</RouterLink>
       </template>
     </div>
   </div>
 </template>
-
-<style scoped>
-.faixa { background: var(--faixa); color: var(--texto); font-size: 14px; }
-.faixa.alerta { background: var(--aviso-fundo); color: var(--aviso-texto); }
-.linha { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding-block: 10px; }
-.linha strong { font-weight: 500; }
-.bolinha { width: 10px; height: 10px; border-radius: 5px; background: var(--ok); }
-.faixa a { font-weight: 500; }
-</style>

@@ -38,32 +38,24 @@ const irPara = (p) => roteador.push({ query: p > 1 ? { pagina: p } : {} })
 
 <template>
   <NavTemas :atual="cod" />
-  <div class="conteudo pagina">
+  <div class="conteudo flex flex-col gap-6 py-4">
     <p v-if="carregando" class="carregando">Carregando…</p>
     <p v-else-if="erro" class="carregando" role="alert">{{ erro }}</p>
     <template v-else>
-      <header class="topo">
-        <span class="roda"><span class="icone" aria-hidden="true">{{ iconeDoTema(tema || { cod_tema: cod }) }}</span></span>
+      <header class="flex items-center gap-4">
+        <span class="flex size-14 flex-none items-center justify-center rounded-full bg-superficie">
+          <span class="icone text-[30px] text-destaque" aria-hidden="true">{{ iconeDoTema(tema || { cod_tema: cod }) }}</span>
+        </span>
         <div>
-          <h1 class="serifa">{{ tema?.nome || 'Tema não encontrado' }}</h1>
-          <p class="texto-2">{{ lista.total }} {{ lista.total === 1 ? 'notícia publicada' : 'notícias publicadas' }}, da mais recente para a mais antiga</p>
+          <h1 class="serifa m-0 text-[clamp(26px,4vw,36px)]">{{ tema?.nome || 'Tema não encontrado' }}</h1>
+          <p class="texto-2 mt-1 mb-0 text-[15px]">{{ lista.total }} {{ lista.total === 1 ? 'notícia publicada' : 'notícias publicadas' }}, da mais recente para a mais antiga</p>
         </div>
       </header>
       <p v-if="!lista.itens.length" class="carregando">Ainda não há notícias publicadas neste tema.</p>
-      <div class="grade">
+      <div class="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
         <div v-for="n in lista.itens" :key="n.id" class="cartao"><CartaoNoticia :noticia="n" /></div>
       </div>
       <Paginacao :pagina="lista.pagina || pagina" :paginas="lista.paginas || 1" @ir="irPara" />
     </template>
   </div>
 </template>
-
-<style scoped>
-.pagina { display: flex; flex-direction: column; gap: 24px; padding-block: 16px; }
-.topo { display: flex; align-items: center; gap: 16px; }
-.roda { flex: none; width: 56px; height: 56px; border-radius: 28px; background: var(--superficie); display: flex; align-items: center; justify-content: center; }
-.roda .icone { font-size: 30px; color: var(--destaque); }
-h1 { margin: 0; font-size: clamp(26px, 4vw, 36px); }
-.topo p { margin: 4px 0 0; font-size: 15px; }
-.grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
-</style>

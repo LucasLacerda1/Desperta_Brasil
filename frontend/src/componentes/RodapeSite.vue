@@ -1,11 +1,11 @@
 <template>
-  <footer class="rodape">
-    <div class="conteudo linha">
-      <div class="sobre">
-        <strong class="serifa nome">Desperta Brasil</strong>
+  <footer class="mt-12 bg-rodape text-rodape-texto">
+    <div class="conteudo flex flex-wrap gap-x-12 gap-y-4 pt-8 pb-24 text-[14px] leading-relaxed">
+      <div class="flex-[1_1_320px]">
+        <strong class="serifa mb-1.5 block text-[20px] text-[#ffffff]">Desperta Brasil</strong>
         Sem propaganda e sem cadastro. Código aberto. Fonte dos dados: API de Dados Abertos da Câmara dos Deputados.
       </div>
-      <nav aria-label="Rodapé" class="links">
+      <nav aria-label="Rodapé" class="flex flex-col gap-1.5 [&_a]:text-[#ecc9a6] [&_a:hover]:text-[#ffffff]">
         <RouterLink to="/como-funciona">Como funciona</RouterLink>
         <RouterLink to="/temas">Todos os temas</RouterLink>
         <RouterLink to="/equipe">Área da equipe</RouterLink>
@@ -13,12 +13,3 @@
     </div>
   </footer>
 </template>
-
-<style scoped>
-.rodape { background: var(--rodape); color: var(--rodape-texto); margin-top: 48px; }
-.linha { display: flex; flex-wrap: wrap; gap: 16px 48px; padding-block: 32px 96px; font-size: 14px; line-height: 1.6; }
-.sobre { flex: 1 1 320px; }
-.nome { display: block; font-size: 20px; color: #f3eee6; margin-bottom: 6px; }
-.links { display: flex; flex-direction: column; gap: 6px; }
-.links a { color: #dcb48f; }
-</style>

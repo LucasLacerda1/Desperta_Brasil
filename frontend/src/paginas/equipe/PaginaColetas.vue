@@ -64,39 +64,39 @@ const NOMES_STATUS = { ok: 'concluída', parcial: 'parcial', erro: 'erro' }
 <template>
   <LayoutEquipe so-admin @pronto="iniciar">
     <header>
-      <h1>Coletas</h1>
-      <p class="texto-2">
+      <h1 class="m-0 text-[28px]">Coletas</h1>
+      <p class="texto-2 mt-1.5 mb-0 max-w-[75ch] text-[15px]">
         Cada busca na API de Dados Abertos da Câmara. "Parcial" quer dizer que parte dos itens falhou ou que a rotina parou no limite de tempo; o motivo fica no log.
       </p>
     </header>
 
-    <div class="filtros">
-      <div role="group" aria-label="Filtrar por situação" class="chips">
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div role="group" aria-label="Filtrar por situação" class="flex flex-wrap gap-2">
         <button
           v-for="s in STATUS" :key="s.valor" type="button" class="chip" :class="{ ativo: filtros.status === s.valor }"
           :aria-pressed="filtros.status === s.valor" @click="filtros.status = s.valor"
         >{{ s.nome }}</button>
       </div>
       <label class="so-leitor" for="f-recurso">O que foi coletado</label>
-      <select id="f-recurso" v-model="filtros.recurso">
+      <select id="f-recurso" v-model="filtros.recurso" class="filtro">
         <option value="">Tudo o que foi coletado</option>
         <option v-for="r in RECURSOS" :key="r" :value="r">{{ r }}</option>
       </select>
     </div>
 
-    <p v-if="erro" class="erro" role="alert">{{ erro }}</p>
+    <p v-if="erro" class="texto-erro" role="alert">{{ erro }}</p>
 
     <section class="cartao" aria-label="Coletas">
-      <p class="texto-2 total">{{ lista.total.toLocaleString('pt-BR') }} {{ lista.total === 1 ? 'coleta' : 'coletas' }}</p>
+      <p class="texto-2 m-0 mb-2 text-[14px]">{{ lista.total.toLocaleString('pt-BR') }} {{ lista.total === 1 ? 'coleta' : 'coletas' }}</p>
       <p v-if="carregando" class="texto-2">Carregando…</p>
       <p v-else-if="!lista.itens.length" class="texto-2">Nenhuma coleta com esses filtros.</p>
-      <div v-else class="rolagem">
-        <table>
+      <div v-else class="overflow-x-auto">
+        <table class="tabela">
           <thead>
             <tr>
               <th scope="col">Nº</th><th scope="col">O quê</th><th scope="col">Início</th><th scope="col">Duração</th>
-              <th scope="col">Situação</th><th scope="col" class="num">Itens</th><th scope="col" class="num">Novos</th>
-              <th scope="col" class="num">Atualizados</th><th scope="col" class="num">Requisições</th><th scope="col" class="num">Erros HTTP</th><th scope="col">Log</th>
+              <th scope="col">Situação</th><th scope="col" class="text-right tabular-nums">Itens</th><th scope="col" class="text-right tabular-nums">Novos</th>
+              <th scope="col" class="text-right tabular-nums">Atualizados</th><th scope="col" class="text-right tabular-nums">Requisições</th><th scope="col" class="text-right tabular-nums">Erros HTTP</th><th scope="col">Log</th>
             </tr>
           </thead>
           <tbody>
@@ -104,46 +104,22 @@ const NOMES_STATUS = { ok: 'concluída', parcial: 'parcial', erro: 'erro' }
               <tr>
                 <td>{{ c.id }}</td>
                 <td><strong>{{ c.recurso }}</strong><span v-if="c.tipo" class="texto-2"> · {{ c.tipo }}</span></td>
-                <td class="nowrap">{{ dataHora(c.iniciado_em) }}</td>
-                <td class="nowrap">{{ duracao(c) }}</td>
-                <td><span class="selo" :class="c.status">{{ NOMES_STATUS[c.status] || c.status }}</span></td>
-                <td class="num">{{ c.total_itens.toLocaleString('pt-BR') }}</td>
-                <td class="num">{{ c.itens_novos.toLocaleString('pt-BR') }}</td>
-                <td class="num">{{ c.itens_atualizados.toLocaleString('pt-BR') }}</td>
-                <td class="num">{{ (c.requisicoes ?? 0).toLocaleString('pt-BR') }}</td>
-                <td class="num">{{ c.erros_http ?? 0 }}</td>
+                <td class="whitespace-nowrap">{{ dataHora(c.iniciado_em) }}</td>
+                <td class="whitespace-nowrap">{{ duracao(c) }}</td>
+                <td><span class="selo" :class="{ ok: 'border-ok text-ok', parcial: 'border-transparent bg-aviso-fundo text-aviso-texto', erro: 'border-erro text-erro' }[c.status]">{{ NOMES_STATUS[c.status] || c.status }}</span></td>
+                <td class="text-right tabular-nums">{{ c.total_itens.toLocaleString('pt-BR') }}</td>
+                <td class="text-right tabular-nums">{{ c.itens_novos.toLocaleString('pt-BR') }}</td>
+                <td class="text-right tabular-nums">{{ c.itens_atualizados.toLocaleString('pt-BR') }}</td>
+                <td class="text-right tabular-nums">{{ (c.requisicoes ?? 0).toLocaleString('pt-BR') }}</td>
+                <td class="text-right tabular-nums">{{ c.erros_http ?? 0 }}</td>
                 <td><RouterLink :to="{ name: 'log', query: { coleta: c.id } }">ver</RouterLink></td>
               </tr>
-              <tr v-if="c.mensagem_erro" class="mensagem"><td></td><td colspan="10">{{ c.mensagem_erro }}</td></tr>
+              <tr v-if="c.mensagem_erro" class="[&_td]:pt-0 [&_td]:text-[13px] [&_td]:text-erro"><td></td><td colspan="10">{{ c.mensagem_erro }}</td></tr>
             </template>
           </tbody>
         </table>
       </div>
-      <div class="pe"><Paginacao :pagina="lista.pagina || 1" :paginas="lista.paginas || 1" @ir="mudarPagina" /></div>
+      <div class="pt-3"><Paginacao :pagina="lista.pagina || 1" :paginas="lista.paginas || 1" @ir="mudarPagina" /></div>
     </section>
   </LayoutEquipe>
 </template>
-
-<style scoped>
-h1 { margin: 0; font-size: 28px; }
-header p { margin: 6px 0 0; font-size: 15px; max-width: 75ch; }
-.filtros { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
-.chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.chip { min-height: 40px; padding: 0 16px; border-radius: 20px; border: 1px solid var(--borda); background: var(--superficie); color: var(--texto); font: inherit; font-size: 14px; cursor: pointer; }
-.chip.ativo { background: var(--principal); border-color: var(--principal); color: var(--sobre-principal); font-weight: 500; }
-select { min-height: 40px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--borda); background: var(--superficie); color: var(--texto); font: inherit; }
-.erro { margin: 0; color: var(--erro); font-weight: 500; }
-.total { margin: 0 0 8px; font-size: 14px; }
-.rolagem { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-th { text-align: left; font-size: 13px; color: var(--texto-2); font-weight: 600; padding: 8px; border-bottom: 2px solid var(--linha); white-space: nowrap; }
-td { padding: 8px; border-bottom: 1px solid var(--linha); }
-.num { text-align: right; font-variant-numeric: tabular-nums; }
-.nowrap { white-space: nowrap; }
-.mensagem td { color: var(--erro); font-size: 13px; padding-top: 0; }
-.selo { padding: 2px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap; border: 1px solid var(--linha); }
-.selo.ok { color: var(--ok); border-color: var(--ok); }
-.selo.parcial { background: var(--aviso-fundo); color: var(--aviso-texto); border-color: transparent; }
-.selo.erro { color: var(--erro); border-color: var(--erro); }
-.pe { padding-top: 12px; }
-</style>

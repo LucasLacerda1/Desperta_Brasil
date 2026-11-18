@@ -17,30 +17,21 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="conteudo pagina">
-    <h1 class="serifa">Temas</h1>
-    <p class="texto-2">São os temas oficiais que a Câmara dá a cada proposição.</p>
+  <div class="conteudo pt-7 pb-4">
+    <h1 class="serifa m-0 text-[clamp(28px,4vw,36px)]">Temas</h1>
+    <p class="texto-2 mt-1.5 mb-6">São os temas oficiais que a Câmara dá a cada proposição.</p>
     <p v-if="erro" role="alert">{{ erro }}</p>
-    <ul class="grade">
+    <ul class="m-0 grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2 lg:grid-cols-4">
       <li v-for="t in temas" :key="t.cod_tema">
-        <RouterLink :to="{ name: 'tema', params: { cod: t.cod_tema } }" class="cartao tema">
-          <span class="icone" aria-hidden="true">{{ iconeDoTema(t) }}</span>
-          <span class="nome">{{ t.nome }}</span>
-          <span class="texto-2 conta">{{ t.noticias_publicadas }} {{ t.noticias_publicadas === 1 ? 'notícia' : 'notícias' }}</span>
+        <RouterLink
+          :to="{ name: 'tema', params: { cod: t.cod_tema } }"
+          class="cartao group grid h-full grid-cols-[32px_minmax(0,1fr)] items-center gap-x-3 gap-y-1 px-5 py-4 text-texto no-underline hover:text-texto"
+        >
+          <span class="icone row-span-2 text-[28px] text-destaque" aria-hidden="true">{{ iconeDoTema(t) }}</span>
+          <span class="leading-[1.3] font-medium group-hover:underline">{{ t.nome }}</span>
+          <span class="texto-2 text-[13px]">{{ t.noticias_publicadas }} {{ t.noticias_publicadas === 1 ? 'notícia' : 'notícias' }}</span>
         </RouterLink>
       </li>
     </ul>
   </div>
 </template>
-
-<style scoped>
-.pagina { padding-block: 28px 16px; }
-h1 { margin: 0; font-size: clamp(28px, 4vw, 36px); }
-.pagina > p { margin: 6px 0 24px; }
-.grade { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
-.tema { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 4px 12px; align-items: center; padding: 16px 20px; text-decoration: none; color: var(--texto); height: 100%; }
-.tema:hover .nome { text-decoration: underline; }
-.tema .icone { font-size: 28px; color: var(--destaque); grid-row: span 2; }
-.nome { font-weight: 500; line-height: 1.3; }
-.conta { font-size: 13px; }
-</style>

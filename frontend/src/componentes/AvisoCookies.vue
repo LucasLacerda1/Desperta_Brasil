@@ -24,30 +24,16 @@ function responder(valor) {
 </script>
 
 <template>
-  <div v-if="!resposta" class="aviso" role="region" aria-label="Aviso de cookies">
-    <div class="conteudo linha">
-      <p>
+  <div v-if="!resposta" class="sticky bottom-0 z-10 border-t-[3px] border-destaque-forte bg-superficie shadow-[var(--sombra)]" role="region" aria-label="Aviso de cookies">
+    <div class="conteudo flex flex-wrap items-center gap-x-6 gap-y-3 py-4">
+      <p class="m-0 flex-[1_1_420px] text-[15px]">
         Podemos guardar um cookie anônimo para lembrar os temas que você mais lê e montar a página para você.
         Nada nele identifica você, e sem o aceite nada é guardado.
       </p>
-      <div class="botoes">
+      <div class="flex gap-3">
         <button type="button" class="botao botao-contorno" @click="responder('recusado')">Agora não</button>
         <button type="button" class="botao botao-principal" @click="responder('aceito')">Aceitar</button>
       </div>
     </div>
   </div>
 </template>
-
-<style scoped>
-.aviso {
-  position: sticky;
-  bottom: 0;
-  background: var(--superficie);
-  border-top: 3px solid var(--destaque-forte);
-  box-shadow: var(--sombra);
-  z-index: 10;
-}
-.linha { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding-block: 16px; }
-p { margin: 0; flex: 1 1 420px; font-size: 15px; }
-.botoes { display: flex; gap: 12px; }
-</style>

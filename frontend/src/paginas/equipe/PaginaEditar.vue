@@ -92,16 +92,16 @@ onBeforeRouteLeave(() => {
 
 <template>
   <LayoutEquipe @pronto="iniciar">
-    <RouterLink :to="{ name: 'fila' }" class="voltar"><span class="icone" aria-hidden="true">arrow_back</span>Voltar à fila</RouterLink>
+    <RouterLink :to="{ name: 'fila' }" class="inline-flex items-center gap-1.5 self-start text-[14px] font-medium [&_.icone]:text-[18px]"><span class="icone" aria-hidden="true">arrow_back</span>Voltar à fila</RouterLink>
 
     <p v-if="!noticia && !erroGeral" class="texto-2">Carregando…</p>
-    <p v-else-if="!noticia" class="erro" role="alert">{{ erroGeral }}</p>
+    <p v-else-if="!noticia" class="texto-erro" role="alert">{{ erroGeral }}</p>
 
     <template v-else>
       <header>
-        <h1>Editar notícia</h1>
-        <p class="texto-2">
-          <span class="status">{{ nomeDoStatus(noticia.status) }}</span>
+        <h1 class="m-0 text-[28px]">Editar notícia</h1>
+        <p class="texto-2 mt-1.5 mb-0 flex flex-wrap items-center gap-1.5 text-[14px]">
+          <span class="rounded-[10px] bg-faixa px-2.5 py-0.5 font-medium text-texto">{{ nomeDoStatus(noticia.status) }}</span>
           nº {{ noticia.id }} · criada em {{ dataHora(noticia.criado_em) }}
           <template v-if="noticia.alterado_em"> · alterada em {{ dataHora(noticia.alterado_em) }}</template>
           <template v-if="noticia.status === 'publicada'">
@@ -110,11 +110,11 @@ onBeforeRouteLeave(() => {
         </p>
       </header>
 
-      <p v-if="!podeEditar" class="cartao bloqueio" role="status">
+      <p v-if="!podeEditar" class="cartao m-0 border-l-4 border-erro" role="status">
         Notícia {{ nomeDoStatus(noticia.status).toLowerCase() }} não é editada. Só rascunho, aprovada ou publicada.
       </p>
-      <p v-if="aviso" class="aviso" role="status"><span class="icone" aria-hidden="true">check_circle</span>{{ aviso }}</p>
-      <div v-if="erroGeral" class="resumo-erros" role="alert" tabindex="-1">
+      <p v-if="aviso" class="aviso-ok" role="status"><span class="icone" aria-hidden="true">check_circle</span>{{ aviso }}</p>
+      <div v-if="erroGeral" class="flex gap-2.5 rounded-[10px] border-l-4 border-erro bg-superficie px-4 py-3 text-erro [&_p]:mt-1 [&_p]:mb-0" role="alert" tabindex="-1">
         <span class="icone" aria-hidden="true">error</span>
         <div>
           <strong>{{ erroGeral }}</strong>
@@ -123,51 +123,51 @@ onBeforeRouteLeave(() => {
       </div>
 
       <!-- novalidate: quem confere e o servidor (a tela so ajuda com os contadores) -->
-      <form class="cartao formulario" novalidate @submit.prevent="salvar()">
-        <fieldset :disabled="!podeEditar || salvando">
-          <div class="campo">
+      <form class="cartao flex max-w-[860px] flex-col gap-1" novalidate @submit.prevent="salvar()">
+        <fieldset class="m-0 flex flex-col gap-5 border-none p-0 [&_label]:text-[14px] [&_label]:font-semibold" :disabled="!podeEditar || salvando">
+          <div class="flex flex-col gap-1.5">
             <label for="ed-titulo">Título</label>
             <input
-              id="ed-titulo" v-model="form.titulo" type="text" class="serifa titulo"
+              id="ed-titulo" v-model="form.titulo" type="text" class="campo-texto font-serifa min-h-12 w-full px-3 text-[20px] font-semibold"
               :aria-invalid="!!erros.titulo" aria-describedby="ajuda-titulo erro-titulo"
             >
-            <div class="linha-ajuda">
+            <div class="flex justify-between gap-3 text-[13px]">
               <span id="ajuda-titulo" class="texto-2">
                 <template v-if="noticia.status === 'publicada'">O endereço da notícia não muda depois de publicada.</template>
                 <template v-else>O endereço (slug) acompanha o título até a publicação.</template>
               </span>
-              <span class="contador" :class="{ passou: form.titulo.length > LIMITES.titulo }">{{ form.titulo.length }} / {{ LIMITES.titulo }}</span>
+              <span class="text-[13px] whitespace-nowrap" :class="form.titulo.length > LIMITES.titulo ? 'font-bold text-erro' : 'text-texto-2'">{{ form.titulo.length }} / {{ LIMITES.titulo }}</span>
             </div>
             <span v-if="erros.titulo" id="erro-titulo" class="erro-campo"><span class="icone" aria-hidden="true">error</span>{{ erros.titulo }}</span>
           </div>
 
-          <div class="campo">
+          <div class="flex flex-col gap-1.5">
             <label for="ed-resumo">Resumo</label>
-            <textarea id="ed-resumo" v-model="form.resumo" rows="3" :aria-invalid="!!erros.resumo" aria-describedby="ajuda-resumo erro-resumo"></textarea>
-            <div class="linha-ajuda">
+            <textarea id="ed-resumo" v-model="form.resumo" rows="3" class="campo-texto w-full resize-y px-3 py-2.5 leading-[1.55]" :aria-invalid="!!erros.resumo" aria-describedby="ajuda-resumo erro-resumo"></textarea>
+            <div class="flex justify-between gap-3 text-[13px]">
               <span id="ajuda-resumo" class="texto-2">Aparece no cartão da página inicial.</span>
-              <span class="contador" :class="{ passou: form.resumo.length > LIMITES.resumo }">{{ form.resumo.length }} / {{ LIMITES.resumo }}</span>
+              <span class="text-[13px] whitespace-nowrap" :class="form.resumo.length > LIMITES.resumo ? 'font-bold text-erro' : 'text-texto-2'">{{ form.resumo.length }} / {{ LIMITES.resumo }}</span>
             </div>
             <span v-if="erros.resumo" id="erro-resumo" class="erro-campo"><span class="icone" aria-hidden="true">error</span>{{ erros.resumo }}</span>
           </div>
 
-          <div class="campo">
+          <div class="flex flex-col gap-1.5">
             <label for="ed-cod_tema">Tema principal</label>
-            <select id="ed-cod_tema" v-model="form.cod_tema" :aria-invalid="!!erros.cod_tema" aria-describedby="erro-cod_tema">
+            <select id="ed-cod_tema" v-model="form.cod_tema" class="campo-texto min-h-11 w-full max-w-[420px] px-3" :aria-invalid="!!erros.cod_tema" aria-describedby="erro-cod_tema">
               <option v-for="t in temas" :key="t.cod_tema" :value="t.cod_tema">{{ t.nome }}</option>
             </select>
             <span v-if="erros.cod_tema" id="erro-cod_tema" class="erro-campo"><span class="icone" aria-hidden="true">error</span>{{ erros.cod_tema }}</span>
           </div>
 
-          <div class="campo">
+          <div class="flex flex-col gap-1.5">
             <label for="ed-corpo">Corpo</label>
-            <textarea id="ed-corpo" v-model="form.corpo" rows="18" class="corpo" :aria-invalid="!!erros.corpo" aria-describedby="ajuda-corpo erro-corpo"></textarea>
-            <span id="ajuda-corpo" class="texto-2">Cada seção começa com "## " (por exemplo, "## O que propõe"), como na planta da notícia.</span>
+            <textarea id="ed-corpo" v-model="form.corpo" rows="18" class="campo-texto w-full resize-y px-3 py-2.5 font-mono text-[14px] leading-[1.55]" :aria-invalid="!!erros.corpo" aria-describedby="ajuda-corpo erro-corpo"></textarea>
+            <span id="ajuda-corpo" class="texto-2 text-[13px]">Cada seção começa com "## " (por exemplo, "## O que propõe"), como na planta da notícia.</span>
             <span v-if="erros.corpo" id="erro-corpo" class="erro-campo"><span class="icone" aria-hidden="true">error</span>{{ erros.corpo }}</span>
           </div>
         </fieldset>
 
-        <div class="acoes">
+        <div class="mt-5 flex flex-wrap items-center gap-2.5">
           <button type="submit" class="botao botao-principal" :disabled="!podeEditar || salvando || !mudou">{{ salvando ? 'Salvando…' : 'Salvar' }}</button>
           <button type="button" class="botao botao-contorno" :disabled="!podeEditar || salvando || !mudou" @click="salvar('voltar')">Salvar e voltar à fila</button>
           <button type="button" class="botao botao-perigo" :disabled="salvando || !mudou" @click="descartar">Descartar mudanças</button>
@@ -175,9 +175,9 @@ onBeforeRouteLeave(() => {
         </div>
       </form>
 
-      <details v-if="noticia.revisoes?.length" class="cartao historico">
+      <details v-if="noticia.revisoes?.length" class="cartao max-w-[860px] [&_summary]:cursor-pointer [&_summary]:font-medium [&_summary]:text-link">
         <summary>Histórico da revisão ({{ noticia.revisoes.length }})</summary>
-        <ul>
+        <ul class="mt-2 mb-0 flex flex-col gap-1 pl-5 text-[14px]">
           <li v-for="(r, i) in noticia.revisoes" :key="i">
             <strong>{{ r.acao }}</strong> por {{ r.administrador || 'equipe' }}, {{ dataHora(r.data_hora) }}
             <template v-if="r.comentario">: {{ r.comentario }}</template>
@@ -187,46 +187,3 @@ onBeforeRouteLeave(() => {
     </template>
   </LayoutEquipe>
 </template>
-
-<style scoped>
-.voltar { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500; align-self: flex-start; }
-.voltar .icone { font-size: 18px; }
-h1 { margin: 0; font-size: 28px; }
-header p { margin: 6px 0 0; font-size: 14px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.status { padding: 2px 10px; border-radius: 10px; background: var(--faixa); color: var(--texto); font-weight: 500; }
-
-.bloqueio { margin: 0; border-left: 4px solid var(--erro); }
-.aviso { margin: 0; display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 10px; background: var(--superficie); border-left: 4px solid var(--ok); }
-.aviso .icone { color: var(--ok); }
-.resumo-erros { display: flex; gap: 10px; padding: 12px 16px; border-radius: 10px; background: var(--superficie); border-left: 4px solid var(--erro); color: var(--erro); }
-.resumo-erros p { margin: 4px 0 0; }
-
-.formulario { max-width: 860px; display: flex; flex-direction: column; gap: 4px; }
-fieldset { border: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 20px; }
-.campo { display: flex; flex-direction: column; gap: 6px; }
-label { font-size: 14px; font-weight: 600; }
-input, textarea, select {
-  border-radius: 8px;
-  border: 1px solid var(--borda);
-  background: var(--superficie-2);
-  color: var(--texto);
-  font: inherit;
-  width: 100%;
-}
-input { min-height: 48px; padding: 0 12px; }
-.titulo { font-size: 20px; font-weight: 600; }
-select { min-height: 44px; padding: 0 12px; max-width: 420px; }
-textarea { padding: 10px 12px; line-height: 1.55; resize: vertical; }
-.corpo { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size: 14px; }
-[aria-invalid='true'] { border: 2px solid var(--erro); }
-.linha-ajuda { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
-.contador { font-size: 13px; color: var(--texto-2); white-space: nowrap; }
-.contador.passou { color: var(--erro); font-weight: 700; }
-.erro-campo { display: flex; align-items: center; gap: 6px; color: var(--erro); font-size: 14px; font-weight: 500; }
-.erro-campo .icone { font-size: 18px; }
-.erro { color: var(--erro); font-weight: 500; }
-.acoes { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 20px; }
-
-.historico summary { cursor: pointer; font-weight: 500; color: var(--link); }
-.historico ul { margin: 8px 0 0; padding-left: 20px; font-size: 14px; display: flex; flex-direction: column; gap: 4px; }
-</style>

@@ -18,19 +18,19 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="conteudo pagina">
-    <header class="abertura">
-      <p class="sobretitulo">Transparência</p>
-      <h1 class="serifa">Como o Desperta Brasil funciona</h1>
-      <p class="lide">
+  <div class="conteudo flex max-w-[900px] flex-col gap-6 pt-6 [&_h2]:m-0 [&_h2]:mb-2 [&_h2]:text-[22px] [&_p]:m-0 [&_p]:mb-2.5 [&_p]:text-[17px] [&_p]:leading-[1.65] [&_p:last-child]:mb-0">
+    <header class="flex flex-col gap-3">
+      <p class="mb-0! text-[14px]! font-semibold tracking-[0.06em] text-destaque uppercase">Transparência</p>
+      <h1 class="serifa m-0 text-[clamp(30px,4.4vw,44px)]">Como o Desperta Brasil funciona</h1>
+      <p class="mb-0! text-[19px]! leading-[1.6]! text-texto-2">
         Acompanhamos a Câmara dos Deputados e contamos, em linguagem simples, o que foi votado, o que foi apresentado e em que pé está cada proposta.
         Esta página explica de onde vêm os dados, como cada notícia é escrita e o que fazemos quando falta alguma informação.
       </p>
     </header>
 
-    <ol class="etapas">
-      <li class="cartao">
-        <span class="icone grande" aria-hidden="true">cloud_download</span>
+    <ol class="m-0 flex list-none flex-col gap-4 p-0">
+      <li class="cartao flex flex-col items-start gap-2 sm:flex-row sm:gap-5">
+        <span class="icone flex-none text-[36px] text-destaque-forte" aria-hidden="true">cloud_download</span>
         <div>
           <h2 class="serifa">1. Os dados vêm da Câmara</h2>
           <p>
@@ -45,8 +45,8 @@ onMounted(() => {
         </div>
       </li>
 
-      <li class="cartao">
-        <span class="icone grande" aria-hidden="true">edit_note</span>
+      <li class="cartao flex flex-col items-start gap-2 sm:flex-row sm:gap-5">
+        <span class="icone flex-none text-[36px] text-destaque-forte" aria-hidden="true">edit_note</span>
         <div>
           <h2 class="serifa">2. O sistema escreve um rascunho</h2>
           <p>
@@ -60,8 +60,8 @@ onMounted(() => {
         </div>
       </li>
 
-      <li class="cartao">
-        <span class="icone grande" aria-hidden="true">fact_check</span>
+      <li class="cartao flex flex-col items-start gap-2 sm:flex-row sm:gap-5">
+        <span class="icone flex-none text-[36px] text-destaque-forte" aria-hidden="true">fact_check</span>
         <div>
           <h2 class="serifa">3. A notícia é conferida antes de sair</h2>
           <p>
@@ -74,8 +74,8 @@ onMounted(() => {
         </div>
       </li>
 
-      <li class="cartao">
-        <span class="icone grande" aria-hidden="true">update</span>
+      <li class="cartao flex flex-col items-start gap-2 sm:flex-row sm:gap-5">
+        <span class="icone flex-none text-[36px] text-destaque-forte" aria-hidden="true">update</span>
         <div>
           <h2 class="serifa">4. Uma notícia por proposta, sempre atualizada</h2>
           <p>
@@ -87,18 +87,18 @@ onMounted(() => {
       </li>
     </ol>
 
-    <section class="cartao planta" aria-labelledby="t-planta">
-      <h2 id="t-planta" class="serifa">As partes de toda notícia</h2>
-      <dl class="secoes">
-        <div v-for="s in SECOES_DA_NOTICIA" :key="s.titulo">
-          <dt>{{ s.titulo }}</dt>
-          <dd>{{ s.texto }}</dd>
+    <section class="cartao" aria-labelledby="t-planta">
+      <h2 id="t-planta" class="serifa mb-4!">As partes de toda notícia</h2>
+      <dl class="m-0 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div v-for="s in SECOES_DA_NOTICIA" :key="s.titulo" class="border-l-[3px] border-marca pl-3">
+          <dt class="font-bold">{{ s.titulo }}</dt>
+          <dd class="m-0 mt-1 leading-normal text-texto-2">{{ s.texto }}</dd>
         </div>
       </dl>
     </section>
 
-    <section class="cartao lacunas" aria-labelledby="t-lacunas">
-      <span class="icone grande" aria-hidden="true">help</span>
+    <section class="cartao flex flex-col items-start gap-2 border-l-4 border-destaque-forte sm:flex-row sm:gap-5" aria-labelledby="t-lacunas">
+      <span class="icone flex-none text-[36px] text-destaque-forte" aria-hidden="true">help</span>
       <div>
         <h2 id="t-lacunas" class="serifa">Quando a Câmara não informa</h2>
         <p>
@@ -115,16 +115,16 @@ onMounted(() => {
 
     <section class="cartao" aria-labelledby="t-confira">
       <h2 id="t-confira" class="serifa">Confira você mesmo</h2>
-      <ul class="lista-confira">
-        <li><span class="icone" aria-hidden="true">link</span>Toda notícia tem o link da <strong>fonte oficial</strong> na Câmara e do texto completo da proposta.</li>
-        <li><span class="icone" aria-hidden="true">info</span>No fim de cada notícia, a parte <strong>"Como esta notícia foi feita"</strong> mostra os dados usados e como ela foi conferida.</li>
-        <li><span class="icone" aria-hidden="true">how_to_vote</span>Nas votações nominais, você vê o voto de cada deputado e a orientação de cada partido.</li>
+      <ul class="m-0 flex list-none flex-col gap-2.5 p-0 text-[17px] leading-[1.55]">
+        <li class="flex items-start gap-2.5"><span class="icone text-link" aria-hidden="true">link</span><span>Toda notícia tem o link da <strong>fonte oficial</strong> na Câmara e do texto completo da proposta.</span></li>
+        <li class="flex items-start gap-2.5"><span class="icone text-link" aria-hidden="true">info</span><span>No fim de cada notícia, a parte <strong>"Como esta notícia foi feita"</strong> mostra os dados usados e como ela foi conferida.</span></li>
+        <li class="flex items-start gap-2.5"><span class="icone text-link" aria-hidden="true">how_to_vote</span><span>Nas votações nominais, você vê o voto de cada deputado e a orientação de cada partido.</span></li>
       </ul>
     </section>
 
     <section class="cartao" aria-labelledby="t-nao">
       <h2 id="t-nao" class="serifa">O que o Desperta Brasil não faz</h2>
-      <ul class="lista-nao">
+      <ul class="m-0 flex list-none flex-col gap-2.5 p-0 text-[17px] leading-[1.55] [&_li]:relative [&_li]:pl-5 [&_li]:before:absolute [&_li]:before:left-0 [&_li]:before:text-destaque [&_li]:before:content-['—']">
         <li>Não tem propaganda.</li>
         <li>Não pede cadastro nem dados pessoais para ler.</li>
         <li>Não dá opinião: conta o fato, de forma imparcial, e mostra a fonte.</li>
@@ -133,36 +133,3 @@ onMounted(() => {
     </section>
   </div>
 </template>
-
-<style scoped>
-.pagina { display: flex; flex-direction: column; gap: 24px; padding-block: 24px 0; max-width: 900px; }
-.abertura { display: flex; flex-direction: column; gap: 12px; }
-.sobretitulo { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--destaque); }
-h1 { margin: 0; font-size: clamp(30px, 4.4vw, 44px); }
-.lide { margin: 0; font-size: 19px; line-height: 1.6; color: var(--texto-2); }
-
-.etapas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
-.etapas li, .lacunas { display: flex; gap: 20px; align-items: flex-start; }
-.grande { font-size: 36px; color: var(--destaque-forte); flex: none; }
-h2 { margin: 0 0 8px; font-size: 22px; }
-p { margin: 0 0 10px; line-height: 1.65; font-size: 17px; }
-p:last-child { margin-bottom: 0; }
-
-.planta h2 { margin-bottom: 16px; }
-.secoes { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px 24px; }
-.secoes div { border-left: 3px solid var(--marca); padding-left: 12px; }
-dt { font-weight: 700; }
-dd { margin: 4px 0 0; color: var(--texto-2); line-height: 1.5; }
-
-.lacunas { border-left: 4px solid var(--destaque-forte); }
-
-.lista-confira, .lista-nao { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; font-size: 17px; line-height: 1.55; }
-.lista-confira li { display: flex; gap: 10px; align-items: flex-start; }
-.lista-confira .icone { color: var(--link); }
-.lista-nao li { padding-left: 20px; position: relative; }
-.lista-nao li::before { content: '—'; position: absolute; left: 0; color: var(--destaque); }
-
-@media (max-width: 560px) {
-  .etapas li, .lacunas { flex-direction: column; gap: 8px; }
-}
-</style>

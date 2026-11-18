@@ -157,45 +157,46 @@ function mudarPagina(p) {
 <template>
   <LayoutEquipe :conta="lista.total" @pronto="iniciar">
       <header>
-        <h1>{{ statusAtual.nome }}</h1>
-        <p class="texto-2">
+        <h1 class="m-0 text-[28px]">{{ statusAtual.nome }}</h1>
+        <p class="texto-2 mt-1.5 mb-0 text-[15px]">
           {{ lista.total.toLocaleString('pt-BR') }} {{ lista.total === 1 ? 'notícia' : 'notícias' }} · mais antigas primeiro
         </p>
       </header>
 
-      <div class="filtros">
-        <div role="group" aria-label="Filtrar por caso" class="chips">
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div role="group" aria-label="Filtrar por caso" class="flex flex-wrap gap-2">
           <button
             v-for="c in CASOS" :key="c.valor" type="button" class="chip" :class="{ ativo: filtros.caso === c.valor }"
             :aria-pressed="filtros.caso === c.valor" @click="filtros.caso = c.valor"
           >{{ c.nome }}</button>
         </div>
         <label class="so-leitor" for="f-tema">Tema</label>
-        <select id="f-tema" v-model="filtros.tema">
+        <select id="f-tema" v-model="filtros.tema" class="filtro max-w-[280px]">
           <option value="">Todos os temas</option>
           <option v-for="t in temas" :key="t.cod_tema" :value="String(t.cod_tema)">{{ t.nome }}</option>
         </select>
       </div>
 
-      <p v-if="aviso" class="aviso" role="status">
+      <p v-if="aviso" class="aviso-ok text-[15px]" role="status">
         <span class="icone" aria-hidden="true">check_circle</span>{{ aviso }}
-        <button type="button" class="fechar" aria-label="Fechar aviso" @click="aviso = ''"><span class="icone" aria-hidden="true">close</span></button>
+        <button type="button" class="ml-auto size-8 cursor-pointer border-none bg-transparent text-texto-2" aria-label="Fechar aviso" @click="aviso = ''"><span class="icone" aria-hidden="true">close</span></button>
       </p>
-      <p v-if="erro" class="erro" role="alert">{{ erro }}</p>
+      <p v-if="erro" class="texto-erro" role="alert">{{ erro }}</p>
 
-      <div v-if="marcados.length" class="lote">
+      <div v-if="marcados.length" class="flex flex-wrap items-center gap-3 rounded-xl bg-faixa px-4 py-2.5 text-[14px]">
         <strong>{{ marcados.length }} {{ marcados.length === 1 ? 'selecionada' : 'selecionadas' }}</strong>
         <template v-if="['rascunho', 'em_revisao'].includes(filtros.status)">
-          <button v-if="filtros.status === 'rascunho'" type="button" class="botao botao-contorno baixo" :disabled="ocupado" @click="agirEmLote('aprovar')">Aprovar</button>
-          <button type="button" class="botao botao-principal baixo" :disabled="ocupado" @click="agirEmLote('publicar')">Publicar</button>
-          <button type="button" class="botao botao-perigo baixo" :disabled="ocupado || !comentario.trim()" @click="agirEmLote('rejeitar')">Rejeitar</button>
+          <button v-if="filtros.status === 'rascunho'" type="button" class="botao botao-contorno botao-baixo" :disabled="ocupado" @click="agirEmLote('aprovar')">Aprovar</button>
+          <button type="button" class="botao botao-principal botao-baixo" :disabled="ocupado" @click="agirEmLote('publicar')">Publicar</button>
+          <button type="button" class="botao botao-perigo botao-baixo" :disabled="ocupado || !comentario.trim()" @click="agirEmLote('rejeitar')">Rejeitar</button>
           <span class="texto-2">Para rejeitar, escreva o comentário no painel ao lado. Até 200 por vez.</span>
         </template>
-        <button v-else-if="filtros.status === 'publicada'" type="button" class="botao botao-contorno baixo" :disabled="ocupado" @click="agirEmLote('arquivar')">Arquivar</button>
+        <button v-else-if="filtros.status === 'publicada'" type="button" class="botao botao-contorno botao-baixo" :disabled="ocupado" @click="agirEmLote('arquivar')">Arquivar</button>
       </div>
 
-      <div class="paineis">
-        <section class="cartao lista" aria-label="Notícias">
+      <!-- Tela larga: lista e editor lado a lado; menor: um embaixo do outro -->
+        <div class="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+        <section class="cartao min-w-0 overflow-hidden p-0" aria-label="Notícias">
           <p v-if="carregando" class="vazio texto-2">Carregando…</p>
           <p v-else-if="!lista.itens.length" class="vazio texto-2">Nada aqui com esses filtros.</p>
           <template v-else>
@@ -221,7 +222,7 @@ function mudarPagina(p) {
           <div class="pe-lista"><Paginacao :pagina="lista.pagina || 1" :paginas="lista.paginas || 1" @ir="mudarPagina" /></div>
         </section>
 
-        <section v-if="aberta" class="cartao editor" aria-labelledby="t-editor">
+        <section v-if="aberta" class="editor-campos cartao flex min-w-0 flex-col gap-2.5" aria-labelledby="t-editor">
           <h2 id="t-editor" class="so-leitor">Editar notícia</h2>
           <div class="etiquetas">
             <span class="status">{{ aberta.status.replace('_', ' ') }}</span>
@@ -231,17 +232,17 @@ function mudarPagina(p) {
 
           <label for="ed-titulo">Título <span class="texto-2">({{ form.titulo.length }} de 200)</span></label>
           <input id="ed-titulo" v-model="form.titulo" type="text" maxlength="200" class="serifa" :aria-invalid="!!errosCampos.titulo" aria-describedby="erro-ed-titulo">
-          <span v-if="errosCampos.titulo" id="erro-ed-titulo" class="erro-campo">{{ errosCampos.titulo }}</span>
+          <span v-if="errosCampos.titulo" id="erro-ed-titulo" class="erro-campo text-[13px]">{{ errosCampos.titulo }}</span>
           <label for="ed-resumo">Resumo <span class="texto-2">({{ form.resumo.length }} de 500)</span></label>
           <textarea id="ed-resumo" v-model="form.resumo" rows="3" maxlength="500" :aria-invalid="!!errosCampos.resumo" aria-describedby="erro-ed-resumo"></textarea>
-          <span v-if="errosCampos.resumo" id="erro-ed-resumo" class="erro-campo">{{ errosCampos.resumo }}</span>
+          <span v-if="errosCampos.resumo" id="erro-ed-resumo" class="erro-campo text-[13px]">{{ errosCampos.resumo }}</span>
           <details>
             <summary>Corpo da notícia</summary>
             <label for="ed-corpo" class="so-leitor">Corpo</label>
             <textarea id="ed-corpo" v-model="form.corpo" rows="12" :aria-invalid="!!errosCampos.corpo"></textarea>
           </details>
-          <span v-if="errosCampos.corpo" class="erro-campo">Corpo: {{ errosCampos.corpo }}</span>
-          <RouterLink :to="{ name: 'editar', params: { id: aberta.id } }" class="tela-cheia">
+          <span v-if="errosCampos.corpo" class="erro-campo text-[13px]">Corpo: {{ errosCampos.corpo }}</span>
+          <RouterLink :to="{ name: 'editar', params: { id: aberta.id } }" class="inline-flex items-center gap-1.5 self-start text-[14px] font-medium [&_.icone]:text-[18px]">
             <span class="icone" aria-hidden="true">open_in_full</span>Editar em tela cheia (título, resumo, tema e corpo)
           </RouterLink>
 
@@ -282,9 +283,9 @@ function mudarPagina(p) {
             <label for="ed-comentario">Comentário <span class="texto-2">(obrigatório para rejeitar)</span></label>
             <textarea id="ed-comentario" v-model="comentario" rows="2" placeholder="Ex.: o título não diz o que o projeto faz"></textarea>
           </template>
-          <p v-if="erroDaAcao" class="erro" role="alert">{{ erroDaAcao }}</p>
+          <p v-if="erroDaAcao" class="texto-erro" role="alert">{{ erroDaAcao }}</p>
 
-          <div class="acoes">
+          <div class="mt-2 flex flex-wrap gap-2.5">
             <button v-if="podeAgir" type="button" class="botao botao-principal" :disabled="ocupado" @click="agir('publicar')">Publicar</button>
             <button v-if="aberta.status === 'rascunho'" type="button" class="botao botao-contorno" :disabled="ocupado" @click="agir('aprovar')">Aprovar</button>
             <button type="button" class="botao botao-contorno" :disabled="ocupado || !mudou" @click="salvar">Salvar texto</button>
@@ -297,42 +298,7 @@ function mudarPagina(p) {
 </template>
 
 <style scoped>
-h1 { margin: 0; font-size: 28px; }
-header p { margin: 6px 0 0; font-size: 15px; }
-
-.filtros { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
-.chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.chip {
-  min-height: 40px;
-  padding: 0 16px;
-  border-radius: 20px;
-  border: 1px solid var(--borda);
-  background: var(--superficie);
-  color: var(--texto);
-  font: inherit;
-  font-size: 14px;
-  cursor: pointer;
-}
-.chip.ativo { background: var(--principal); border-color: var(--principal); color: var(--sobre-principal); font-weight: 500; }
-select, input[type='text'], textarea {
-  border-radius: 8px;
-  border: 1px solid var(--borda);
-  background: var(--superficie-2);
-  color: var(--texto);
-  font: inherit;
-}
-select { min-height: 40px; padding: 0 12px; background: var(--superficie); max-width: 280px; }
-
-.aviso { margin: 0; display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 10px; background: var(--superficie); border-left: 4px solid var(--ok); font-size: 15px; }
-.aviso .icone:first-child { color: var(--ok); }
-.fechar { margin-left: auto; background: none; border: none; color: var(--texto-2); cursor: pointer; width: 32px; height: 32px; }
-.erro { margin: 0; color: var(--erro); font-weight: 500; }
-
-.lote { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 10px 16px; background: var(--faixa); border-radius: 12px; font-size: 14px; }
-.baixo { min-height: 36px; padding: 0 14px; }
-
-.paineis { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
-.lista { flex: 1 1 400px; min-width: 0; padding: 0; overflow: hidden; }
+/* So os detalhes internos da lista e do editor; a estrutura da tela usa as classes do Tailwind */
 .vazio { margin: 0; padding: 24px; }
 .linha-todos { display: flex; align-items: center; gap: 12px; padding: 12px 16px; font-size: 14px; border-bottom: 1px solid var(--linha); cursor: pointer; }
 .linha { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--linha); border-left: 4px solid transparent; align-items: start; }
@@ -343,21 +309,22 @@ input[type='checkbox'] { width: 18px; height: 18px; margin: 3px 0 0; accent-colo
 .titulo { font-weight: 500; line-height: 1.35; }
 .meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; }
 .prio { padding: 0 8px; border-radius: 999px; font-weight: 600; }
-.prio.alta { background: var(--principal); color: var(--sobre-principal, #fff); }
+.prio.alta { background: var(--principal); color: var(--sobre-principal); }
 .prio.media { background: var(--faixa); color: var(--texto); }
 .prio.baixa { border: 1px solid var(--linha); }
-.falha { color: var(--erro, var(--texto)); font-weight: 600; }
+.falha { color: var(--erro); font-weight: 600; }
 .motivo { font-size: 13px; }
 .origem { color: var(--destaque); font-weight: 500; }
 .pe-lista { padding: 12px 16px; }
 
-.editor { flex: 1 1 440px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
 .etiquetas { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; }
 .status { padding: 3px 10px; border-radius: 10px; background: var(--superficie-2); }
 .caso { color: var(--link); font-weight: 500; }
-.editor label { font-size: 13px; font-weight: 500; margin-top: 6px; }
-.editor input[type='text'] { min-height: 44px; padding: 0 12px; font-size: 19px; font-weight: 600; }
+.editor-campos label { font-size: 13px; font-weight: 500; margin-top: 6px; }
+input[type='text'], textarea { border-radius: 8px; border: 1px solid var(--borda); background: var(--superficie-2); color: var(--texto); font: inherit; }
+input[type='text'] { min-height: 44px; padding: 0 12px; font-size: 19px; font-weight: 600; }
 textarea { padding: 10px 12px; font-size: 15px; line-height: 1.5; resize: vertical; width: 100%; }
+input[aria-invalid='true'], textarea[aria-invalid='true'] { border: 2px solid var(--erro); }
 details summary { cursor: pointer; font-weight: 500; color: var(--link); padding: 6px 0; }
 .usou { background: var(--superficie-2); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
 .usou > strong { display: flex; align-items: center; gap: 6px; }
@@ -365,10 +332,4 @@ details summary { cursor: pointer; font-weight: 500; color: var(--link); padding
 .trechos { margin: 8px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; max-height: 280px; overflow-y: auto; }
 .trechos .texto-2 { display: block; }
 .historico ul { margin: 6px 0 0; padding-left: 20px; font-size: 14px; }
-.acoes { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
-
-input[aria-invalid='true'], textarea[aria-invalid='true'] { border: 2px solid var(--erro); }
-.erro-campo { color: var(--erro); font-size: 13px; font-weight: 500; }
-.tela-cheia { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500; align-self: flex-start; }
-.tela-cheia .icone { font-size: 18px; }
 </style>

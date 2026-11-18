@@ -1,24 +1,32 @@
 <script setup>
-// RF10: manchete (a mais recente), as ultimas publicadas e as principais de cada tema.
+// RF10: pagina inicial como hub de navegacao. So o essencial: 3 destaques, os temas com
+// mais noticias e os atalhos. O resto fica no menu (tres tracinhos) e nas paginas de cada tema.
 import { onMounted, ref } from 'vue'
 import { mensagemDeErro, portal } from '../services/api.js'
 import { data } from '../util/datas.js'
 import { iconeDoTema } from '../temas.js'
-import NavTemas from '../componentes/NavTemas.vue'
-import CartaoNoticia from '../componentes/CartaoNoticia.vue'
 
-const manchete = ref(null)
-const ultimas = ref([])
-const secoes = ref([])
+const TEMAS_NA_INICIAL = 8
+const ATALHOS = [
+  { nome: 'Buscar notícias', texto: 'Por assunto, dia, mês ou ano', icone: 'search', para: { name: 'busca' } },
+  { nome: 'Como funciona', texto: 'De onde vêm os dados e como a notícia é feita', icone: 'help', para: { name: 'como-funciona' } },
+]
+
+const destaques = ref([])
+const temas = ref([])
 const carregando = ref(true)
 const erro = ref('')
 
 onMounted(async () => {
+  document.title = 'Desperta Brasil — a Câmara dos Deputados em linguagem simples'
   try {
-    const [recentes, principal] = await Promise.all([portal.recentes({ por_pagina: 6 }), portal.principal(3)])
-    manchete.value = recentes.itens[0] || null
-    ultimas.value = recentes.itens.slice(1, 6)
-    secoes.value = principal.secoes
+    const [recentes, lista] = await Promise.all([portal.recentes({ por_pagina: 3 }), portal.temas()])
+    destaques.value = recentes.itens
+    // Os temas com mais noticias publicadas primeiro
+    temas.value = lista.itens
+      .filter((t) => t.noticias_publicadas > 0)
+      .sort((a, b) => b.noticias_publicadas - a.noticias_publicadas)
+      .slice(0, TEMAS_NA_INICIAL)
   } catch (e) {
     erro.value = mensagemDeErro(e)
   } finally {
@@ -28,133 +36,94 @@ onMounted(async () => {
 </script>
 
 <template>
-  <NavTemas />
-  <div class="conteudo pagina">
-    <p v-if="carregando" class="carregando">Carregando as notícias…</p>
+  <div class="conteudo flex flex-col gap-10 pt-8 sm:pt-10">
+    <header class="flex flex-col gap-2">
+      <h1 class="serifa m-0 text-[clamp(26px,3.6vw,36px)] leading-tight">O que a Câmara decidiu, em linguagem simples</h1>
+      <p class="texto-2 m-0 text-[17px]">Votações e projetos dos deputados, com a fonte oficial em cada notícia.</p>
+    </header>
+
+    <p v-if="carregando" class="carregando">Carregando…</p>
     <p v-else-if="erro" class="carregando" role="alert">{{ erro }}</p>
-    <p v-else-if="!manchete" class="carregando">Ainda não há notícias publicadas.</p>
 
     <template v-else>
-      <section class="topo">
-        <article class="cartao manchete">
-          <div class="linha-tema">
-            <RouterLink :to="{ name: 'tema', params: { cod: manchete.tema.cod_tema } }" class="etiqueta-tema">
-              <span class="icone" aria-hidden="true">{{ iconeDoTema(manchete.tema) }}</span>{{ manchete.tema.nome }}
-            </RouterLink>
-            <span class="texto-2">Publicada em {{ data(manchete.publicado_em) }}</span>
-          </div>
-          <h1 class="serifa">
-            <RouterLink :to="{ name: 'noticia', params: { slug: manchete.slug } }">{{ manchete.titulo }}</RouterLink>
-          </h1>
-          <p class="resumo">{{ manchete.resumo }}</p>
-          <div>
-            <RouterLink :to="{ name: 'noticia', params: { slug: manchete.slug } }" class="botao botao-principal">
-              Ler a notícia<span class="icone" aria-hidden="true">arrow_forward</span>
-            </RouterLink>
-          </div>
-        </article>
-
-        <aside class="cartao ultimas" aria-labelledby="t-ultimas">
-          <h2 id="t-ultimas"><span class="icone" aria-hidden="true">schedule</span>Últimas publicadas</h2>
-          <RouterLink v-for="n in ultimas" :key="n.id" :to="{ name: 'noticia', params: { slug: n.slug } }" class="ultima">
-            <span class="ultima-titulo">{{ n.titulo }}</span>
-            <span class="texto-2 ultima-meta">{{ n.tema.nome }} · {{ data(n.publicado_em) }}</span>
+      <!-- Destaques: so as 3 mais recentes -->
+      <section aria-labelledby="t-destaques" class="flex flex-col gap-4">
+        <h2 id="t-destaques" class="m-0 flex items-center gap-2 text-[20px]">
+          <span class="icone text-[26px] text-destaque-forte" aria-hidden="true">newspaper</span>Destaques
+        </h2>
+        <p v-if="!destaques.length" class="texto-2 m-0">Ainda não há notícias publicadas.</p>
+        <!-- A principal em destaque grande; as outras duas ao lado (no celular, embaixo) -->
+        <div v-if="destaques.length" class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+          <RouterLink
+            :to="{ name: 'noticia', params: { slug: destaques[0].slug } }"
+            class="cartao group flex flex-col justify-center gap-4 p-6 text-texto no-underline transition-shadow hover:text-texto hover:shadow-[0_4px_16px_rgba(36,39,49,0.12)] sm:p-8"
+          >
+            <span class="flex items-center gap-1.5 text-[14px] font-bold text-destaque">
+              <span class="icone text-[22px]" aria-hidden="true">{{ iconeDoTema(destaques[0].tema) }}</span>{{ destaques[0].tema?.nome }}
+            </span>
+            <h3 class="serifa m-0 text-[clamp(26px,3.2vw,38px)] leading-[1.15] font-bold group-hover:underline">{{ destaques[0].titulo }}</h3>
+            <p class="m-0 line-clamp-3 text-[18px] leading-[1.55]">{{ destaques[0].resumo }}</p>
+            <span class="flex flex-wrap items-center gap-4">
+              <span class="botao botao-principal">Ler a notícia<span class="icone" aria-hidden="true">arrow_forward</span></span>
+              <span class="texto-2 text-[14px]">{{ data(destaques[0].publicado_em) }}</span>
+            </span>
           </RouterLink>
-        </aside>
-      </section>
-
-      <section aria-labelledby="t-temas" class="por-tema">
-        <h2 id="t-temas" class="serifa titulo-secao">Por tema</h2>
-        <div class="grade">
-          <div v-for="s in secoes" :key="s.tema.cod_tema" class="cartao secao">
-            <h3 class="nome-tema">
-              <span class="roda"><span class="icone" aria-hidden="true">{{ iconeDoTema(s.tema) }}</span></span>
-              {{ s.tema.nome }}
-            </h3>
-            <template v-for="(n, i) in s.noticias" :key="n.id">
-              <hr v-if="i > 0">
-              <CartaoNoticia :noticia="n" :com-resumo="i === 0" />
-            </template>
-            <RouterLink :to="{ name: 'tema', params: { cod: s.tema.cod_tema } }" class="ver-tudo">
-              Ver tudo em {{ s.tema.nome }}
+          <div class="flex flex-col gap-4">
+            <RouterLink
+              v-for="n in destaques.slice(1)" :key="n.id" :to="{ name: 'noticia', params: { slug: n.slug } }"
+              class="cartao group flex flex-1 flex-col gap-2 p-5 text-texto no-underline transition-shadow hover:text-texto hover:shadow-[0_4px_16px_rgba(36,39,49,0.12)]"
+            >
+              <span class="flex items-center gap-1.5 text-[13px] font-bold text-destaque">
+                <span class="icone text-[20px]" aria-hidden="true">{{ iconeDoTema(n.tema) }}</span>{{ n.tema?.nome }}
+              </span>
+              <h3 class="serifa m-0 line-clamp-3 text-[20px] leading-[1.3] font-semibold group-hover:underline">{{ n.titulo }}</h3>
+              <span class="texto-2 mt-auto text-[13px]">{{ data(n.publicado_em) }}</span>
             </RouterLink>
           </div>
         </div>
+      </section>
+
+      <!-- Navegar por tema: blocos grandes com icone -->
+      <section aria-labelledby="t-temas" class="flex flex-col gap-4">
+        <div class="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 id="t-temas" class="m-0 flex items-center gap-2 text-[18px]">
+            <span class="icone text-[24px] text-destaque-forte" aria-hidden="true">category</span>Navegue por tema
+          </h2>
+          <RouterLink :to="{ name: 'temas' }" class="inline-flex items-center gap-1 text-[15px] font-medium">
+            Ver todos os 32 temas<span class="icone text-[20px]" aria-hidden="true">arrow_forward</span>
+          </RouterLink>
+        </div>
+        <!-- Blocos compactos: icone pequeno e o nome numa linha -->
+        <ul class="m-0 grid list-none grid-cols-1 gap-2 p-0 sm:grid-cols-2 lg:grid-cols-4">
+          <li v-for="t in temas" :key="t.cod_tema">
+            <RouterLink
+              :to="{ name: 'tema', params: { cod: t.cod_tema } }"
+              class="cartao flex h-full items-center gap-3 px-3 py-2.5 text-texto no-underline hover:bg-faixa hover:text-texto"
+            >
+              <span class="flex size-9 flex-none items-center justify-center rounded-full bg-faixa">
+                <span class="icone text-[22px] text-destaque-forte" aria-hidden="true">{{ iconeDoTema(t) }}</span>
+              </span>
+              <span class="line-clamp-2 text-[14px] leading-snug font-medium">{{ t.nome }}</span>
+            </RouterLink>
+          </li>
+        </ul>
+      </section>
+
+      <!-- Atalhos -->
+      <section aria-label="Atalhos" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <RouterLink
+          v-for="a in ATALHOS" :key="a.nome" :to="a.para"
+          class="cartao flex items-center gap-4 p-4 text-texto no-underline hover:bg-faixa hover:text-texto"
+        >
+          <span class="flex size-12 flex-none items-center justify-center rounded-full bg-principal">
+            <span class="icone text-[26px] text-sobre-principal" aria-hidden="true">{{ a.icone }}</span>
+          </span>
+          <span class="flex flex-col">
+            <strong class="text-[16px]">{{ a.nome }}</strong>
+            <span class="texto-2 text-[14px] leading-snug">{{ a.texto }}</span>
+          </span>
+        </RouterLink>
       </section>
     </template>
-
-    <section id="como-funciona" class="como" aria-labelledby="t-como">
-      <h2 id="t-como" class="serifa titulo-secao">Como cada notícia é feita</h2>
-      <div class="passos">
-        <div class="passo">
-          <span class="icone" aria-hidden="true">cloud_download</span>
-          <strong>1. Os dados vêm da Câmara</strong>
-          <span>De hora em hora buscamos votações, eventos e projetos na API de Dados Abertos da Câmara dos Deputados.</span>
-        </div>
-        <div class="passo">
-          <span class="icone" aria-hidden="true">edit_note</span>
-          <strong>2. O sistema escreve um rascunho</strong>
-          <span>Com frases prontas e só com os dados oficiais: nenhum número, nome ou data é inventado.</span>
-        </div>
-        <div class="passo">
-          <span class="icone" aria-hidden="true">fact_check</span>
-          <strong>3. A notícia é conferida</strong>
-          <span>Regras fixas conferem cada texto; o que falha vai para a revisão da equipe. Toda notícia mostra a fonte oficial e como foi feita.</span>
-        </div>
-      </div>
-      <RouterLink to="/como-funciona" class="saiba-mais">Saiba como funciona<span class="icone" aria-hidden="true">arrow_forward</span></RouterLink>
-    </section>
   </div>
 </template>
-
-<style scoped>
-.pagina { display: flex; flex-direction: column; gap: 48px; padding-block: 16px 0; }
-
-.topo { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
-.manchete { flex: 999 1 560px; min-width: 0; padding: 32px; display: flex; flex-direction: column; justify-content: center; gap: 20px; }
-.linha-tema { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: 14px; }
-.manchete h1 { margin: 0; font-size: clamp(30px, 4.6vw, 48px); line-height: 1.12; font-weight: 700; }
-.manchete h1 a { color: var(--texto); text-decoration: none; }
-.manchete h1 a:hover { text-decoration: underline; }
-.manchete .resumo { margin: 0; font-size: 20px; line-height: 1.55; }
-
-.ultimas { flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; }
-.ultimas h2 { margin: 0 0 8px; font-size: 18px; display: flex; align-items: center; gap: 8px; }
-.ultimas h2 .icone { color: var(--link); }
-.ultima { display: block; padding: 12px 0; border-top: 1px solid var(--linha); text-decoration: none; color: var(--texto); }
-.ultima:hover .ultima-titulo { text-decoration: underline; }
-.ultima-titulo { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-weight: 500; line-height: 1.35; }
-.ultima-meta { display: block; font-size: 13px; margin-top: 4px; }
-
-.titulo-secao { margin: 0 0 20px; font-size: 28px; font-weight: 700; }
-.grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; }
-.secao { display: flex; flex-direction: column; gap: 16px; }
-.nome-tema { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 18px; }
-.roda {
-  flex: none;
-  width: 36px;
-  height: 36px;
-  border-radius: 18px;
-  background: var(--superficie-2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.roda .icone { color: var(--destaque); }
-hr { width: 100%; border: none; border-top: 1px solid var(--linha); margin: 0; }
-.ver-tudo { font-size: 14px; font-weight: 500; margin-top: auto; }
-
-.como { background: #263b5c; color: #f3eee6; border-radius: 16px; padding: 32px; scroll-margin-top: 16px; }
-.saiba-mais { display: inline-flex; align-items: center; gap: 6px; margin-top: 24px; color: #dcb48f; font-weight: 600; }
-.saiba-mais:hover { color: #f3eee6; }
-.passos { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; }
-.passo { display: flex; flex-direction: column; gap: 8px; }
-.passo .icone { font-size: 32px; color: #dcb48f; }
-.passo strong { font-size: 17px; }
-.passo span:last-child { font-size: 15px; color: #e1dad4; }
-
-@media (max-width: 600px) {
-  .manchete { padding: 20px; }
-  .como { padding: 24px 20px; }
-}
-</style>

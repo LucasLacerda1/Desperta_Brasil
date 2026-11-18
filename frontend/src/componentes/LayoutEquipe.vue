@@ -4,7 +4,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { equipe } from '../services/api.js'
-import { alternarTema, temaAtual } from '../util/tema.js'
+import { TEMA_ESCURO_LIGADO, alternarTema, temaAtual } from '../util/tema.js'
 import { STATUS_DA_FILA } from '../util/equipe.js'
 
 const props = defineProps({
@@ -51,109 +51,65 @@ function trocarTema() {
 </script>
 
 <template>
-  <div class="equipe">
-    <nav class="lateral" aria-label="Área da equipe">
-      <div class="topo">
-        <RouterLink to="/" class="marca">
-          <span class="icone sol" aria-hidden="true">wb_twilight</span>
+  <!-- Computador: menu lateral + area; celular: menu recolhido no topo -->
+  <div class="flex min-h-screen flex-col md:flex-row">
+    <nav class="flex flex-col bg-rodape p-3 text-[#f3eee6] md:w-[260px] md:flex-none md:px-3 md:py-5" aria-label="Área da equipe">
+      <div class="flex items-center justify-between">
+        <RouterLink to="/" class="flex items-center gap-2 px-2 text-[18px] font-bold text-[#ffffff] no-underline hover:text-[#ffffff] md:pb-5">
+          <span class="icone text-[26px] text-marca" aria-hidden="true">wb_twilight</span>
           <span class="serifa">Desperta · equipe</span>
         </RouterLink>
-        <button type="button" class="menu" :aria-expanded="menuAberto" aria-controls="menu-equipe" @click="menuAberto = !menuAberto">
+        <button
+          type="button" class="inline-flex size-11 cursor-pointer items-center justify-center border-none bg-transparent text-[#f3eee6] md:hidden"
+          :aria-expanded="menuAberto" aria-controls="menu-equipe" @click="menuAberto = !menuAberto"
+        >
           <span class="icone" aria-hidden="true">{{ menuAberto ? 'close' : 'menu' }}</span>
           <span class="so-leitor">Menu</span>
         </button>
       </div>
-      <div id="menu-equipe" class="itens" :class="{ aberto: menuAberto }">
+      <div id="menu-equipe" class="flex-1 flex-col gap-1 pt-3 md:flex md:pt-0" :class="menuAberto ? 'flex' : 'hidden'">
         <RouterLink
-          v-for="s in STATUS_DA_FILA" :key="s.valor" class="item" :class="{ ativo: statusAtivo === s.valor }"
+          v-for="s in STATUS_DA_FILA" :key="s.valor"
           :to="{ name: 'fila', query: s.valor === 'rascunho' ? {} : { status: s.valor } }"
+          class="flex items-center gap-2.5 rounded-[10px] px-3 py-2.5 no-underline" :class="statusAtivo === s.valor ? 'bg-[#2e3d4e] font-medium text-[#ffffff] hover:text-[#ffffff]' : 'text-[#f3eee6] hover:bg-[#262a34] hover:text-[#ffffff]'"
           :aria-current="statusAtivo === s.valor ? 'page' : undefined" @click="menuAberto = false"
         >
           <span class="icone" aria-hidden="true">{{ s.icone }}</span>
-          <span class="nome">{{ s.nome }}</span>
-          <span v-if="statusAtivo === s.valor && conta !== null" class="conta">{{ conta.toLocaleString('pt-BR') }}</span>
+          <span class="flex-1">{{ s.nome }}</span>
+          <span v-if="statusAtivo === s.valor && conta !== null" class="text-[13px]">{{ conta.toLocaleString('pt-BR') }}</span>
         </RouterLink>
-        <span class="grupo">SÓ ADMIN</span>
+        <span class="px-3 pt-5 pb-1.5 text-[12px] tracking-[0.06em] text-[#d8ccbf]">SÓ ADMIN</span>
         <template v-for="a in ADMIN" :key="a.rota">
-          <RouterLink v-if="ehAdmin" :to="{ name: a.rota }" class="item" active-class="ativo" @click="menuAberto = false">
-            <span class="icone" aria-hidden="true">{{ a.icone }}</span><span class="nome">{{ a.nome }}</span>
+          <RouterLink
+            v-if="ehAdmin" :to="{ name: a.rota }" class="flex items-center gap-2.5 rounded-[10px] px-3 py-2.5 no-underline text-[#f3eee6] hover:bg-[#262a34] hover:text-[#ffffff]"
+            active-class="bg-[#2e3d4e] font-medium text-[#ffffff]!" @click="menuAberto = false"
+          >
+            <span class="icone" aria-hidden="true">{{ a.icone }}</span><span class="flex-1">{{ a.nome }}</span>
           </RouterLink>
-          <span v-else class="item apagado" :title="'Só para admin'">
-            <span class="icone" aria-hidden="true">{{ a.icone }}</span><span class="nome">{{ a.nome }}</span>
+          <span v-else class="flex items-center gap-2.5 rounded-[10px] px-3 py-2.5 no-underline cursor-not-allowed text-[#d8ccbf]" title="Só para admin">
+            <span class="icone" aria-hidden="true">{{ a.icone }}</span><span class="flex-1">{{ a.nome }}</span>
           </span>
         </template>
-        <div class="pe">
+        <div class="mt-auto flex flex-col gap-2 border-t border-[#353a45] px-3 pt-4 text-[14px] text-[#f3eee6]">
           <span v-if="eu">{{ eu.nome }} · {{ eu.papel }}</span>
-          <div class="pe-botoes">
-            <button type="button" class="link-claro" @click="trocarTema">{{ tema === 'escuro' ? 'Tema claro' : 'Tema escuro' }}</button>
-            <button type="button" class="link-claro" @click="sair">Sair</button>
+          <div class="flex gap-4 [&_button]:cursor-pointer [&_button]:border-none [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[#ecc9a6] [&_button]:underline [&_button]:[font:inherit]">
+            <button v-if="TEMA_ESCURO_LIGADO" type="button" @click="trocarTema">{{ tema === 'escuro' ? 'Tema claro' : 'Tema escuro' }}</button>
+            <button type="button" @click="sair">Sair</button>
           </div>
         </div>
       </div>
     </nav>
 
-    <main id="principal" class="area">
+    <main id="principal" class="flex min-w-0 flex-1 flex-col gap-4 px-4 py-5 md:px-8 md:py-7">
       <p v-if="!eu" class="texto-2">Conferindo o login…</p>
-      <div v-else-if="bloqueado" class="cartao bloqueio" role="alert">
-        <span class="icone" aria-hidden="true">lock</span>
+      <div v-else-if="bloqueado" class="cartao flex items-start gap-3 border-l-4 border-erro" role="alert">
+        <span class="icone text-erro" aria-hidden="true">lock</span>
         <div>
           <strong>Esta tela é só para quem tem o papel admin.</strong>
-          <p class="texto-2">O seu papel é {{ eu.papel }}. Peça a um admin, se precisar destes dados.</p>
+          <p class="texto-2 mt-1 mb-0">O seu papel é {{ eu.papel }}. Peça a um admin, se precisar destes dados.</p>
         </div>
       </div>
       <slot v-else :eu="eu" />
     </main>
   </div>
 </template>
-
-<style scoped>
-.equipe { min-height: 100vh; display: flex; flex-wrap: wrap; }
-
-.lateral {
-  flex: 1 1 220px;
-  max-width: 260px;
-  background: var(--rodape);
-  color: #e1dad4;
-  padding: 20px 12px;
-  display: flex;
-  flex-direction: column;
-}
-.topo { display: flex; align-items: center; justify-content: space-between; }
-.marca { display: flex; align-items: center; gap: 8px; padding: 0 8px 20px; text-decoration: none; color: #f3eee6; font-size: 18px; font-weight: 700; }
-.sol { font-size: 26px; color: #dcb48f; }
-.menu { display: none; background: none; border: none; color: #f3eee6; width: 44px; height: 44px; cursor: pointer; }
-.itens { display: flex; flex-direction: column; gap: 4px; flex: 1; }
-.item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  color: #e1dad4;
-  text-decoration: none;
-}
-.item:hover { color: #f3eee6; background: #2f3442; }
-.item .nome { flex: 1; }
-.item.ativo { background: #38495b; color: #f3eee6; font-weight: 500; }
-.item .conta { font-size: 13px; }
-.item.apagado { color: #b8a798; cursor: not-allowed; }
-.item.apagado:hover { background: transparent; color: #b8a798; }
-.grupo { padding: 20px 12px 6px; font-size: 12px; letter-spacing: 0.06em; color: #b8a798; }
-.pe { margin-top: auto; padding: 16px 12px 0; border-top: 1px solid #38495b; font-size: 14px; display: flex; flex-direction: column; gap: 8px; color: #f3eee6; }
-.pe-botoes { display: flex; gap: 16px; }
-.link-claro { background: none; border: none; padding: 0; font: inherit; color: #dcb48f; text-decoration: underline; cursor: pointer; }
-
-.area { flex: 999 1 640px; min-width: 0; padding: 28px 32px; display: flex; flex-direction: column; gap: 16px; }
-.bloqueio { display: flex; gap: 12px; align-items: flex-start; border-left: 4px solid var(--erro); }
-.bloqueio .icone { color: var(--erro); }
-.bloqueio p { margin: 4px 0 0; }
-
-@media (max-width: 760px) {
-  .lateral { max-width: none; flex-basis: 100%; padding: 12px; }
-  .marca { padding-bottom: 0; }
-  .menu { display: inline-flex; align-items: center; justify-content: center; }
-  .itens { display: none; padding-top: 12px; }
-  .itens.aberto { display: flex; }
-  .area { padding: 20px 16px; }
-}
-</style>

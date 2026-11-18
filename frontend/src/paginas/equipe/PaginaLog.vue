@@ -70,72 +70,48 @@ const ICONES = { info: 'info', aviso: 'warning', erro: 'error' }
 <template>
   <LayoutEquipe so-admin @pronto="iniciar">
     <header>
-      <h1>Log do sistema</h1>
-      <p class="texto-2">Tudo o que o coletor, a IA e a equipe registraram. Os erros da Câmara (por exemplo, um registro que sumiu da API) também ficam aqui.</p>
+      <h1 class="m-0 text-[28px]">Log do sistema</h1>
+      <p class="texto-2 mt-1.5 mb-0 max-w-[75ch] text-[15px]">Tudo o que o coletor, a IA e a equipe registraram. Os erros da Câmara (por exemplo, um registro que sumiu da API) também ficam aqui.</p>
     </header>
 
-    <div class="filtros">
-      <div role="group" aria-label="Filtrar por nível" class="chips">
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div role="group" aria-label="Filtrar por nível" class="flex flex-wrap gap-2">
         <button
           v-for="n in NIVEIS" :key="n.valor" type="button" class="chip" :class="{ ativo: filtros.nivel === n.valor }"
           :aria-pressed="filtros.nivel === n.valor" @click="filtros.nivel = n.valor"
         >{{ n.nome }}</button>
       </div>
       <label class="so-leitor" for="f-modulo">Módulo</label>
-      <select id="f-modulo" v-model="filtros.modulo">
+      <select id="f-modulo" v-model="filtros.modulo" class="filtro">
         <option v-for="m in MODULOS" :key="m.valor" :value="m.valor">{{ m.nome }}</option>
       </select>
-      <span v-if="filtros.coleta" class="filtro-coleta">
+      <span v-if="filtros.coleta" class="inline-flex min-h-10 items-center gap-1 rounded-[20px] bg-faixa pr-1 pl-3.5 text-[14px]">
         Só da coleta nº {{ filtros.coleta }}
-        <button type="button" class="tirar" aria-label="Tirar o filtro da coleta" @click="tirarColeta"><span class="icone" aria-hidden="true">close</span></button>
+        <button type="button" class="size-8 cursor-pointer border-none bg-transparent text-texto" aria-label="Tirar o filtro da coleta" @click="tirarColeta"><span class="icone" aria-hidden="true">close</span></button>
       </span>
     </div>
 
-    <p v-if="erro" class="erro" role="alert">{{ erro }}</p>
+    <p v-if="erro" class="texto-erro" role="alert">{{ erro }}</p>
 
     <section class="cartao" aria-label="Registros do log">
-      <p class="texto-2 total">{{ lista.total.toLocaleString('pt-BR') }} {{ lista.total === 1 ? 'registro' : 'registros' }}</p>
+      <p class="texto-2 m-0 mb-2 text-[14px]">{{ lista.total.toLocaleString('pt-BR') }} {{ lista.total === 1 ? 'registro' : 'registros' }}</p>
       <p v-if="carregando" class="texto-2">Carregando…</p>
       <p v-else-if="!lista.itens.length" class="texto-2">Nenhum registro com esses filtros.</p>
-      <ol v-else class="registros">
-        <li v-for="r in lista.itens" :key="r.id" :class="r.nivel">
-          <span class="icone nivel" :aria-label="r.nivel">{{ ICONES[r.nivel] || 'info' }}</span>
-          <div class="conteudo-registro">
-            <div class="cabeca">
+      <ol v-else class="m-0 list-none p-0">
+        <li v-for="r in lista.itens" :key="r.id" class="flex gap-3 border-b border-linha px-1 py-3">
+          <span class="icone text-[20px]" :class="{ aviso: 'text-destaque-forte', erro: 'text-erro' }[r.nivel] || 'text-texto-2'" :aria-label="r.nivel">{{ ICONES[r.nivel] || 'info' }}</span>
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[14px]">
               <strong>{{ r.acao }}</strong>
               <span class="texto-2">{{ r.modulo }} · {{ dataHora(r.data_hora) }}</span>
               <span v-if="r.entidade" class="texto-2">· {{ r.entidade }} {{ r.entidade_id }}</span>
               <RouterLink v-if="r.coleta_id && !filtros.coleta" :to="{ name: 'log', query: { coleta: r.coleta_id } }" class="texto-2" @click="filtros.coleta = String(r.coleta_id)">· coleta {{ r.coleta_id }}</RouterLink>
             </div>
-            <p>{{ r.descricao }}</p>
+            <p class="mt-1 mb-0 text-[14px] [overflow-wrap:anywhere]">{{ r.descricao }}</p>
           </div>
         </li>
       </ol>
-      <div class="pe"><Paginacao :pagina="lista.pagina || 1" :paginas="lista.paginas || 1" @ir="mudarPagina" /></div>
+      <div class="pt-3"><Paginacao :pagina="lista.pagina || 1" :paginas="lista.paginas || 1" @ir="mudarPagina" /></div>
     </section>
   </LayoutEquipe>
 </template>
-
-<style scoped>
-h1 { margin: 0; font-size: 28px; }
-header p { margin: 6px 0 0; font-size: 15px; max-width: 75ch; }
-.filtros { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
-.chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.chip { min-height: 40px; padding: 0 16px; border-radius: 20px; border: 1px solid var(--borda); background: var(--superficie); color: var(--texto); font: inherit; font-size: 14px; cursor: pointer; }
-.chip.ativo { background: var(--principal); border-color: var(--principal); color: var(--sobre-principal); font-weight: 500; }
-select { min-height: 40px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--borda); background: var(--superficie); color: var(--texto); font: inherit; }
-.filtro-coleta { display: inline-flex; align-items: center; gap: 4px; padding: 0 4px 0 14px; min-height: 40px; border-radius: 20px; background: var(--faixa); font-size: 14px; }
-.tirar { background: none; border: none; width: 32px; height: 32px; cursor: pointer; color: var(--texto); }
-.erro { margin: 0; color: var(--erro); font-weight: 500; }
-.total { margin: 0 0 8px; font-size: 14px; }
-
-.registros { list-style: none; margin: 0; padding: 0; }
-.registros li { display: flex; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--linha); }
-.nivel { font-size: 20px; color: var(--texto-2); }
-li.aviso .nivel { color: var(--destaque-forte); }
-li.erro .nivel { color: var(--erro); }
-.conteudo-registro { min-width: 0; }
-.cabeca { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; font-size: 14px; }
-.conteudo-registro p { margin: 4px 0 0; font-size: 14px; overflow-wrap: anywhere; }
-.pe { padding-top: 12px; }
-</style>

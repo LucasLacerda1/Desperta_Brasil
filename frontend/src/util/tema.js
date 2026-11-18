@@ -2,6 +2,10 @@
 // A escolha fica so no navegador da pessoa (localStorage); nada vai para o servidor.
 const CHAVE = 'desperta-tema'
 
+// Tema escuro escondido por enquanto (pedido do Lucas e do grupo, 18/11): o site fica so no claro,
+// mesmo em aparelho no modo escuro. As cores do escuro continuam em tokens.css; para voltar, true.
+export const TEMA_ESCURO_LIGADO = false
+
 export function temaAtual() {
   const escolhido = document.documentElement.dataset.tema
   if (escolhido) return escolhido
@@ -9,6 +13,10 @@ export function temaAtual() {
 }
 
 export function aplicarTemaSalvo() {
+  if (!TEMA_ESCURO_LIGADO) {
+    document.documentElement.dataset.tema = 'claro'
+    return
+  }
   try {
     const salvo = localStorage.getItem(CHAVE)
     if (salvo === 'claro' || salvo === 'escuro') document.documentElement.dataset.tema = salvo

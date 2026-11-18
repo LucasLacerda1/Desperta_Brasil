@@ -134,6 +134,9 @@ const votosFiltrados = computed(() => {
       </ul>
     </template>
 
+    <!-- Newsletter: o placar fica a vista; o detalhe por partido e por deputado fica recolhido -->
+    <details v-if="partidos.length || grupos.length" class="mt-1 rounded-xl bg-superficie-2 px-4 py-3">
+      <summary class="cursor-pointer font-medium text-link">Ver como cada partido votou e o voto de cada deputado</summary>
     <template v-if="partidos.length">
       <h3>Por partido</h3>
       <div class="partidos">
@@ -190,6 +193,8 @@ const votosFiltrados = computed(() => {
       </div>
     </template>
 
+    </details>
+
     <a :href="votacao.url_dados_abertos" class="fonte" target="_blank" rel="noopener">
       Ver esta votação nos Dados Abertos da Câmara<span class="icone pequeno" aria-hidden="true">open_in_new</span>
     </a>
@@ -217,7 +222,7 @@ h3 { margin: 8px 0 0; font-size: 17px; }
 .descricao, .explicacao, .motivo { margin: 0; font-size: 15px; }
 .motivo { font-size: 14px; }
 
-.legenda { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; font-size: 14px; }
+.legenda { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; font-size: 14px; }
 .legenda li { display: flex; gap: 8px; align-items: flex-start; }
 .legenda strong { display: block; font-size: 20px; }
 .quadrado { flex: none; width: 14px; height: 14px; margin-top: 4px; border-radius: 3px; }

@@ -12,32 +12,17 @@ const naEquipe = computed(() => rota.path.startsWith('/equipe'))
 </script>
 
 <template>
-  <a class="pular" href="#principal">Pular para o conteúdo</a>
+  <a class="absolute top-2 -left-[9999px] z-[100] rounded-lg bg-superficie px-4 py-2.5 text-texto focus:left-2" href="#principal">Pular para o conteúdo</a>
   <template v-if="naEquipe">
     <RouterView />
   </template>
   <template v-else>
     <CabecalhoSite />
     <FaixaColeta />
-    <main id="principal">
+    <main id="principal" class="min-h-[60vh]">
       <RouterView />
     </main>
     <RodapeSite />
     <AvisoCookies />
   </template>
 </template>
-
-<style scoped>
-.pular {
-  position: absolute;
-  left: -9999px;
-  top: 8px;
-  z-index: 100;
-  background: var(--superficie);
-  color: var(--texto);
-  padding: 10px 16px;
-  border-radius: 8px;
-}
-.pular:focus { left: 8px; }
-main { min-height: 60vh; }
-</style>

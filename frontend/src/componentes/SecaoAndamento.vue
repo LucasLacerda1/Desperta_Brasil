@@ -16,8 +16,12 @@ const orgao = (sigla) => ORGAOS[sigla] || sigla
 </script>
 
 <template>
-  <section v-if="itens.length" class="cartao andamento" aria-labelledby="t-andamento">
-    <h2 id="t-andamento">Andamento do projeto</h2>
+  <!-- Recolhido: os ultimos passos ja aparecem no bloco "Onde esta na Camara" -->
+  <details v-if="itens.length" class="cartao andamento">
+    <summary class="cursor-pointer">
+      <h2 id="t-andamento" class="inline text-[19px]">Andamento completo do projeto</h2>
+      <span class="texto-2 text-[14px]"> · {{ total }} etapas</span>
+    </summary>
     <ol>
       <li v-for="t in visiveis" :key="t.sequencia">
         <span class="quando texto-2">{{ data(t.data_hora) }}</span>
@@ -36,7 +40,7 @@ const orgao = (sigla) => ORGAOS[sigla] || sigla
         Ver as {{ total }} etapas no site da Câmara<span class="icone pequeno" aria-hidden="true">open_in_new</span>
       </a>
     </div>
-  </section>
+  </details>
 </template>
 
 <style scoped>
