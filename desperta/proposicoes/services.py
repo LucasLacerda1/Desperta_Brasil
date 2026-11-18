@@ -157,10 +157,6 @@ def buscar_proposicao(proposicao_id):
     return proposicao
 
 
-def como_resumo(proposicao):
-    return {"id": proposicao.id, "sigla": sigla_completa(proposicao), "ementa": proposicao.ementa}
-
-
 def como_tramitacao(tramitacao):
     """Decisao 14.1: despacho vazio nao aparece, e orgao sem sigla mostra o nome."""
     orgao = informado(tramitacao.sigla_orgao) or (tramitacao.orgao.nome if tramitacao.orgao else None)
@@ -272,9 +268,3 @@ def listar_temas():
         {"cod_tema": tema.cod_tema, "nome": tema.nome, "icone": tema.icone, "noticias_publicadas": total}
         for tema, total in linhas
     ]
-
-
-def proposicoes_do_tema(cod_tema):
-    if db.session.get(Tema, cod_tema) is None:
-        raise NaoEncontrado("Tema nao encontrado.")
-    return db.session.scalar(db.select(db.func.count()).select_from(ProposicaoTema).filter_by(cod_tema=cod_tema))

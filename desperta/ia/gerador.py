@@ -250,13 +250,6 @@ def _tipo(proposicao):
     return TIPOS.get(proposicao.sigla, (proposicao.descricao_tipo.lower(), "a", "Proposição"))
 
 
-def _nome_com_artigo(proposicao):
-    """ "O PL 1/2024"; tipos fora dos acompanhados vem de "A proposicao REQ 1/2024"."""
-    if proposicao.sigla in TIPOS:
-        return f"{_tipo(proposicao)[1].upper()} {_identificacao(proposicao)}"
-    return f"A proposição {_identificacao(proposicao)}"
-
-
 def _explicado(proposicao, maiuscula=False):
     """
     Planta da noticia (25.18): a sigla explicada na primeira vez, para o brasileiro comum:
@@ -294,13 +287,6 @@ ARTIGO_DO_AUTOR = {
 def _de_autor(autor):
     artigo = ARTIGO_DO_AUTOR.get(autor.split(" ", 1)[0])
     return f"{artigo} {autor}" if artigo else f"de {autor}"
-
-
-def _de_nome(proposicao):
-    """ "do PL 1/2024", "da PEC 2/2023"; fora dos tipos acompanhados, "da proposicao REQ 1/2024"."""
-    if proposicao.sigla in TIPOS:
-        return f"d{_tipo(proposicao)[1]} {_identificacao(proposicao)}"
-    return f"da proposição {_identificacao(proposicao)}"
 
 
 def _no_dia(data):
