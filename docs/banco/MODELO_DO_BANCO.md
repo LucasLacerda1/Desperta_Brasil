@@ -7,9 +7,12 @@ Gerado a partir do código (`python scripts/banco/gerar_modelo.py`), então vale
 
 Legenda: **PK** chave primária · **FK** chave estrangeira · **Nulo** = a coluna aceita valor vazio.
 
-Diagramas ER: `diagrama-er-camara.svg` (dados da Câmara), `diagrama-er-portal.svg` (portal)
-e `diagrama-er.svg` (completo), desenhados pelo Graphviz a partir dos `.dot` desta pasta
-(`dot -Tsvg diagrama-er.dot -o diagrama-er.svg`).
+Diagrama entidade-relacionamento completo: `diagrama-er.svg`, desenhado pelo Graphviz a partir de
+`diagrama-er.dot` (`dot -Tsvg diagrama-er.dot -o diagrama-er.svg`).
+
+Classificação das entidades: **forte** (chave primária própria, existe sozinha), **associativa**
+(resolve um relacionamento N:N) e **fraca** (só existe ligada à tabela pai; a chave primária inclui a
+FK do pai). Nenhuma é abstrata: o modelo não tem generalização/especialização (herança).
 
 `noticia_fonte` e `trecho_rag` não têm FK para as tabelas da Câmara: guardam `tipo` + `ref_id`,
 e o back-end confere se o registro existe.
@@ -19,6 +22,8 @@ e o back-end confere se o registro existe.
 ### `proposicao` (Proposicao)
 
 Projeto de lei, PEC ou outra proposta.
+
+Classificação: entidade forte.
 
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
@@ -48,6 +53,8 @@ Projeto de lei, PEC ou outra proposta.
 
 Quem assina a proposicao.
 
+Classificação: entidade associativa.
+
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
 | `proposicao_id` | INTEGER | não | PK, FK → `proposicao.id` |
@@ -63,6 +70,8 @@ Quem assina a proposicao.
 
 Temas de cada proposicao.
 
+Classificação: entidade associativa.
+
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
 | `proposicao_id` | INTEGER | não | PK, FK → `proposicao.id` |
@@ -73,6 +82,8 @@ Temas de cada proposicao.
 ### `tema` (Tema)
 
 Tema oficial, usado como categoria do portal.
+
+Classificação: entidade forte.
 
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
@@ -87,6 +98,8 @@ Tema oficial, usado como categoria do portal.
 ### `tramitacao` (Tramitacao)
 
 Passo do andamento da proposicao.
+
+Classificação: entidade fraca.
 
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
@@ -112,6 +125,8 @@ Passo do andamento da proposicao.
 
 Orientacao de partido ou bloco, so no Plenario.
 
+Classificação: entidade fraca.
+
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
 | `votacao_id` | TEXT | não | PK, FK → `votacao.id` |
@@ -126,6 +141,8 @@ Restrições: `ck_orientacao_tipo_lideranca`: tipo_lideranca IN ('P', 'B').
 ### `votacao` (Votacao)
 
 Deliberacao em Plenario ou comissao.
+
+Classificação: entidade forte.
 
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
@@ -148,6 +165,8 @@ Deliberacao em Plenario ou comissao.
 
 Proposicoes afetadas pela votacao.
 
+Classificação: entidade associativa.
+
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
 | `votacao_id` | TEXT | não | PK, FK → `votacao.id` |
@@ -157,6 +176,8 @@ Proposicoes afetadas pela votacao.
 ### `voto` (Voto)
 
 Voto nominal de cada deputado.
+
+Classificação: entidade associativa.
 
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
@@ -172,6 +193,8 @@ Voto nominal de cada deputado.
 ### `bloco` (Bloco)
 
 Bloco partidario ou federacao.
+
+Classificação: entidade forte.
 
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
@@ -189,6 +212,8 @@ Bloco partidario ou federacao.
 
 Composicao atual do bloco.
 
+Classificação: entidade associativa.
+
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
 | `bloco_id` | INTEGER | não | PK, FK → `bloco.id` |
@@ -198,6 +223,8 @@ Composicao atual do bloco.
 ### `deputado` (Deputado)
 
 Parlamentar da Camara.
+
+Classificação: entidade forte.
 
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
@@ -221,6 +248,8 @@ Restrições: `ck_deputado_sexo`: sexo IN ('M', 'F').
 
 Frente parlamentar.
 
+Classificação: entidade forte.
+
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
 | `id` | INTEGER | não | PK |
@@ -237,6 +266,8 @@ Frente parlamentar.
 
 Deputado que participa da frente.
 
+Classificação: entidade associativa.
+
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
 | `frente_id` | INTEGER | não | PK, FK → `frente.id` |
@@ -251,6 +282,8 @@ Deputado que participa da frente.
 
 Periodo de mandato.
 
+Classificação: entidade forte.
+
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
 | `id` | INTEGER | não | PK |
@@ -264,6 +297,8 @@ Periodo de mandato.
 ### `lideranca` (Lideranca)
 
 Lideres e vice-lideres das bancadas.
+
+Classificação: entidade forte.
 
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
@@ -285,6 +320,8 @@ Restrições: `uq_lideranca_deputado_bancada_titulo_inicio`: única (deputado_id
 
 Sigla sem UNIQUE: ligacoes sempre pelo id.
 
+Classificação: entidade forte.
+
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
 | `id` | INTEGER | não | PK |
@@ -302,6 +339,8 @@ Sigla sem UNIQUE: ligacoes sempre pelo id.
 
 Cargos de deputados em orgaos.
 
+Classificação: entidade associativa.
+
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
 | `deputado_id` | INTEGER | não | PK, FK → `deputado.id` |
@@ -315,6 +354,8 @@ Cargos de deputados em orgaos.
 ### `evento` (Evento)
 
 Sessao ou reuniao.
+
+Classificação: entidade forte.
 
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
@@ -338,6 +379,8 @@ Sessao ou reuniao.
 
 Plenario, comissoes, Mesa Diretora.
 
+Classificação: entidade forte.
+
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
 | `id` | INTEGER | não | PK |
@@ -355,6 +398,8 @@ Plenario, comissoes, Mesa Diretora.
 ### `pauta_item` (PautaItem)
 
 Item da pauta de um evento.
+
+Classificação: entidade fraca.
 
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
@@ -376,6 +421,8 @@ Item da pauta de um evento.
 
 Membro da equipe.
 
+Classificação: entidade forte.
+
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
 | `id` | INTEGER | não | PK |
@@ -395,6 +442,8 @@ Restrições: `ck_administrador_papel`: papel IN ('admin', 'editor').
 ### `noticia` (Noticia)
 
 Noticia ou relatorio escrito pela IA ou pela equipe.
+
+Classificação: entidade forte.
 
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
@@ -418,6 +467,8 @@ Restrições: `ck_noticia_origem`: origem IN ('ia', 'equipe'); `ck_noticia_statu
 
 Registros da API usados na noticia.
 
+Classificação: entidade fraca.
+
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
 | `noticia_id` | INTEGER | não | PK, FK → `noticia.id` |
@@ -430,6 +481,8 @@ Restrições: `ck_noticia_fonte_tipo`: tipo IN ('proposicao', 'votacao', 'deputa
 ### `noticia_revisao` (NoticiaRevisao)
 
 Historico de revisao, uma linha por acao.
+
+Classificação: entidade associativa.
 
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
@@ -447,6 +500,8 @@ Restrições: `ck_noticia_revisao_acao`: acao IN ('editou', 'aprovou', 'rejeitou
 ### `geracao_ia` (GeracaoIA)
 
 Cada execucao da IA, mesmo com erro.
+
+Classificação: entidade forte.
 
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
@@ -471,6 +526,8 @@ Restrições: `ck_geracao_ia_status`: status IN ('ok', 'erro').
 
 Trechos recuperados em cada geracao.
 
+Classificação: entidade associativa.
+
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
 | `geracao_id` | INTEGER | não | PK, FK → `geracao_ia.id` |
@@ -481,6 +538,8 @@ Trechos recuperados em cada geracao.
 ### `trecho_rag` (TrechoRAG)
 
 Pedaco de texto com embedding.
+
+Classificação: entidade forte.
 
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
@@ -502,6 +561,8 @@ Restrições: `ck_trecho_rag_tipo`: tipo IN ('proposicao', 'tramitacao', 'votaca
 ### `coleta` (Coleta)
 
 Cada chamada do coletor.
+
+Classificação: entidade forte.
 
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
@@ -528,6 +589,8 @@ Restrições: `ck_coleta_status`: status IN ('ok', 'parcial', 'erro'); `ck_colet
 
 Acoes do coletor, da IA e dos administradores.
 
+Classificação: entidade forte.
+
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
 | `id` | INTEGER | não | PK |
@@ -549,6 +612,8 @@ Restrições: `ck_log_sistema_modulo`: modulo IN ('coletor', 'IA', 'admin'); `ck
 
 Visitante anonimo, identificado por cookie.
 
+Classificação: entidade forte.
+
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|
 | `id` | VARCHAR(36) | não | PK |
@@ -560,6 +625,8 @@ Visitante anonimo, identificado por cookie.
 ### `visitante_tema` (VisitanteTema)
 
 Acessos do visitante por tema.
+
+Classificação: entidade associativa.
 
 | Coluna | Tipo | Nulo | Chave |
 |---|---|---|---|

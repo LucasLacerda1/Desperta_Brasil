@@ -11,6 +11,17 @@ O primeiro modelo relacional do grupo é de 28/10/2026: **30 tabelas** (21 da AP
 | `trecho_rag` | Pedaços de texto (proposição, tramitação, votação, evento) com o vetor de cada modelo de linguagem, para a busca da IA. |
 | `geracao_trecho` | Quais trechos a busca encontrou em cada escrita de notícia (`geracao_ia`), com a posição e a nota. É a ligação N:N nova. |
 
+## Classificação das entidades
+
+A mesma do modelo de 28/10, com as duas tabelas novas:
+
+| Classificação | Tabelas |
+|---|---|
+| Forte (18) | proposicao, tema, votacao, deputado, partido, legislatura, orgao, evento, lideranca, bloco, frente, noticia, geracao_ia, **trecho_rag**, administrador, coleta, log_sistema, visitante |
+| Associativa (10) | proposicao_autor, proposicao_tema, voto, votacao_proposicao, deputado_orgao, bloco_partido, frente_membro, noticia_revisao, visitante_tema, **geracao_trecho** |
+| Fraca (4) | tramitacao, orientacao, pauta_item, noticia_fonte |
+| Abstrata | nenhuma (o modelo não tem herança) |
+
 ## Colunas novas
 
 | Onde | Colunas | Para quê |

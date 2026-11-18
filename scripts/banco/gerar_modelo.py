@@ -4,8 +4,8 @@ nunca ficar desatualizada:
 
 - docs/banco/MODELO_DO_BANCO.md: dicionario de dados, tabela por tabela (colunas, tipos, chaves,
   restricoes), agrupado por dominio, com a descricao do cabecalho "# === Classe (descricao) ===";
-- docs/banco/diagrama-er*.dot: diagramas ER para o Graphviz (completo, dados da Camara e portal), so com
-  as chaves (PK e FK), para ficar legivel.
+- docs/banco/diagrama-er.dot: o diagrama entidade-relacionamento completo para o Graphviz (todas as
+  tabelas, colunas, tipos, chaves e relacionamentos, com a classificacao de cada entidade).
 
 Uso, na pasta do projeto:  python scripts/banco/gerar_modelo.py
 """
@@ -87,9 +87,12 @@ def gerar_markdown(tabelas, mapa):
         "",
         "Legenda: **PK** chave primária · **FK** chave estrangeira · **Nulo** = a coluna aceita valor vazio.",
         "",
-        "Diagramas ER: `diagrama-er-camara.svg` (dados da Câmara), `diagrama-er-portal.svg` (portal)",
-        "e `diagrama-er.svg` (completo), desenhados pelo Graphviz a partir dos `.dot` desta pasta",
-        "(`dot -Tsvg diagrama-er.dot -o diagrama-er.svg`).",
+        "Diagrama entidade-relacionamento completo: `diagrama-er.svg`, desenhado pelo Graphviz a partir de",
+        "`diagrama-er.dot` (`dot -Tsvg diagrama-er.dot -o diagrama-er.svg`).",
+        "",
+        "Classificação das entidades: **forte** (chave primária própria, existe sozinha), **associativa**",
+        "(resolve um relacionamento N:N) e **fraca** (só existe ligada à tabela pai; a chave primária inclui a",
+        "FK do pai). Nenhuma é abstrata: o modelo não tem generalização/especialização (herança).",
         "",
         "`noticia_fonte` e `trecho_rag` não têm FK para as tabelas da Câmara: guardam `tipo` + `ref_id`,",
         "e o back-end confere se o registro existe.",
@@ -102,6 +105,7 @@ def gerar_markdown(tabelas, mapa):
             md += [f"### `{tabela.name}` ({classe})", ""]
             if descricao:
                 md += [descricao[0].upper() + descricao[1:] + ".", ""]
+            md += [f"Classificação: {FAIXA[classificacao(tabela.name)][1]}.", ""]
             md += ["| Coluna | Tipo | Nulo | Chave |", "|---|---|---|---|"]
             for c in tabela.columns:
                 chave = []
@@ -119,85 +123,134 @@ def gerar_markdown(tabelas, mapa):
     return "\n".join(md)
 
 
-def _rotulo_html(tabela):
-    """Tabela do diagrama: nome em cima (lapis), so as colunas de chave e quantas outras ha."""
-    linhas = [
-        '<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" COLOR="#9c836f" BGCOLOR="#ffffff">',
-        f'<TR><TD COLSPAN="2" BGCOLOR="#263b5c"><FONT COLOR="#ffffff"><B>{tabela.name}</B></FONT></TD></TR>',
-    ]
-    outras = 0
-    for c in tabela.columns:
-        if not (c.primary_key or c.foreign_keys):
-            outras += 1
-            continue
-        marcas = " ".join(m for m, ok in (("PK", c.primary_key), ("FK", bool(c.foreign_keys))) if ok)
-        linhas.append(
-            f'<TR><TD PORT="{c.name}" ALIGN="LEFT">{c.name}</TD>'
-            f'<TD ALIGN="LEFT"><FONT COLOR="#6d4727"><B>{marcas}</B></FONT></TD></TR>'
-        )
-    if outras:
-        texto = f"+ {outras} {'coluna' if outras == 1 else 'colunas'}"
-        linhas.append(f'<TR><TD COLSPAN="2" ALIGN="LEFT"><FONT COLOR="#5f6d73">{texto}</FONT></TD></TR>')
-    linhas.append("</TABLE>>")
-    return "".join(linhas)
+# Classificacao das entidades (a mesma do modelo do grupo de 28/10, com as tabelas novas da IA).
+# Nenhuma e abstrata: o modelo nao tem generalizacao/especializacao (heranca).
+ASSOCIATIVAS = (
+    "proposicao_autor",
+    "proposicao_tema",
+    "voto",
+    "votacao_proposicao",
+    "deputado_orgao",
+    "bloco_partido",
+    "frente_membro",
+    "noticia_revisao",
+    "visitante_tema",
+    "geracao_trecho",
+)
+FRACAS = ("tramitacao", "orientacao", "pauta_item", "noticia_fonte")
+DA_CAMARA = ("proposicoes", "votacoes", "parlamentares", "orgaos")
 
-
-# Fundo de cada dominio no diagrama (tons claros da paleta)
-FUNDOS = {
-    "proposicoes": "#f6efe6",
-    "votacoes": "#eef2f7",
-    "parlamentares": "#f3f0ea",
-    "orgaos": "#edf3f4",
-    "auth": "#f4f1ec",
-    "noticias": "#f8efe6",
-    "ia": "#eef1f6",
-    "sistema": "#f1efec",
-    "visitantes": "#f2efe9",
+# Cabecalho azul (espelha a API da Camara) ou verde (proprio do portal); faixa de cada classificacao
+COR_CAMARA = "#1f4f99"
+COR_PORTAL = "#2b7148"
+FAIXA = {
+    "forte": ("#e8edf5", "entidade forte"),
+    "associativa": ("#fbe7b5", "entidade associativa"),
+    "fraca": ("#e4def4", "entidade fraca"),
 }
 
 
-DA_CAMARA = ("proposicoes", "votacoes", "parlamentares", "orgaos")
-DO_PORTAL = ("auth", "noticias", "ia", "sistema", "visitantes")
+def classificacao(nome):
+    if nome in ASSOCIATIVAS:
+        return "associativa"
+    if nome in FRACAS:
+        return "fraca"
+    return "forte"
 
 
-def gerar_dot(tabelas, mapa, dominios=tuple(DOMINIOS), titulo="modelo do banco de dados", direcao="TB"):
-    """Diagrama ER para o Graphviz: um grupo por dominio; a ligacao sai do pai e chega no filho.
+def _unicas(tabela):
+    """Colunas que sozinhas sao unicas (chave alternativa)."""
+    unicas = {c.name for c in tabela.columns if c.unique}
+    for r in tabela.constraints:
+        if isinstance(r, UniqueConstraint) and len(r.columns) == 1:
+            unicas |= {c.name for c in r.columns}
+    return unicas
 
-    Lado do pai: um traco (obrigatorio) ou um circulo e um traco (FK que aceita nulo).
-    Lado do filho: pe de galinha com circulo (zero ou muitos).
-    Tabela de fora dos dominios pedidos que e pai de alguma aparece tracejada, so com o nome.
+
+def _tabela_html(tabela, dominio):
+    """Todas as colunas: chave (PK, FK, UQ), nome (? = aceita nulo) e tipo."""
+    tipo_entidade = classificacao(tabela.name)
+    cor = COR_CAMARA if dominio in DA_CAMARA else COR_PORTAL
+    fundo, texto_faixa = FAIXA[tipo_entidade]
+    borda = "0" if tipo_entidade == "associativa" else "1"  # a associativa ganha a moldura tracejada no no
+    html = (
+        f'<TABLE BORDER="{borda}" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3" COLOR="#3d4650"'
+        ' BGCOLOR="#ffffff">'
+        f'<TR><TD COLSPAN="4" BGCOLOR="{cor}" CELLPADDING="5"><FONT COLOR="#ffffff" POINT-SIZE="15">'
+        f"<B>{tabela.name}</B></FONT></TD></TR>"
+        f'<TR><TD COLSPAN="4" BGCOLOR="{fundo}"><FONT POINT-SIZE="11">«{texto_faixa}»</FONT></TD></TR>'
+    )
+    unicas = _unicas(tabela)
+    for c in tabela.columns:
+        marcas = [m for m, ok in (("PK", c.primary_key), ("FK", bool(c.foreign_keys)), ("UQ", c.name in unicas)) if ok]
+        nome = f"<B>{c.name}</B>" if c.primary_key else c.name
+        if c.nullable and not c.primary_key:
+            nome += '<FONT COLOR="#b0491c"><B> ?</B></FONT>'
+        chave = f'<FONT COLOR="#8a4f12" POINT-SIZE="11"><B>{" ".join(marcas)}</B></FONT>' if marcas else " "
+        html += (
+            f'<TR><TD ALIGN="LEFT">{chave}</TD>'
+            f'<TD ALIGN="LEFT">{nome}</TD><TD WIDTH="14"> </TD>'
+            f'<TD ALIGN="LEFT"><FONT COLOR="#56626c" POINT-SIZE="11">{_tipo(c)}</FONT></TD></TR>'
+        )
+    html += "</TABLE>"
+    if tipo_entidade == "fraca":  # moldura dupla, como no DER
+        moldura = '<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3" COLOR="#3d4650">'
+        html = f"{moldura}<TR><TD>{html}</TD></TR></TABLE>"
+    return f"<{html}>"
+
+
+def _legenda(tabelas):
+    contagem = defaultdict(int)
+    for nome in tabelas:
+        contagem[classificacao(nome)] += 1
+    total_fks = sum(len(t.foreign_keys) for t in tabelas.values())
+    linhas = [
+        ("<B>Legenda</B>", ""),
+        (f'<FONT COLOR="{COR_CAMARA}"><B>azul</B></FONT>', "tabela que espelha a API da Câmara (21)"),
+        (f'<FONT COLOR="{COR_PORTAL}"><B>verde</B></FONT>', "tabela própria do portal (11)"),
+        ("«entidade forte»", f"chave primária própria, existe sozinha ({contagem['forte']})"),
+        ("«entidade associativa»", f"borda tracejada: resolve um N:N ({contagem['associativa']})"),
+        ("«entidade fraca»", f"borda dupla: só existe ligada à tabela pai ({contagem['fraca']})"),
+        ("entidade abstrata", "nenhuma: o modelo não tem herança"),
+        ("<B>PK</B> · <B>FK</B> · <B>UQ</B>", "chave primária · chave estrangeira · valor único"),
+        ("<B>negrito</B> · <B>?</B>", "faz parte da PK · aceita nulo"),
+        ("||-------o&lt;", "exatamente um para zero ou muitos (FK obrigatória)"),
+        ("o|-------o&lt;", "zero ou um para zero ou muitos (FK que aceita nulo)"),
+        ("tipo + ref_id", "noticia_fonte e trecho_rag apontam para a Câmara sem FK"),
+        ("<B>Total</B>", f"{len(tabelas)} tabelas · {total_fks} relacionamentos 1:N · 10 N:N"),
+    ]
+    html = '<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" COLOR="#3d4650" BGCOLOR="#ffffff">'
+    for a, b in linhas:
+        b = f'<FONT COLOR="#3d4650">{b}</FONT>' if b else " "
+        html += f'<TR><TD ALIGN="LEFT">{a}</TD><TD ALIGN="LEFT">{b}</TD></TR>'
+    return f"<{html}</TABLE>>"
+
+
+def gerar_dot(tabelas, mapa):
+    """DER completo para o Graphviz: todas as tabelas, colunas e relacionamentos, linhas em angulo reto.
+
+    A ligacao sai do pai e chega no filho. Lado do pai: um traco (FK obrigatoria) ou circulo e traco
+    (FK que aceita nulo). Lado do filho: pe de galinha com circulo (zero ou muitos).
     """
     linhas = [
         "digraph modelo_do_banco {",
-        f'  graph [rankdir={direcao}, splines=true, nodesep=0.25, ranksep=0.7, pad=0.4, bgcolor="#fefdfb",'
-        f' fontname="Helvetica", fontsize=22, labelloc=t, label="Desperta Brasil: {titulo}"];',
-        '  node [shape=plain, fontname="Helvetica", fontsize=12];',
-        '  edge [color="#956036", penwidth=1.1, arrowsize=0.8, dir=both];',
+        '  graph [rankdir=TB, splines=ortho, nodesep=0.7, ranksep=1.1, pad=0.5, bgcolor="#ffffff",'
+        ' fontname="Helvetica", fontsize=30, labelloc=t,'
+        ' label="Desperta Brasil: diagrama entidade-relacionamento do banco de dados\\n "];',
+        '  node [shape=plain, fontname="Helvetica", fontsize=13];',
+        '  edge [color="#4a5560", penwidth=1.3, arrowsize=0.9, dir=both];',
+        f"  legenda [label={_legenda(tabelas)}];",
     ]
-    dentro = {nome for nome in tabelas if mapa[nome][0] in dominios}
-    por_dominio = defaultdict(list)
-    for nome in dentro:
-        por_dominio[mapa[nome][0]].append(nome)
-    for dominio in dominios:
-        linhas.append(
-            f'  subgraph cluster_{dominio} {{ label="{DOMINIOS[dominio]}"; style="rounded,filled"; color="#d8ccbf";'
-            f' fillcolor="{FUNDOS[dominio]}"; fontsize=16; fontcolor="#263b5c";'
+    for nome in sorted(tabelas):
+        moldura = (
+            ' shape=box, style="dashed", penwidth=1.6, margin=0.04, color="#3d4650",' if nome in ASSOCIATIVAS else ""
         )
-        for nome in sorted(por_dominio[dominio]):
-            linhas.append(f'    "{nome}" [label={_rotulo_html(tabelas[nome])}];')
-        linhas.append("  }")
-    de_fora = sorted({fk.column.table.name for n in dentro for fk in tabelas[n].foreign_keys} - dentro)
-    for nome in de_fora:
-        linhas.append(
-            f'  "{nome}" [shape=box, style="rounded,dashed", color="#9c836f", fontcolor="#5f6d73",'
-            f' label="{nome}\\n({DOMINIOS[mapa[nome][0]]})"];'
-        )
-    for nome in sorted(dentro):
+        linhas.append(f'  "{nome}" [{moldura} label={_tabela_html(tabelas[nome], mapa[nome][0])}];')
+    for nome in sorted(tabelas):
         for fk in sorted(tabelas[nome].foreign_keys, key=lambda f: f.parent.name):
-            pai = fk.column.table.name
             lado_pai = "teeodot" if fk.parent.nullable else "teetee"
-            origem = f'"{pai}":"{fk.column.name}"' if pai in dentro else f'"{pai}"'
-            linhas.append(f'  {origem} -> "{nome}":"{fk.parent.name}" [arrowtail={lado_pai}, arrowhead=crowodot];')
+            pai = fk.column.table.name
+            linhas.append(f'  "{pai}" -> "{nome}" [arrowtail={lado_pai}, arrowhead=crowodot];')
     linhas.append("}")
     return "\n".join(linhas) + "\n"
 
@@ -209,13 +262,7 @@ def main():
         mapa = _tabelas()
         SAIDA.mkdir(parents=True, exist_ok=True)
         (SAIDA / "MODELO_DO_BANCO.md").write_text(gerar_markdown(tabelas, mapa), encoding="utf-8")
-        diagramas = {
-            "diagrama-er.dot": gerar_dot(tabelas, mapa),
-            "diagrama-er-camara.dot": gerar_dot(tabelas, mapa, DA_CAMARA, "dados da Câmara (21 tabelas)", "TB"),
-            "diagrama-er-portal.dot": gerar_dot(tabelas, mapa, DO_PORTAL, "tabelas do portal (11 tabelas)", "LR"),
-        }
-        for arquivo, conteudo in diagramas.items():
-            (SAIDA / arquivo).write_text(conteudo, encoding="utf-8")
+        (SAIDA / "diagrama-er.dot").write_text(gerar_dot(tabelas, mapa), encoding="utf-8")
         print(f"{len(tabelas)} tabelas -> {SAIDA}")
 
 
