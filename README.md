@@ -1,10 +1,68 @@
 # Desperta Brasil
 
-Portal de notícias sobre a atividade da Câmara dos Deputados, com dados abertos e IA (Flask + Vue 3).
+Portal de notícias sobre a Câmara dos Deputados em linguagem simples. Um coletor busca votações, projetos e
+eventos na API de Dados Abertos da Câmara; o sistema escreve as notícias só com os dados oficiais (frases prontas,
+sem inventar número, nome ou data); a equipe revisa numa área administrativa; e o portal mostra cada notícia com a
+fonte oficial, o resultado da votação e o que a Câmara não informou.
 
-Fase atual: API REST e área administrativa (Fase 4). O guia completo do projeto está em `CLAUDE.md`.
+- **Grupo:** Lucas Lacerda Freire, Rhuan Santos Wolfgramm e Caio Henrique de Oliveira.
+- **Back-end:** Python, Flask (Application Factory e Blueprints), Flask-SQLAlchemy e Flask-Migrate, SQLite.
+- **Front-end:** Vue 3, Vite, Axios, Vue Router e Tailwind CSS (pasta `frontend/`).
+- **Código:** https://github.com/LucasLacerda1/Desperta_Brasil
 
-## Como instalar
+## Rodar o projeto do zero
+
+Precisa de **Python 3.10 ou mais novo** e **Node.js 20 ou mais novo** (testado com Python 3.14 e Node 22).
+A IA (PyTorch e os modelos de linguagem) é opcional: o portal, a área da equipe e os testes funcionam sem ela.
+
+**1. Back-end (API Flask)**, na pasta do projeto:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -e ".[dev,test]"
+cp .env.example .env               # Windows: copy .env.example .env
+flask db upgrade                   # cria ou atualiza o banco em instance/desperta.db
+flask run                          # API em http://localhost:5000/api/health
+```
+
+**2. Site (Vue)**, em outro terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev                        # site em http://localhost:5173
+```
+
+O Vite repassa as chamadas `/api` para o Flask na porta 5000, então os dois precisam estar rodando.
+
+**3. Área da equipe** (http://localhost:5173/equipe): para criar o primeiro admin, rode `flask equipe criar-admin`
+na pasta do projeto, com o `.venv` ativo.
+
+**4. Testes e estilo:**
+
+```bash
+pytest                             # testes automatizados (os de IA são pulados sem o PyTorch)
+flake8 desperta tests              # verificação de estilo
+```
+
+**Sem banco de exemplo**, `flask db upgrade` cria o banco vazio e `flask coletar base` seguido de
+`flask coletar horaria` busca os dados atuais na API da Câmara (precisa de internet).
+
+### Onde está cada parte
+
+| Pasta | O que tem |
+|---|---|
+| `desperta/__init__.py` | `create_app()`: a fábrica da aplicação |
+| `desperta/ext/` | Extensões ligadas com `init_app` (banco, CORS, erros, limite de requisições, comandos) |
+| `desperta/<domínio>/` | Um pacote por domínio, cada um com `models.py`, `routes.py` (Blueprint, só HTTP) e `services.py` (regras) |
+| `desperta/coletor/` | Coleta na API da Câmara (paginação, novas tentativas, upsert pelo id) |
+| `desperta/ia/` | Trechos, busca (palavras e vetores) e escrita dos rascunhos |
+| `migrations/` | Migrações do banco (Flask-Migrate) |
+| `tests/` | Testes com pytest (banco em memória) |
+| `frontend/` | Site em Vue 3 + Tailwind CSS (ver `frontend/README.md`) |
+
+## Instalação completa (com a IA)
 
 Todas as dependências estão no `pyproject.toml`, e o `invoke install` instala tudo o que o projeto usa hoje (desenvolvimento, testes, IA, `ver-banco` e scripts de análise):
 
@@ -37,7 +95,7 @@ cp .env.example .env
 | `voz` | faster-whisper, piper-tts | Fase 5 |
 | `tudo` | `dev`, `test`, `ia`, `ver` e `analise` | `invoke install` |
 
-## Como rodar
+## Comandos do dia a dia (Invoke)
 
 ```bash
 invoke migrate  # cria ou atualiza o banco em instance/desperta.db (flask db upgrade)
@@ -68,7 +126,7 @@ nohup invoke carga-validacao > instance/carga.log 2>&1 &
 
 ### Agendamento (RF02)
 
-As rotinas rodam sozinhas por timers de usuário do `systemd` (decisão 23.11 do `CLAUDE.md`). Cada timer chama `flask coletar agendada <rotina>`, que faz a coleta e, sob a mesma trava, indexa o que mudou (`flask ia indexar`) e escreve os rascunhos novos (`flask ia gerar-novos`).
+As rotinas rodam sozinhas por timers de usuário do `systemd`. Cada timer chama `flask coletar agendada <rotina>`, que faz a coleta e, sob a mesma trava, indexa o que mudou (`flask ia indexar`) e escreve os rascunhos novos (`flask ia gerar-novos`).
 
 | Rotina | Quando | Se outra coleta estiver rodando | PC desligado na hora |
 |---|---|---|---|
