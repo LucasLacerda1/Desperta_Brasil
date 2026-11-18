@@ -370,3 +370,42 @@ def editor_separado(app, dados):
 
 def test_coleta_da_fabrica_existe(db, dados):
     assert db.session.scalar(db.select(db.func.count()).select_from(Coleta)) == 1
+
+
+# ======================================================
+# FORMULARIOS: erro embaixo de cada campo
+# ======================================================
+def test_editar_noticia_mostra_o_erro_de_cada_campo(editor, dados):
+    url = f"/api/noticias/admin/{dados.noticia.id}"
+    resposta = editor.patch(url, json={"titulo": "  ", "resumo": "x" * 501, "cod_tema": 999})
+    assert resposta.status_code == 400
+    corpo = resposta.get_json()
+    assert corpo["erro"] == "Confira os campos marcados."
+    assert set(corpo["campos"]) == {"titulo", "resumo", "cod_tema"}
+    assert "500" in corpo["campos"]["resumo"]
+    # Nada foi gravado: o formulario so passa inteiro
+    assert editor.get(url).get_json()["titulo"] == dados.noticia.titulo
+
+
+def test_um_campo_errado_vira_a_mensagem_principal(editor, dados):
+    resposta = editor.patch(f"/api/noticias/admin/{dados.noticia.id}", json={"corpo": ""})
+    assert resposta.get_json() == {
+        "erro": "O campo corpo e obrigatorio.",
+        "campos": {"corpo": "O campo corpo e obrigatorio."},
+    }
+
+
+def test_cadastro_da_equipe_mostra_o_erro_de_cada_campo(admin):
+    resposta = admin.post(
+        "/api/auth/equipe", json={"nome": "", "email": "sem-arroba", "senha": "curta", "papel": "chefe"}
+    )
+    assert resposta.status_code == 400
+    assert set(resposta.get_json()["campos"]) == {"nome", "email", "senha", "papel"}
+    repetido = admin.post("/api/auth/equipe", json={"nome": "Outro", "email": "lucas@desperta.org", "senha": SENHA})
+    assert repetido.status_code == 409
+    assert "email" in repetido.get_json()["campos"]
+
+
+def test_erro_sem_campos_continua_so_com_a_mensagem(editor, dados):
+    resposta = editor.post(f"/api/noticias/admin/{dados.noticia.id}/rejeitar")
+    assert set(resposta.get_json()) == {"erro"}

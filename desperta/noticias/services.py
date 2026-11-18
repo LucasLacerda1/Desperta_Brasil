@@ -9,7 +9,7 @@ from desperta.auth.models import Administrador
 from desperta.ext.api import iso, url_camara
 from desperta.ext.db import db
 from desperta.ext.db.busca import grupos_de_raizes
-from desperta.ext.erros import AcessoNegado, Conflito, DadosInvalidos, ErroDoPortal, NaoEncontrado
+from desperta.ext.erros import AcessoNegado, Conflito, DadosInvalidos, ErroDoPortal, NaoEncontrado, conferir_formulario
 from desperta.orgaos.models import Evento, Orgao
 from desperta.parlamentares.models import Deputado, Partido
 from desperta.proposicoes.models import Proposicao, Tema
@@ -654,20 +654,29 @@ def editar_noticia(noticia, admin, titulo=None, resumo=None, corpo=None, cod_tem
     """Muda o texto; alterado_em so muda se algo mudou. O slug acompanha o titulo ate publicar."""
     if noticia.status not in STATUS_QUE_PODEM_SER_EDITADOS:
         raise Conflito(f"Noticia com status '{noticia.status}' nao e editada.")
+    # Confere todos os campos enviados de uma vez: a tela mostra o erro embaixo de cada um
+    enviados = {"titulo": titulo, "resumo": resumo, "corpo": corpo, "cod_tema": cod_tema}
+    validadores = {
+        "titulo": lambda: _texto(titulo, "titulo", TAMANHO_TITULO),
+        "resumo": lambda: _texto(resumo, "resumo", TAMANHO_RESUMO),
+        "corpo": lambda: _texto(corpo, "corpo"),
+        "cod_tema": lambda: _tema_valido(cod_tema),
+    }
+    novos = conferir_formulario({c: v for c, v in validadores.items() if enviados[c] is not None})
     mudou = []
-    if titulo is not None and _texto(titulo, "titulo", TAMANHO_TITULO) != noticia.titulo:
-        noticia.titulo = titulo.strip()
+    if "titulo" in novos and novos["titulo"] != noticia.titulo:
+        noticia.titulo = novos["titulo"]
         if noticia.status != "publicada":
             noticia.slug = gerar_slug(noticia.titulo)
         mudou.append("titulo")
-    if resumo is not None and _texto(resumo, "resumo", TAMANHO_RESUMO) != noticia.resumo:
-        noticia.resumo = resumo.strip()
+    if "resumo" in novos and novos["resumo"] != noticia.resumo:
+        noticia.resumo = novos["resumo"]
         mudou.append("resumo")
-    if corpo is not None and _texto(corpo, "corpo") != noticia.corpo:
-        noticia.corpo = corpo.strip()
+    if "corpo" in novos and novos["corpo"] != noticia.corpo:
+        noticia.corpo = novos["corpo"]
         mudou.append("corpo")
-    if cod_tema is not None and _tema_valido(cod_tema) != noticia.cod_tema:
-        noticia.cod_tema = cod_tema
+    if "cod_tema" in novos and novos["cod_tema"] != noticia.cod_tema:
+        noticia.cod_tema = novos["cod_tema"]
         mudou.append("tema")
     if not mudou:
         return False

@@ -21,7 +21,14 @@ from sqlalchemy.exc import IntegrityError
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from desperta.ext.db import db
-from desperta.ext.erros import Conflito, DadosInvalidos, MuitasTentativas, NaoAutenticado, NaoEncontrado
+from desperta.ext.erros import (
+    Conflito,
+    DadosInvalidos,
+    MuitasTentativas,
+    NaoAutenticado,
+    NaoEncontrado,
+    conferir_formulario,
+)
 from desperta.sistema.models import LogSistema
 
 from .models import ADMINISTRADOR_PAPEIS, Administrador
@@ -90,7 +97,8 @@ def _email_livre(email, menos_id=None):
     if menos_id is not None:
         consulta = consulta.where(Administrador.id != menos_id)
     if db.session.scalar(consulta.limit(1)) is not None:
-        raise Conflito("Ja existe alguem da equipe com este e-mail.")
+        mensagem = "Ja existe alguem da equipe com este e-mail."
+        raise Conflito(mensagem, campos={"email": mensagem})
 
 
 def _admins_ativos(menos_id):
@@ -158,10 +166,18 @@ def buscar_administrador(admin_id):
 # CADASTRO
 # ======================================================
 def criar_administrador(nome, email, senha, papel="editor", por=None):
-    email = _email_valido(email)
-    admin = Administrador(nome=_nome_valido(nome), email=email, papel=_papel_valido(papel), ativo=True)
-    admin.set_senha(_senha_valida(senha))
-    _email_livre(email)
+    # Confere o formulario inteiro: a tela mostra o erro embaixo de cada campo
+    dados = conferir_formulario(
+        {
+            "nome": lambda: _nome_valido(nome),
+            "email": lambda: _email_valido(email),
+            "senha": lambda: _senha_valida(senha),
+            "papel": lambda: _papel_valido(papel),
+        }
+    )
+    _email_livre(dados["email"])
+    admin = Administrador(nome=dados["nome"], email=dados["email"], papel=dados["papel"], ativo=True)
+    admin.set_senha(dados["senha"])
     db.session.add(admin)
     db.session.flush()
     _registrar("criar_administrador", f"Entrou na equipe: {admin.nome} ({admin.papel})", por=por, alvo=admin)
