@@ -8,6 +8,10 @@ function comoData(valor) {
   if (!valor) return null
   // "2026-10-14" (so o dia): meio-dia em Brasilia, para nao cair no dia anterior
   if (/^\d{4}-\d{2}-\d{2}$/.test(valor)) return new Date(`${valor}T12:00:00-03:00`)
+  // "13/11/2026" (data das atualizacoes da noticia viva, ja no formato brasileiro): dia/mes/ano.
+  // Sem isto o navegador le como mes/dia (12/11 vira 11 de dezembro; 13/11 fica invalida).
+  const br = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(valor)
+  if (br) return new Date(`${br[3]}-${br[2]}-${br[1]}T12:00:00-03:00`)
   const data = new Date(valor)
   return Number.isNaN(data.getTime()) ? null : data
 }
