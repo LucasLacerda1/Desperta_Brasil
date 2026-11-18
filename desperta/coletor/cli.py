@@ -3,7 +3,7 @@ import functools
 import os
 import signal
 import time
-from datetime import date
+from datetime import date, timedelta
 
 import click
 from flask import current_app
@@ -193,15 +193,31 @@ def coletar_agendada(rotina, esperar, sem_ia):
         if not sem_ia:
             from desperta.ia import automatico
 
-            indexacao, geracao = automatico.depois_da_coleta()
-            if indexacao is None:
-                click.echo("  indexacao: modelo indisponivel, fica para a proxima vez (ver log_sistema)")
-            else:
-                click.echo(
-                    f"  indexacao: indexados={indexacao['indexados']} iguais={indexacao['iguais']} "
-                    f"removidos={indexacao['removidos']}"
-                )
+            indexacoes, geracao = automatico.depois_da_coleta()
+            for qual, indexacao in indexacoes.items():
+                if indexacao is None:
+                    click.echo(f"  indexacao {qual}: modelo indisponivel, fica para a proxima vez (ver log_sistema)")
+                else:
+                    click.echo(
+                        f"  indexacao {qual}: indexados={indexacao['indexados']} iguais={indexacao['iguais']} "
+                        f"removidos={indexacao['removidos']}"
+                    )
             click.echo(f"  rascunhos: {geracao.em_texto()}")
+            if rotina == "diaria":
+                # Decisao 25.17: os boletins de ontem (fatos pequenos), depois da coleta da madrugada
+                from desperta.ia import boletim
+
+                ontem = date.today() - timedelta(days=1)
+                click.echo(f"  boletins: {boletim.em_texto(ontem, boletim.gerar_boletins(ontem))}")
+            if rotina == "semanal":
+                # RF07 (decisao 25.5): o relatorio dos sete dias que terminaram ontem
+                from desperta.ia import relatorio
+
+                click.echo(f"  relatorio da semana: {relatorio.em_texto(*relatorio.gerar_relatorio_semanal())}")
+            # Decisao 25.18: o que passa na planta da noticia sai sozinho (ou so e marcado, no ensaio)
+            from desperta.noticias import planta
+
+            click.echo(f"  publicacao: {planta.publicar_automaticas().em_texto()}")
         click.echo(f"{_agora_texto()} {rotina}: fim em {time.monotonic() - inicio:.0f} s")
         if falha:
             raise click.ClickException(f"A rotina {rotina} parou com erro: {falha}")

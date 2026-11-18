@@ -1,5 +1,6 @@
 import os
 import sqlite3
+from contextlib import closing
 from datetime import datetime
 
 import click
@@ -61,7 +62,11 @@ def _copiar(origem, destino):
     for sufixo in ("", "-wal", "-shm"):
         if os.path.exists(destino + sufixo):
             os.remove(destino + sufixo)
-    with sqlite3.connect(f"file:{origem}?mode=ro", uri=True) as fonte, sqlite3.connect(destino) as copia:
+    # closing: o "with" da conexao do sqlite3 so confirma a transacao, nao fecha a conexao
+    with (
+        closing(sqlite3.connect(f"file:{origem}?mode=ro", uri=True)) as fonte,
+        closing(sqlite3.connect(destino)) as copia,
+    ):
         fonte.backup(copia)
 
 

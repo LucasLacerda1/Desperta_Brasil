@@ -26,9 +26,10 @@ def test_origens_vem_da_configuracao():
     cliente = create_app(ComOutraOrigem).test_client()
     resposta = cliente.get("/api/health", headers={"Origin": "https://desperta.exemplo"})
     assert resposta.headers["Access-Control-Allow-Origin"] == "https://desperta.exemplo"
-    assert "Access-Control-Allow-Origin" not in cliente.get(
-        "/api/health", headers={"Origin": "http://localhost:5173"}
-    ).headers
+    assert (
+        "Access-Control-Allow-Origin"
+        not in cliente.get("/api/health", headers={"Origin": "http://localhost:5173"}).headers
+    )
 
 
 def test_cookie_de_sessao_protegido(app):

@@ -187,17 +187,32 @@ def _referencias_sem_fk():
 
 def _indices_de_busca():
     tabelas = _tabelas_do_banco()
+    e5 = current_app.config["E5_MODEL"]
+    # (indice, tabela, filtro das linhas da tabela, nome); decisao 25.10: um indice vetorial por modelo
     pares = (
-        ("noticia_fts_docsize", "noticia", "Busca de texto das noticias (FTS5)"),
-        ("trecho_fts_docsize", "trecho_rag", "Busca por palavras dos trechos (FTS5)"),
-        ("vec_trecho_rowids", "trecho_rag", "Indice vetorial dos trechos (sqlite-vec)"),
+        ("noticia_fts_docsize", "noticia", "", "Busca de texto das noticias (FTS5)"),
+        ("noticia_fts_raiz_docsize", "noticia", "", "Busca das noticias pela raiz das palavras (FTS5)"),
+        ("trecho_fts_docsize", "trecho_rag", "", "Busca por palavras dos trechos (FTS5)"),
+        ("trecho_fts_raiz_docsize", "trecho_rag", "", "Busca dos trechos pela raiz das palavras (FTS5)"),
+        (
+            "vec_trecho_rowids",
+            "trecho_rag",
+            "WHERE modelo_embedding <> :e5",
+            "Indice vetorial dos trechos da RoBERTaLexPT (sqlite-vec)",
+        ),
+        (
+            "vec_trecho_e5_rowids",
+            "trecho_rag",
+            "WHERE modelo_embedding = :e5",
+            "Indice vetorial dos trechos do e5 (sqlite-vec)",
+        ),
     )
-    for indice, tabela, nome in pares:
+    for indice, tabela, filtro, nome in pares:
         if indice not in tabelas:
             yield Resultado("Coerencia", nome, INFO, "indice ainda nao criado")
             continue
         no_indice = _valor(f"SELECT COUNT(*) FROM {indice}")
-        na_tabela = _valor(f"SELECT COUNT(*) FROM {tabela}")
+        na_tabela = _valor(f"SELECT COUNT(*) FROM {tabela} {filtro}", **({"e5": e5} if filtro else {}))
         yield Resultado(
             "Coerencia",
             nome,

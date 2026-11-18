@@ -11,7 +11,12 @@ from desperta.ext.db.busca import criar_busca_texto, remover_busca_texto
 
 @pytest.fixture
 def app():
-    return create_app(TestConfig)
+    app = create_app(TestConfig)
+    yield app
+    # Fecha as conexoes do banco de cada teste; sem isso, o Python avisa (ResourceWarning) ao recolher a app
+    with app.app_context():
+        for engine in _db.engines.values():
+            engine.dispose()
 
 
 @pytest.fixture

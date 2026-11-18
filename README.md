@@ -28,7 +28,7 @@ cp .env.example .env
 
 | Grupo (`pip install -e ".[grupo]"`) | Pacotes | Para quê |
 |---|---|---|
-| (sempre) | Flask, Flask-SQLAlchemy, Flask-Migrate, Flask-CORS, python-dotenv, requests; `tzdata` só no Windows | API, banco e coletor |
+| (sempre) | Flask, Flask-SQLAlchemy, Flask-Migrate, Flask-CORS, python-dotenv, requests, snowballstemmer (BSD-3); `tzdata` só no Windows | API, banco, coletor e busca pela raiz das palavras |
 | `dev` | ipython, flask-shell-ipython, Flask-DebugToolbar, invoke, black, flake8 | Desenvolvimento |
 | `test` | pytest, pytest-cov, pytest-flask | Testes |
 | `ia` | torch, transformers, sqlite-vec, numpy | RAG, rascunhos e análises da RoBERTaLexPT |
@@ -94,7 +94,7 @@ Cada coleta grava uma linha em `coleta` e os erros em `log_sistema`. Um registro
 
 ## RAG (Fase 3)
 
-A RoBERTaLexPT roda só neste módulo; a API Flask não carrega o modelo. As dependências de IA já vêm no `invoke install`; o PyTorch certo para a placa é instalado antes:
+A RoBERTaLexPT e o e5 (`intfloat/multilingual-e5-base`, licença MIT, decisão 25.10) rodam só neste módulo; a API Flask não carrega nenhum dos dois. As dependências de IA já vêm no `invoke install`; o PyTorch certo para a placa é instalado antes:
 
 ```bash
 # Com a RTX 4050 do PC do Lucas (driver 595, CUDA 13.2); o .venv fica com cerca de 5,7 GB.
@@ -107,12 +107,15 @@ invoke install                     # ou só a IA: pip install -e ".[ia]"
 
 ```bash
 flask ia baixar-modelo             # baixa a RoBERTaLexPT uma vez para ROBERTA_DIR (cerca de 500 MB)
+flask ia baixar-modelo --modelo e5 # baixa o e5 uma vez para E5_DIR (cerca de 1,1 GB)
 flask ia mover-roberta --para /media/<usuario>/DESPERTA/roberta-lexpt-base   # copia e confere; não apaga a antiga
-flask ia indexar                   # trechos e embeddings do que é novo ou mudou; pode parar e rodar de novo
+flask ia indexar                   # trechos e embeddings do que é novo ou mudou, para os dois modelos; pode parar e rodar de novo
+flask ia indexar --modelo e5       # só um dos modelos (roberta ou e5)
 flask ia indexar --tipo votacao    # só um tipo; --limite 500 para no máximo 500 trechos novos
 flask ia buscar "reforma tributária" --tipo proposicao --inicio 2025-01-01 --fim 2025-12-31
+flask ia buscar "piso dos professores" --modelo roberta   # padrão: o modelo de RAG_MODELO (e5)
 flask ia medir-busca               # acertos de cada modo nas consultas de tests/dados/consultas_busca.json
-flask ia reconstruir               # refaz os índices a partir de trecho_rag
+flask ia reconstruir               # refaz os índices (um vetorial por modelo) a partir de trecho_rag
 flask ia gerar nova 2459654        # rascunho de uma proposição nova; também: situacao <id> e votacao <id>
 flask ia gerar-novos --simular     # o que seria gerado com os fatos dos últimos dias, sem gravar nada
 flask ia gerar-novos               # um rascunho para cada fato novo; --dias 7, --limite 50, --refazer-erros
@@ -120,26 +123,19 @@ flask ia gerar-novos               # um rascunho para cada fato novo; --dias 7, 
 
 Depois do download, use `HF_HUB_OFFLINE=1` no `.env`: o modelo roda sem internet. Sem as dependências de IA, os testes de `tests/test_ia.py` são pulados. Depois de cada coleta, rode `flask ia indexar`.
 
-A RoBERTaLexPT-base fica em `ROBERTA_DIR`, numa pasta simples, sem os links do cache do Hugging Face. Sem essa pasta (pendrive desconectado), `indexar`, `buscar` e `medir-busca` param com uma mensagem clara e um aviso no log, e `gerar` usa só a busca por palavras. O coletor, a API e os testes não dependem dela.
+A RoBERTaLexPT-base fica em `ROBERTA_DIR`, numa pasta simples, sem os links do cache do Hugging Face. O e5 fica em `E5_DIR` (padrão: `instance/modelos/multilingual-e5-base`), no disco do PC. Sem a pasta de um deles (o pendrive desconectado, no caso da RoBERTa), `indexar` indexa só o outro, e `buscar` e `medir-busca` com esse modelo param com uma mensagem clara e um aviso no log. Sem o modelo de `RAG_MODELO`, `gerar` usa só a busca por palavras. O coletor, a API e os testes não dependem de nenhum dos dois.
+
+**Dois modelos lado a lado (decisão 25.10):** cada modelo tem os seus trechos em `trecho_rag` (o mesmo texto, com `modelo_embedding` diferente) e o seu índice vetorial: `vec_trecho` para a RoBERTaLexPT e `vec_trecho_e5` para o e5. A escrita dos rascunhos usa o modelo de `RAG_MODELO` (padrão: `e5`, a busca "raiz das palavras + e5", que acertou mais nas notas do grupo). Os modos de busca são os mesmos para os dois; o modelo decide quais trechos e qual índice entram.
 
 `IA_DISPOSITIVO` escolhe onde o modelo roda: `auto` (a placa NVIDIA se existir, senão o processador), `cuda` (para com erro sem a placa) ou `cpu`. O dispositivo de cada execução fica em `log_sistema`.
 
-A busca é híbrida: junta o índice vetorial (`vec_trecho`) e o de palavras (`trecho_fts`) por Reciprocal Rank Fusion. O modo `hibrida_peso` faz o mesmo com a lista vetorial pesando `RAG_PESO_VETOR` (padrão: 0,5). Os índices não são modelos SQLAlchemy nem contam entre as 32 tabelas. Só as tramitações dos últimos `RAG_TRAMITACAO_DIAS` dias (padrão: 90) viram trecho.
+A busca é híbrida: junta o índice vetorial do modelo e o de palavras (`trecho_fts_raiz`, só com os trechos do mesmo modelo) por Reciprocal Rank Fusion. O modo `hibrida_peso` faz o mesmo com a lista vetorial pesando `RAG_PESO_VETOR` (padrão: 0,5). Os índices não são modelos SQLAlchemy nem contam entre as 32 tabelas. Só as tramitações dos últimos `RAG_TRAMITACAO_DIAS` dias (padrão: 90) viram trecho.
 
 Em `tests/dados/consultas_busca.json`, cada consulta pode ter a lista `fora_do_assunto`, com as proposições marcadas à mão, e o `medir-busca` conta quantas aparecem nos 8 primeiros.
 
-As notícias são escritas pelo `GERADOR` (padrão: `frases`). O `GeradorFrases` usa frases prontas, sem IA: todo número, nome e data vem dos registros do banco. Votação de requerimento ou de redação final não vira "Câmara aprova projeto". Toda notícia entra como `rascunho`, e cada execução grava `geracao_ia`, mesmo com erro. Proposição sem tema não gera notícia, porque `noticia.cod_tema` é obrigatório.
+As notícias são escritas pelo `GERADOR` (padrão: `frases`). O `GeradorFrases` usa frases prontas, sem IA: todo número, nome e data vem dos registros do banco. Votação de requerimento ou de redação final não vira "Câmara aprova projeto". Toda notícia entra como `rascunho`, e cada execução grava `geracao_ia`, mesmo com erro. Proposição sem tema da Câmara vira notícia no tema especial 0, "Sem tema informado pela Câmara", e o texto diz isso (decisão 25.6).
 
-O `gerar-novos` (item 4 da 22.10) procura os fatos dos últimos `GERACAO_JANELA_DIAS` dias (padrão: 3) e escreve um rascunho para cada: toda votação, no Plenário ou em comissão, que afeta um tipo acompanhado; toda mudança de situação depois do dia da apresentação; e toda proposição nova dos tipos acompanhados. Votações vêm primeiro. Ele pula o que já tem geração (inclusive notícia rejeitada pela equipe e geração com erro, que só volta com `--refazer-erros`), a proposição sem tema e o que ainda está pendente na coleta, que entra na próxima execução. Rodar de novo não duplica nada, e cada execução deixa um resumo em `log_sistema` (`acao = gerar_novos`). Rode depois da coleta e do `flask ia indexar`; `invoke gerar-novos` faz o mesmo.
-
-Para medir a centralização dos embeddings:
-
-```bash
-flask ia centralizar
-RAG_CENTRALIZAR=1 flask ia reconstruir
-RAG_CENTRALIZAR=1 flask ia medir-busca
-flask ia reconstruir               # volta ao índice sem centralização
-```
+O `gerar-novos` (item 4 da 22.10) procura os fatos dos últimos `GERACAO_JANELA_DIAS` dias (padrão: 3) e escreve um rascunho para cada: toda votação, no Plenário ou em comissão, que afeta um tipo acompanhado; toda mudança de situação depois do dia da apresentação; e toda proposição nova dos tipos acompanhados. Votações vêm primeiro. Ele pula o que já tem geração (inclusive notícia rejeitada pela equipe e geração com erro, que só volta com `--refazer-erros`) e o que ainda está pendente na coleta, que entra na próxima execução. Rodar de novo não duplica nada, e cada execução deixa um resumo em `log_sistema` (`acao = gerar_novos`). Rode depois da coleta e do `flask ia indexar`; `invoke gerar-novos` faz o mesmo.
 
 ## Análise da PEC com a Roberta original (estudo, fora do portal)
 
@@ -159,15 +155,6 @@ python scripts/analise_pec/experimentos.py               # grade: camadas x leit
 ```
 
 Lê `instance/analise_pec/` (frases, planta e as interpretações `interpretacao_<PEC>_<nome>.json`), usa a RoBERTaLexPT de `ROBERTA_DIR` e grava `resultado.json` e `relatorio.md` em `instance/analise_pec/rodadas/<data>_<rodada>/`. Não treina nada e não grava no banco. As notas dos testes ficam em `scripts/analise_pec/avaliacao.py`, testadas sem o modelo em `tests/test_analise_pec.py`.
-
-## Tema pelo protótipo (estudo, fora do portal)
-
-```bash
-python scripts/temas_prototipo/avaliar.py
-python scripts/temas_prototipo/aprofundado.py   # bateria: intervalos de confiança, validação no tempo, robustez e confiança
-```
-
-Avalia, nas proposições com tema oficial, se o tema sai certo comparando a ementa com o protótipo de cada tema (a média das ementas do tema), montado sem a proposição avaliada. Compara a RoBERTaLexPT original, centralizada e com whitening (Su et al., 2021), a busca por palavras (TF-IDF com pares de palavras), os vizinhos mais parecidos (kNN, 25 vizinhos) e a junção dessas leituras, contra o acaso e os temas mais comuns. A melhor forma (vizinhos e protótipos, com a Roberta e as palavras) acerta o tema em 87,9% das proposições no 1º lugar e em 96,9% entre os 3 primeiros. Também lista temas sugeridos para as proposições acompanhadas sem tema, sem gravar nada no banco. Resultado em `instance/analise_temas/<data>/`. As contas ficam em `scripts/temas_prototipo/prototipos.py`, testadas em `tests/test_temas_prototipo.py`.
 
 ## Verificação e testes de persistência do banco
 
@@ -194,7 +181,7 @@ invoke ver-banco --banco instance/desperta-amostra.db     # a amostra de 15 MB
 
 A **visão geral** (`http://127.0.0.1:8001/visao-geral`) mostra numa página só os números principais, o período dos dados, as proposições por tipo e tema, a situação das votações, o que a Câmara não informou, as coletas e os erros do log; cada número é consultado na hora, pelo complemento `datasette-template-sql`. A página fica em `scripts/ver_banco/templates/pages/visao-geral.html`.
 
-A página do banco tem um menu com **busca rápida** (proposição e votação pelo id, deputado pelo nome, palavra na ementa ou no despacho e palavras no que a Roberta lê), as **tabelas agrupadas por assunto** e **15 consultas prontas** (contagem das tabelas, votações secretas, situação das votações, placar por partido, uma proposição completa, votações de uma proposição, votos de um deputado, proposições por tema, campos não informados pela Câmara, pendentes, últimas coletas, erros do log, o que a Roberta lê e uma amostra do índice vetorial). Nas tabelas, os ids ligados aparecem com o nome (deputado, partido, órgão, tema), há filtros rápidos no topo, a ordem padrão é do mais recente e as colunas principais têm explicação. A configuração é montada por `scripts/ver_banco/montar_metadata.py`, que o `invoke ver-banco` roda antes de abrir. Com a parte de IA instalada, a extensão sqlite-vec é carregada sozinha.
+A página do banco tem um menu com **busca rápida** (proposição e votação pelo id, deputado pelo nome, palavra na ementa ou no despacho e palavras no que a Roberta lê), as **tabelas agrupadas por assunto** e **15 consultas prontas** (contagem das tabelas, votações só com o placar, situação das votações, placar por partido, uma proposição completa, votações de uma proposição, votos de um deputado, proposições por tema, campos não informados pela Câmara, pendentes, últimas coletas, erros do log, o que a Roberta lê e uma amostra do índice vetorial). Nas tabelas, os ids ligados aparecem com o nome (deputado, partido, órgão, tema), há filtros rápidos no topo, a ordem padrão é do mais recente e as colunas principais têm explicação. A configuração é montada por `scripts/ver_banco/montar_metadata.py`, que o `invoke ver-banco` roda antes de abrir. Com a parte de IA instalada, a extensão sqlite-vec é carregada sozinha.
 
 ## Problema conhecido
 

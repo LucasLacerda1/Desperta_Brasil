@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from desperta.auth.models import Administrador
 from desperta.ext.api import iso, url_camara
 from desperta.ext.db import db
+from desperta.ext.db.busca import grupos_de_raizes
 from desperta.ext.erros import AcessoNegado, Conflito, DadosInvalidos, ErroDoPortal, NaoEncontrado
 from desperta.orgaos.models import Evento, Orgao
 from desperta.parlamentares.models import Deputado, Partido
@@ -27,11 +28,14 @@ from .models import (
     NoticiaRevisao,
 )
 
-noticia_fts = db.table("noticia_fts", db.column("rowid"))
+# Indice das raizes das palavras (25.3); noticia_fts, com as palavras como estao, continua existindo
+noticia_fts_raiz = db.table("noticia_fts_raiz", db.column("rowid"))
 
 TAMANHO_SLUG = 220
 # Caminhos fixos das rotas de /api/noticias: uma noticia nao pode ter um destes como slug
 SLUGS_RESERVADOS = ("admin", "busca", "principal")
+# Decisao 25.13: o corpo e dividido em secoes que comecam com esta marca ("## O que propoe")
+MARCA_SECAO = "## "
 # Decisao 10.4: o fluxo normal e arquivar; apagar de verdade so estes, e so o admin
 STATUS_QUE_PODEM_SER_APAGADOS = ("rascunho", "rejeitada")
 
@@ -107,9 +111,13 @@ def excluir_noticia(noticia, admin):
 
 
 def _termo_para_match(termo):
-    """Cada palavra vira uma frase entre aspas, para nao quebrar a sintaxe do MATCH."""
-    palavras = (termo or "").split()
-    return " ".join('"' + palavra.replace('"', '""') + '"' for palavra in palavras)
+    """
+    Decisao 25.3: a busca compara raizes ("professores" acha "professor" e "professora").
+    Todas as palavras precisam aparecer, cada uma por qualquer das suas raizes (com ou sem acento);
+    as aspas evitam quebrar a sintaxe do MATCH.
+    """
+    grupos = ("(" + " OR ".join(f'"{raiz}"' for raiz in grupo) + ")" for grupo in grupos_de_raizes(termo))
+    return " AND ".join(grupos)
 
 
 def buscar_noticias(termo, inicio=None, fim=None, cod_tema=None):
@@ -123,8 +131,8 @@ def buscar_noticias(termo, inicio=None, fim=None, cod_tema=None):
 
     consulta = (
         db.select(Noticia)
-        .join(noticia_fts, noticia_fts.c.rowid == Noticia.id)
-        .where(db.text("noticia_fts MATCH :termo").bindparams(termo=match))
+        .join(noticia_fts_raiz, noticia_fts_raiz.c.rowid == Noticia.id)
+        .where(db.text("noticia_fts_raiz MATCH :termo").bindparams(termo=match))
         .where(Noticia.status == "publicada")
     )
     if inicio is not None:
@@ -137,7 +145,7 @@ def buscar_noticias(termo, inicio=None, fim=None, cod_tema=None):
     if cod_tema is not None:
         consulta = consulta.where(Noticia.cod_tema == cod_tema)
 
-    consulta = consulta.order_by(db.func.bm25(db.literal_column("noticia_fts")), Noticia.publicado_em.desc())
+    consulta = consulta.order_by(db.func.bm25(db.literal_column("noticia_fts_raiz")), Noticia.publicado_em.desc())
     return list(db.session.scalars(consulta))
 
 
@@ -172,6 +180,10 @@ def _tema_dict(tema):
 
 def como_cartao(noticia):
     """O que aparece na lista e na pagina principal."""
+    from .viva import atualizacoes_do_corpo
+
+    # 25.16: o titulo continua o original; o cartao avisa que a noticia foi atualizada
+    atualizacoes = atualizacoes_do_corpo(noticia.corpo)
     return {
         "id": noticia.id,
         "titulo": noticia.titulo,
@@ -182,6 +194,9 @@ def como_cartao(noticia):
         "publicado_em": iso(noticia.publicado_em),
         "alterado_em": iso(noticia.alterado_em),
         "visualizacoes": noticia.visualizacoes,
+        "atualizada": bool(atualizacoes),
+        "atualizacoes": len(atualizacoes),
+        "ultima_atualizacao": atualizacoes[0]["data"] if atualizacoes else None,
     }
 
 
@@ -207,10 +222,7 @@ def como_foi_feita(noticia):
     """Transparencia (22.5): quem escreveu, quem revisou e publicou."""
     ia = _ia()
     geracao = db.session.scalar(
-        db.select(ia.GeracaoIA)
-        .filter_by(noticia_id=noticia.id, status="ok")
-        .order_by(ia.GeracaoIA.id.desc())
-        .limit(1)
+        db.select(ia.GeracaoIA).filter_by(noticia_id=noticia.id, status="ok").order_by(ia.GeracaoIA.id.desc()).limit(1)
     )
     publicou = db.session.execute(
         db.select(Administrador.nome, NoticiaRevisao.data_hora)
@@ -222,8 +234,14 @@ def como_foi_feita(noticia):
     revisoes = db.session.scalar(
         db.select(db.func.count()).select_from(NoticiaRevisao).filter_by(noticia_id=noticia.id)
     )
+    from .planta import publicada_pelo_sistema
+
+    automatica = noticia.status == "publicada" and publicada_pelo_sistema(noticia)
     return {
         "origem": noticia.origem,
+        # 25.18: transparencia sobre quem publicou (a planta pode publicar sozinha)
+        "publicada_automaticamente": automatica,
+        "revisada_pela_equipe": noticia.status == "publicada" and not automatica,
         "gerador": geracao.modelo_geracao if geracao else None,
         "revisoes": revisoes,
         "publicada_por": publicou.nome if publicou else None,
@@ -231,12 +249,85 @@ def como_foi_feita(noticia):
     }
 
 
+def secoes_do_corpo(corpo):
+    """
+    Separa o corpo nas secoes "## " (decisao 25.13): [{"titulo", "texto"}].
+    Texto antes da primeira secao (ou noticia antiga, sem secoes) vem com titulo None.
+    """
+    secoes = []
+    titulo, linhas = None, []
+
+    def fechar():
+        texto = "\n".join(linhas).strip()
+        if texto or titulo:
+            secoes.append({"titulo": titulo, "texto": texto})
+
+    for linha in (corpo or "").split("\n"):
+        if linha.startswith(MARCA_SECAO):
+            fechar()
+            titulo, linhas = linha[len(MARCA_SECAO) :].strip(), []
+        else:
+            linhas.append(linha)
+    fechar()
+    return secoes
+
+
+def _proposicao_principal(noticia):
+    for fonte in noticia.fontes:
+        if fonte.tipo == "proposicao":
+            return db.session.get(Proposicao, int(fonte.ref_id))
+    return None
+
+
+def transparencia(noticia, interna=False):
+    """
+    Decisao 25.13: a situacao da proposicao em linguagem popular e as lacunas da Camara,
+    calculadas na hora a partir das fontes (o texto da noticia guarda como estava ao ser escrito).
+    O leitor nao ve o nivel da lacuna; a equipe ve (interna=True).
+    """
+    from desperta.proposicoes.situacoes import explicar_situacao
+    from desperta.sistema.lacunas import lacunas_das_fontes
+
+    proposicao = _proposicao_principal(noticia)
+    lacunas = lacunas_das_fontes([(fonte.tipo, fonte.ref_id) for fonte in noticia.fontes])
+    return {
+        "situacao": (
+            dict(explicar_situacao(proposicao.cod_situacao, proposicao.situacao), proposicao_id=proposicao.id)
+            if proposicao
+            else None
+        ),
+        "lacunas": [lacuna.interna() if interna else lacuna.publica() for lacuna in lacunas],
+    }
+
+
 def como_completa(noticia):
     dados = como_cartao(noticia)
     dados.update(
-        {"corpo": noticia.corpo, "fontes": fontes_com_links(noticia), "como_foi_feita": como_foi_feita(noticia)}
+        {
+            "corpo": noticia.corpo,
+            "secoes": secoes_do_corpo(noticia.corpo),
+            "fontes": fontes_com_links(noticia),
+            "como_foi_feita": como_foi_feita(noticia),
+            "transparencia": transparencia(noticia),
+            # 25.16: as atualizacoes separadas, da mais recente para a mais antiga
+            "lista_de_atualizacoes": _lista_de_atualizacoes(noticia),
+            # 25.13 (item 5): ate 5 publicadas com fontes em comum
+            "relacionadas": [como_cartao(n) for n in _relacionadas(noticia)],
+        }
     )
     return dados
+
+
+def _relacionadas(noticia):
+    from .relacionadas import relacionadas
+
+    return relacionadas(noticia)
+
+
+def _lista_de_atualizacoes(noticia):
+    from .viva import atualizacoes_do_corpo
+
+    return atualizacoes_do_corpo(noticia.corpo)
 
 
 def _publicadas():
@@ -285,7 +376,7 @@ def buscar_publicadas(termo, inicio=None, fim=None, cod_tema=None, pagina=1, por
     fim_incluso = fim - timedelta(microseconds=1) if fim is not None else None
     achadas = buscar_noticias(termo, inicio, fim_incluso, cod_tema)[:LIMITE_DA_BUSCA]
     inicio_da_pagina = (pagina - 1) * por_pagina
-    return achadas[inicio_da_pagina:inicio_da_pagina + por_pagina], len(achadas)
+    return achadas[inicio_da_pagina : inicio_da_pagina + por_pagina], len(achadas)
 
 
 def publicada_pelo_slug(slug):
@@ -311,7 +402,8 @@ TAMANHO_TITULO = 200
 TAMANHO_RESUMO = 500
 TAMANHO_COMENTARIO = 2000
 LOTE_MAXIMO = 200
-CASOS_DA_IA = ("votacao", "situacao", "nova")
+# relatorio_semanal: RF07 (desperta/ia/relatorio.py)
+CASOS_DA_IA = ("votacao", "situacao", "nova", "relatorio_semanal", "boletim")
 # acao da rota: (status de onde pode sair, status novo, acao gravada em noticia_revisao)
 TRANSICOES = {
     "aprovar": (("rascunho",), "em_revisao", "aprovou"),
@@ -362,8 +454,23 @@ def buscar_para_revisao(noticia_id):
     return noticia
 
 
-def listar_para_revisao(status=None, cod_tema=None, caso=None, origem=None, pagina=1, por_pagina=20):
-    """Fila da equipe: mais antigas primeiro, para nada ficar esquecido; caso = votacao, situacao ou nova."""
+ORDENS_DA_FILA = ("prioridade", "antigas")
+
+
+def listar_para_revisao(
+    status=None, cod_tema=None, caso=None, origem=None, pagina=1, por_pagina=20, prioridade=None, ordem="prioridade"
+):
+    """
+    Fila da equipe; caso = votacao, situacao, nova ou relatorio_semanal.
+    Decisao 25.15: por padrao, as de prioridade alta primeiro e, dentro de cada nivel, as mais
+    antigas, para nada ficar esquecido; ordem="antigas" e so por data. prioridade filtra o nivel.
+    """
+    from . import prioridade as regras
+
+    if ordem not in ORDENS_DA_FILA:
+        raise DadosInvalidos(f"Ordem invalida: use {', '.join(ORDENS_DA_FILA)}.")
+    if prioridade is not None and prioridade not in regras.PRIORIDADES:
+        raise DadosInvalidos(f"Prioridade invalida: use {', '.join(regras.PRIORIDADES)}.")
     ia = _ia()
     consulta = db.select(Noticia)
     if status is not None:
@@ -381,28 +488,76 @@ def listar_para_revisao(status=None, cod_tema=None, caso=None, origem=None, pagi
             raise DadosInvalidos(f"Caso invalido: use {', '.join(CASOS_DA_IA)}.")
         # O caso fica no JSON de entrada da geracao; LIKE serve em qualquer banco (11.1)
         consulta = consulta.where(
-            Noticia.id.in_(
-                db.select(ia.GeracaoIA.noticia_id).where(ia.GeracaoIA.entrada.like(f'%"caso": "{caso}"%'))
-            )
+            Noticia.id.in_(db.select(ia.GeracaoIA.noticia_id).where(ia.GeracaoIA.entrada.like(f'%"caso": "{caso}"%')))
         )
-    total = db.session.scalar(db.select(db.func.count()).select_from(consulta.subquery()))
-    itens = db.session.scalars(
-        consulta.order_by(Noticia.criado_em, Noticia.id).offset((pagina - 1) * por_pagina).limit(por_pagina)
+    if ordem == "antigas" and prioridade is None:
+        total = db.session.scalar(db.select(db.func.count()).select_from(consulta.subquery()))
+        itens = db.session.scalars(
+            consulta.order_by(Noticia.criado_em, Noticia.id).offset((pagina - 1) * por_pagina).limit(por_pagina)
+        ).all()
+        return itens, total
+
+    # A prioridade e calculada na hora (sem coluna no banco): primeiro so as colunas leves
+    candidatas = db.session.execute(
+        consulta.with_only_columns(Noticia.id, Noticia.origem, Noticia.tipo, Noticia.criado_em).order_by(
+            Noticia.criado_em, Noticia.id
+        )
     ).all()
-    return itens, total
+    calculadas = regras.calcular(candidatas)
+    if prioridade is not None:
+        candidatas = [linha for linha in candidatas if calculadas[linha.id].nivel == prioridade]
+    if ordem == "prioridade":
+        # sorted e estavel: dentro do mesmo nivel, continua a ordem por data
+        candidatas = sorted(candidatas, key=lambda linha: regras.ORDEM[calculadas[linha.id].nivel])
+    pagina_ids = [linha.id for linha in candidatas[(pagina - 1) * por_pagina : pagina * por_pagina]]
+    por_id = {
+        noticia.id: noticia for noticia in db.session.scalars(db.select(Noticia).where(Noticia.id.in_(pagina_ids)))
+    }
+    return [por_id[noticia_id] for noticia_id in pagina_ids], len(candidatas)
 
 
-def como_item_de_revisao(noticia):
+def conferencias(noticias):
+    """{noticia_id: {"passou", "falhas", "avisos"}} da planta da noticia (25.18); so a equipe ve."""
+    from .planta import conferir
+
+    return {noticia.id: conferir(noticia).como_dict() for noticia in noticias}
+
+
+def prioridades(noticias):
+    """{noticia_id: {"nivel", "motivos"}} (interno, so a equipe ve; 25.15)."""
+    from . import prioridade as regras
+
+    return {noticia_id: valor.como_dict() for noticia_id, valor in regras.calcular(noticias).items()}
+
+
+def como_item_de_revisao(noticia, prioridade=None, conferencia=None):
     dados = como_cartao(noticia)
     dados.update({"status": noticia.status, "origem": noticia.origem, "criado_em": iso(noticia.criado_em)})
+    if prioridade is not None:
+        dados["prioridade"] = prioridade
+    if conferencia is not None:
+        dados["conferencia"] = conferencia
     return dados
 
 
 def como_detalhe_de_revisao(noticia):
     """Tudo o que a equipe precisa para revisar: texto, fontes, historico e o que a IA usou."""
+    from . import viva
+
     ia = _ia()
-    dados = como_item_de_revisao(noticia)
-    dados.update({"corpo": noticia.corpo, "fontes": fontes_com_links(noticia)})
+    dados = como_item_de_revisao(noticia, prioridades([noticia])[noticia.id])
+    # 25.16: rascunho de atualizacao mostra qual noticia publicada ele atualiza
+    dados["atualiza"] = viva.como_dict_da_original(noticia)
+    # 25.18: o que a planta da noticia achou (passou = pode sair sozinha)
+    dados["conferencia"] = conferencias([noticia])[noticia.id]
+    dados.update(
+        {
+            "corpo": noticia.corpo,
+            "secoes": secoes_do_corpo(noticia.corpo),
+            "fontes": fontes_com_links(noticia),
+            "transparencia": transparencia(noticia, interna=True),
+        }
+    )
     dados["revisoes"] = [
         {
             "acao": r.acao,
@@ -482,7 +637,11 @@ def criar_pela_equipe(admin, titulo, resumo, corpo, cod_tema, fontes=None, tipo=
 def _fonte_existe(tipo, ref_id):
     """noticia_fonte nao tem FK (5.1): o back-end confere se o registro existe."""
     modelos = {
-        "proposicao": Proposicao, "deputado": Deputado, "evento": Evento, "orgao": Orgao, "partido": Partido,
+        "proposicao": Proposicao,
+        "deputado": Deputado,
+        "evento": Evento,
+        "orgao": Orgao,
+        "partido": Partido,
     }
     if tipo == "votacao":
         return db.session.get(Votacao, ref_id) is not None
@@ -526,6 +685,15 @@ def mudar_status(noticia, admin, acao, comentario=None):
     comentario = _comentario(comentario, obrigatorio=acao == "rejeitar")
     if noticia.status not in de_onde:
         raise Conflito(f"Nao da para {acao} uma noticia com status '{noticia.status}'.")
+    if acao == "publicar":
+        from . import viva
+
+        # 25.16: rascunho de atualizacao nao vira pagina propria; entra na noticia publicada
+        original = viva.original_da_atualizacao(noticia)
+        if original is not None:
+            viva.publicar_atualizacao(noticia, original, admin)
+            db.session.commit()
+            return noticia
     noticia.status = status_novo
     if status_novo == "publicada" and noticia.publicado_em is None:
         noticia.publicado_em = _agora()

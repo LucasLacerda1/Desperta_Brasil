@@ -37,6 +37,7 @@ def _proposicao(**campos):
             "apresentada_em": date(2024, 5, 14),
             "autor": "Fulana de Tal",
             "situacao": "Aguardando Parecer",
+            "cod_situacao": 915,
             **campos,
         }
     )
@@ -102,16 +103,34 @@ def test_simplificar_ementa(ementa, esperado):
 # ======================================================
 def test_proposicao_nova():
     texto = _escrever(CASO_NOVA)
-    assert texto.titulo == "Projeto institui o Dia Nacional da Merenda"
-    assert texto.resumo.startswith("O PL 1234/2024, de autoria de Fulana de Tal, foi apresentado em 14/05/2024.")
+    # 25.18 (planta): a sigla no titulo e explicada no paragrafo principal; a ementa simplificada por regra
+    assert texto.titulo == "PL 1234/2024 institui o Dia Nacional da Merenda"
+    assert texto.resumo == (
+        "O projeto de lei PL 1234/2024, de autoria de Fulana de Tal, foi apresentado em 14/05/2024. "
+        "O texto institui o Dia Nacional da Merenda."
+    )
     assert "Ementa oficial: Institui o Dia Nacional da Merenda." in texto.corpo
 
 
 def test_proposicao_nova_com_finalidade_e_tipo_feminino():
     proposicao = _proposicao(sigla="PEC", ementa="Altera o art. 5º da Constituição para garantir o acesso.")
     texto = _escrever(CASO_NOVA, proposicao=proposicao)
-    assert texto.titulo == "Proposta propõe garantir o acesso"
-    assert "A PEC 1234/2024" in texto.resumo and "foi apresentada" in texto.resumo
+    assert texto.titulo == "PEC 1234/2024 propõe garantir o acesso"
+    assert texto.resumo.startswith("A proposta de emenda à Constituição PEC 1234/2024, de autoria de Fulana de Tal")
+    assert "foi apresentada" in texto.resumo and texto.resumo.endswith("O objetivo é garantir o acesso.")
+
+
+@pytest.mark.parametrize(
+    "autor,esperado",
+    [
+        ("Fulana de Tal", "de autoria de Fulana de Tal"),
+        ("Poder Executivo", "de autoria do Poder Executivo"),
+        ("Senado Federal", "de autoria do Senado Federal"),
+        ("Comissão de Saúde", "de autoria da Comissão de Saúde"),
+    ],
+)
+def test_autoria_com_artigo_certo(autor, esperado):
+    assert esperado in _escrever(CASO_NOVA, proposicao=_proposicao(autor=autor)).resumo
 
 
 def test_proposicao_nova_sem_autor_e_com_varios():
@@ -121,16 +140,18 @@ def test_proposicao_nova_sem_autor_e_com_varios():
 
 def test_proposicao_nova_com_ementa_sem_verbo():
     texto = _escrever(CASO_NOVA, proposicao=_proposicao(ementa="Fica assegurada a realização."))
-    assert texto.titulo == "Projeto propõe: Fica assegurada a realização"
+    assert texto.titulo == "PL 1234/2024 propõe: Fica assegurada a realização"
+    # Sem verbo reconhecido, a ementa nao e reescrita: so a oficial, em "O que propoe"
+    assert texto.resumo.endswith("foi apresentado em 14/05/2024.")
 
 
 def test_votacao_de_merito_aprovada():
     texto = _escrever(CASO_VOTACAO, votacao=_votacao())
-    assert texto.titulo == "Câmara aprova projeto de lei que institui o Dia Nacional da Merenda"
-    assert (
-        texto.resumo
-        == "O Plenário aprovou, na terça-feira (14/05/2024), o PL 1234/2024. Foram 300 votos a favor e 100 contra."
-    )
+    assert texto.titulo == "Câmara aprova PL 1234/2024, que institui o Dia Nacional da Merenda"
+    # Decisao 25.13: o paragrafo principal so traz o fato; o placar vem logo abaixo, no resultado
+    assert texto.resumo == "O Plenário da Câmara aprovou, na terça-feira (14/05/2024), o projeto de lei PL 1234/2024."
+    assert "## Resultado da votação\n\n" in texto.corpo
+    assert "Resultado: aprovado.\n\nForam 300 votos a favor e 100 contra." in texto.corpo
 
 
 def test_votacao_de_merito_rejeitada_e_em_comissao():
@@ -138,20 +159,20 @@ def test_votacao_de_merito_rejeitada_e_em_comissao():
         descricao="Rejeitado o Projeto de Lei nº 1.234.", aprovacao=False, sigla_orgao="CCJC", orgao="CCJC"
     )
     texto = _escrever(CASO_VOTACAO, votacao=votacao)
-    assert texto.titulo.startswith("CCJC rejeita projeto de lei")
+    assert texto.titulo.startswith("CCJC rejeita PL 1234/2024")
     assert texto.resumo.startswith("O órgão CCJC rejeitou")
 
 
 def test_votacao_simbolica_nao_tem_placar():
     texto = _escrever(CASO_VOTACAO, votacao=_votacao(sim=0, nao=0))
     assert "votos" not in texto.resumo
-    assert texto.resumo.endswith("o PL 1234/2024.")
+    assert texto.resumo.endswith("o projeto de lei PL 1234/2024.")
 
 
 def test_placar_com_abstencao_e_fim_de_semana():
     texto = _escrever(CASO_VOTACAO, votacao=_votacao(abstencao=2, data=date(2024, 5, 18)))
     assert "no sábado (18/05/2024)" in texto.resumo
-    assert "com 2 de abstenção" in texto.resumo
+    assert "com 2 de abstenção" in texto.corpo and "abstenção" not in texto.resumo
 
 
 @pytest.mark.parametrize(
@@ -182,23 +203,27 @@ def test_requerimento_nunca_e_votacao_de_merito():
 @pytest.mark.parametrize(
     "situacao,explicacao",
     [
-        ("secreta", "Votação secreta: a Câmara divulgou só o placar total (404 a favor, 61 contra e 1 abstenção)."),
+        (
+            "so_placar",
+            "Os dados abertos da Câmara trazem só o placar total (404 a favor, 61 contra e 1 abstenção), "
+            "sem o voto de cada deputado.",
+        ),
         ("simbolica", "Votação simbólica: a Câmara não registra o voto de cada deputado."),
         ("pendente", "Os votos desta votação ainda estão sendo coletados."),
     ],
 )
 def test_votacao_explica_quando_nao_ha_o_voto_de_cada_deputado(situacao, explicacao):
-    """Transparencia (05/11/2026): o texto diz por que nao ha placar por deputado."""
+    """Transparencia (05/11/2026): o texto diz por que nao ha placar por deputado; 25.13: fora do resumo."""
     votacao = _votacao(sim=0, nao=0, situacao=situacao, explicacao=explicacao)
     texto = _escrever(CASO_VOTACAO, votacao=votacao)
-    assert texto.resumo.endswith(explicacao)
-    assert explicacao in texto.corpo
+    assert explicacao not in texto.resumo
+    assert explicacao in texto.corpo.split("## Resultado da votação")[1]
 
 
 def test_corpo_mostra_o_que_a_camara_nao_informou():
     proposicao = _proposicao(situacao=None, regime=".", apreciacao=None)
     corpo = _escrever(CASO_NOVA, proposicao=proposicao).corpo
-    assert "Situação atual: não informada pela Câmara." in corpo
+    assert "Situação: não informada pela Câmara." in corpo
     assert "Regime de tramitação: não informado pela Câmara. Apreciação: não informada pela Câmara." in corpo
 
 
@@ -229,7 +254,9 @@ def test_so_avanca_quando_a_situacao_e_de_avanco(situacao, avanca):
     texto = _escrever(CASO_SITUACAO, proposicao=_proposicao(situacao=situacao), tramitacoes=[_passo()])
     assert ("avança" in texto.titulo) is avanca
     assert f'"{situacao}"' in texto.resumo
-    assert "Em 03/06/2024, em CCJC: Publique-se." in texto.resumo
+    # 25.18: o passo do andamento sai do paragrafo principal e fica em "Onde esta na Camara"
+    assert "Publique-se" not in texto.resumo
+    assert "Em 03/06/2024, em CCJC: Publique-se." in texto.corpo
 
 
 def test_titulo_de_situacao_mostra_a_situacao_como_a_camara_escreve():
@@ -237,14 +264,31 @@ def test_titulo_de_situacao_mostra_a_situacao_como_a_camara_escreve():
     assert texto.titulo == 'PL 1234/2024: situação agora é "Aguardando Designação de Relator(a)"'
 
 
-def test_situacao_nula_usa_a_ultima_tramitacao():
+def test_situacao_nula_conta_o_ultimo_passo_sem_chama_lo_de_situacao():
+    # Decisao 25.1: a descricao de um passo do andamento nunca aparece como "situacao"
     texto = _escrever(
         CASO_SITUACAO,
         proposicao=_proposicao(situacao=None),
         tramitacoes=[_passo(descricao="Designado relator", despacho="")],
     )
-    assert "Designado relator" in texto.resumo
+    assert texto.titulo == "PL 1234/2024: Designado relator"
+    # 25.13: que a situacao nao foi informada fica nas secoes, fora do paragrafo principal
+    assert texto.resumo == "Em 03/06/2024, em CCJC: Designado relator."
+    assert "Situação: não informada pela Câmara." in texto.corpo
+    assert "situação agora" not in texto.titulo and "está com a situação" not in texto.resumo
     assert "Em 03/06/2024, em CCJC: Designado relator." in texto.corpo
+
+
+def test_situacao_que_a_camara_manda_vazia_tambem_e_nao_informada():
+    # A API usa "." quando nao ha informacao (22.5)
+    texto = _escrever(
+        CASO_SITUACAO,
+        proposicao=_proposicao(sigla="PEC", numero=2, ano=2023, situacao="."),
+        tramitacoes=[_passo(descricao="Prorrogação de Prazo", despacho="")],
+    )
+    assert texto.titulo == "PEC 2/2023: Prorrogação de Prazo"
+    assert "não foi informada" not in texto.resumo
+    assert "Situação: não informada pela Câmara." in texto.corpo
 
 
 def test_sem_situacao_e_sem_tramitacao_nao_escreve():
@@ -312,7 +356,7 @@ def test_cabe_nos_tamanhos_de_noticia_sem_partir_palavra():
 # ======================================================
 def test_padrao_e_o_gerador_de_frases(app):
     assert app.config["GERADOR"] == "frases"
-    assert criar_gerador("frases").nome == "frases-v1"
+    assert criar_gerador("frases").nome == "frases-v3"
     assert isinstance(criar_gerador("falso"), GeradorFalso)
 
 
@@ -355,8 +399,9 @@ def banco(app, db):
     db.session.flush()
     db.session.add_all(
         [
+            # Como na API: relevancia 0 e o tema principal, 1 o segundo (25.2)
             ProposicaoTema(proposicao_id=2310837, cod_tema=46, relevancia=1),
-            ProposicaoTema(proposicao_id=2310837, cod_tema=47, relevancia=5),
+            ProposicaoTema(proposicao_id=2310837, cod_tema=47, relevancia=0),
             ProposicaoAutor(
                 proposicao_id=2310837, ordem=1, nome="Fulana", cod_tipo=1, tipo="Deputado(a)", proponente=True
             ),
@@ -368,7 +413,8 @@ def banco(app, db):
                 texto="PL 1234/2024. Institui o Dia Nacional da Merenda.",
                 tokens=8,
                 embedding=bytes(3072),
-                modelo_embedding="m",
+                # O modelo da escrita (RAG_MODELO, padrao e5): a busca por palavras so olha os trechos dele (25.10)
+                modelo_embedding="intfloat/multilingual-e5-base",
                 hash_texto="a" * 64,
             ),
         ]
@@ -389,14 +435,44 @@ def test_gerar_grava_rascunho_geracao_trechos_e_fontes(banco):
     noticia = geracao.noticia
     assert (noticia.status, noticia.origem, noticia.tipo) == ("rascunho", "ia", "noticia")
     assert noticia.cod_tema == 47
-    assert noticia.titulo == "Projeto institui o Dia Nacional da Merenda."[:-1]
-    assert noticia.slug == "projeto-institui-o-dia-nacional-da-merenda"
-    assert (geracao.status, geracao.modelo_geracao, geracao.versao_prompt) == ("ok", "frases-v1", "frases-v1")
+    assert noticia.titulo == "PL 1234/2024 institui o Dia Nacional da Merenda"
+    assert noticia.slug == "pl-1234-2024-institui-o-dia-nacional-da-merenda"
+    assert (geracao.status, geracao.modelo_geracao, geracao.versao_prompt) == ("ok", "frases-v3", "frases-v3")
     assert geracao.duracao_ms >= 0 and geracao.tokens_saida > 0
     assert json.loads(geracao.entrada)["proposicao_id"] == 2310837
     ligado = banco.session.scalar(banco.select(GeracaoTrecho).filter_by(geracao_id=geracao.id))
     assert ligado.posicao == 1 and ligado.similaridade > 0
     assert [(f.tipo, f.ref_id, f.ordem) for f in noticia.fontes] == [("proposicao", "2310837", 1)]
+    # Sem modelo, a geracao diz que a busca foi so por palavras (22.5 e 25.10)
+    assert geracao.modelo_embedding == "nenhum (busca so por palavras)"
+
+
+def test_busca_por_palavras_nao_mistura_os_trechos_dos_dois_modelos(app, banco):
+    """Decisao 25.10: o mesmo texto existe para a RoBERTa e para o e5; so os do modelo da escrita entram."""
+    banco.session.add(
+        TrechoRAG(
+            tipo="proposicao",
+            ref_id="2310837",
+            parte=1,
+            texto="PL 1234/2024. Institui o Dia Nacional da Merenda.",
+            tokens=8,
+            embedding=bytes(3072),
+            modelo_embedding=app.config["EMBEDDING_MODEL"],
+            hash_texto="a" * 64,
+        )
+    )
+    banco.session.commit()
+    geracao, _ = _gerar()
+    usados = banco.session.scalars(banco.select(GeracaoTrecho).filter_by(geracao_id=geracao.id)).all()
+    assert [banco.session.get(TrechoRAG, u.trecho_id).modelo_embedding for u in usados] == [app.config["E5_MODEL"]]
+    app.config["RAG_MODELO"] = "roberta"
+    banco.session.get(fabricas.Proposicao, 2310837).data_status = datetime(2025, 1, 1)
+    banco.session.commit()
+    outra, _ = _gerar("situacao")
+    usados = banco.session.scalars(banco.select(GeracaoTrecho).filter_by(geracao_id=outra.id)).all()
+    assert [banco.session.get(TrechoRAG, u.trecho_id).modelo_embedding for u in usados] == [
+        app.config["EMBEDDING_MODEL"]
+    ]
 
 
 def test_gerar_votacao_tem_a_votacao_como_fonte_principal(banco):
@@ -404,8 +480,9 @@ def test_gerar_votacao_tem_a_votacao_como_fonte_principal(banco):
     banco.session.get(fabricas.Votacao, "2310837-8").filhos_sincronizados_em = datetime(2024, 5, 15)
     banco.session.commit()
     geracao, _ = _gerar("votacao", "2310837-8")
-    assert geracao.noticia.titulo.startswith("Câmara aprova projeto de lei que institui")
-    assert "Foi 1 voto a favor e 0 contra." in geracao.noticia.resumo
+    assert geracao.noticia.titulo.startswith("Câmara aprova PL 1234/2024, que institui")
+    assert "Foi 1 voto a favor e 0 contra." in geracao.noticia.corpo
+    assert "voto" not in geracao.noticia.resumo
     assert [(f.tipo, f.ref_id) for f in geracao.noticia.fontes] == [
         ("votacao", "2310837-8"),
         ("proposicao", "2310837"),
@@ -464,12 +541,25 @@ def test_erro_grava_geracao_sem_noticia_e_log(banco, caso, ref, mensagem):
     assert banco.session.scalar(banco.select(banco.func.count()).select_from(Noticia)) == 0
 
 
-def test_proposicao_sem_tema_vira_erro_e_nao_noticia(banco):
-    banco.session.add(fabricas.proposicao(id=7, numero=7))
+def test_proposicao_sem_tema_vira_noticia_que_diz_isso(banco):
+    # Decisao 25.6: a falta de tema e informada, em vez de a proposicao ficar sem noticia
+    # A falta de tema so conta depois que os temas foram consultados na API
+    banco.session.add(fabricas.proposicao(id=7, numero=7, filhos_sincronizados_em=datetime(2024, 5, 15)))
     banco.session.commit()
-    geracao, _ = _gerar(ref=7)
-    assert geracao.status == "erro"
-    assert "nao tem tema" in geracao.erro
+    geracao, nova = _gerar(ref=7)
+    assert geracao.status == "ok" and nova is True
+    assert geracao.noticia.cod_tema == 0
+    # 25.13: a falta de tema e uma lacuna da Camara, com a prova, na secao propria
+    lacunas = geracao.noticia.corpo.split("## O que a Câmara não informou")[1]
+    assert "A Câmara ainda não informou o tema desta proposição." in lacunas
+    assert "/proposicoes/7/temas (campo dados: [] (lista vazia))" in lacunas
+    assert "fichadetramitacao?idProposicao=7" in lacunas
+    assert "informou o tema" not in geracao.noticia.resumo
+
+
+def test_tema_informado_nao_ganha_o_aviso(banco):
+    geracao, _ = _gerar()
+    assert "informou o tema" not in geracao.noticia.corpo + geracao.noticia.resumo
 
 
 def test_falha_do_gerador_nao_deixa_noticia_pela_metade(banco):
@@ -489,13 +579,20 @@ def test_gerador_da_configuracao_invalido_tambem_grava_erro(app, banco):
     assert banco.session.get(GeracaoIA, geracao.id).modelo_geracao == "roberta"
 
 
-def test_sem_o_pendrive_o_comando_gera_so_com_palavras(app, banco, tmp_path):
-    app.config["ROBERTA_DIR"] = str(tmp_path / "pendrive")
+@pytest.mark.parametrize("qual,variavel", [("e5", "E5_DIR"), ("roberta", "ROBERTA_DIR")])
+def test_sem_o_modelo_da_escrita_o_comando_gera_so_com_palavras(app, banco, tmp_path, qual, variavel):
+    """Decisao 21.3 (pendrive fora, no caso da RoBERTa) e 25.10: vale para o modelo de RAG_MODELO."""
+    app.config["RAG_MODELO"] = qual
+    app.config[variavel] = str(tmp_path / "sem-modelo")
+    banco.session.execute(banco.update(TrechoRAG).values(modelo_embedding=app.config["EMBEDDING_MODEL"]))
+    if qual == "e5":
+        banco.session.execute(banco.update(TrechoRAG).values(modelo_embedding=app.config["E5_MODEL"]))
+    banco.session.commit()
     resultado = app.test_cli_runner().invoke(args=["ia", "gerar", "nova", "2310837"])
     assert resultado.exit_code == 0, resultado.output
     assert "Usando só a busca por palavras" in resultado.output
-    assert "Projeto institui" in resultado.output
-    assert banco.session.scalar(banco.select(LogSistema).filter_by(acao="roberta_ausente"))
+    assert "PL 1234/2024 institui" in resultado.output
+    assert banco.session.scalar(banco.select(LogSistema).filter_by(acao=f"{qual}_ausente"))
     assert banco.session.scalar(banco.select(GeracaoTrecho))
 
 
@@ -517,4 +614,10 @@ def test_gerar_votacao_secreta_usa_o_placar_da_camara(banco):
     banco.session.add(fabricas.voto(tipo_voto=None))
     banco.session.commit()
     geracao, _ = _gerar("votacao", "2310837-8")
-    assert "Votação secreta: a Câmara divulgou só o placar total (1 a favor e 0 contra)." in geracao.noticia.resumo
+    corpo = geracao.noticia.corpo
+    assert "Os dados abertos da Câmara trazem só o placar total (1 a favor e 0 contra)" in corpo
+    # 25.13: os dados abertos nao dizem que foi secreta; a lacuna diz o que eles mostram e manda ao site
+    assert "secreta" not in corpo + geracao.noticia.resumo
+    lacunas = corpo.split("## O que a Câmara não informou")[1]
+    assert "registram 1 presença nesta votação, mas não informam o voto de cada deputado" in lacunas
+    assert "Para mais informações, acesse o site da Câmara dos Deputados" in lacunas

@@ -67,8 +67,14 @@ def test_instalar_e_remover(tmp_path):
     assert sorted(os.listdir(tmp_path)) == sorted(agendador.unidades())
     assert comandos == [
         ["daemon-reload"],
-        ["enable", "--now", "desperta-horaria.timer", "desperta-diaria.timer", "desperta-semanal.timer",
-         "desperta-mensal.timer"],
+        [
+            "enable",
+            "--now",
+            "desperta-horaria.timer",
+            "desperta-diaria.timer",
+            "desperta-semanal.timer",
+            "desperta-mensal.timer",
+        ],
     ]
 
     comandos.clear()
@@ -97,25 +103,57 @@ def geracao_falsa(monkeypatch):
     return modelos
 
 
-def test_com_modelo_indexa_e_escreve(app, db, monkeypatch, geracao_falsa):
-    modelo = object()
-    monkeypatch.setattr(services, "carregar_modelo", lambda: modelo)
-    monkeypatch.setattr(services, "indexar", lambda m: Counter(indexados=2) if m is modelo else None)
-    indexacao, _ = automatico.depois_da_coleta()
-    assert indexacao["indexados"] == 2
-    assert geracao_falsa == [modelo]
+def _carregar(modelos):
+    """carregar_modelo falso: o modelo de cada qual, ou a excecao guardada para ele."""
+
+    def carregar(qual):
+        if isinstance(modelos[qual], Exception):
+            raise modelos[qual]
+        return modelos[qual]
+
+    return carregar
 
 
-def test_sem_a_roberta_nao_indexa_e_escreve_so_com_palavras(app, db, monkeypatch, geracao_falsa):
-    """Decisao 21.3: sem o pendrive, a indexacao fica para a proxima vez e a geracao continua."""
+def test_os_dois_modelos_indexam_e_o_e5_escreve(app, db, monkeypatch, geracao_falsa):
+    """Decisao 25.10: cada modelo indexa os seus trechos; a escrita usa o de RAG_MODELO (padrao e5)."""
+    roberta, e5 = object(), object()
+    monkeypatch.setattr(services, "carregar_modelo", _carregar({"roberta": roberta, "e5": e5}))
+    indexados = {roberta: 2, e5: 3}
+    monkeypatch.setattr(services, "indexar", lambda m: Counter(indexados=indexados[m]))
+    indexacoes, _ = automatico.depois_da_coleta()
+    assert {qual: resumo["indexados"] for qual, resumo in indexacoes.items()} == {"roberta": 2, "e5": 3}
+    assert geracao_falsa == [e5]
 
-    def ausente():
-        raise embeddings.RobertaAusente("RoBERTaLexPT não encontrada")
 
-    monkeypatch.setattr(services, "carregar_modelo", ausente)
+def test_rag_modelo_roberta_escreve_com_a_roberta(app, db, monkeypatch, geracao_falsa):
+    roberta, e5 = object(), object()
+    app.config["RAG_MODELO"] = "roberta"
+    monkeypatch.setattr(services, "carregar_modelo", _carregar({"roberta": roberta, "e5": e5}))
+    monkeypatch.setattr(services, "indexar", lambda m: Counter())
+    automatico.depois_da_coleta()
+    assert geracao_falsa == [roberta]
+
+
+def test_sem_a_roberta_o_e5_indexa_e_escreve(app, db, monkeypatch, geracao_falsa):
+    """Decisao 21.3: sem o pendrive, a RoBERTa fica para a proxima vez; o e5, que fica no PC, segue."""
+    e5 = object()
+    ausente = embeddings.RobertaAusente("RoBERTaLexPT não encontrada")
+    monkeypatch.setattr(services, "carregar_modelo", _carregar({"roberta": ausente, "e5": e5}))
+    monkeypatch.setattr(services, "indexar", lambda m: Counter(indexados=1) if m is e5 else pytest.fail("roberta"))
+    indexacoes, _ = automatico.depois_da_coleta()
+    assert indexacoes["roberta"] is None and indexacoes["e5"]["indexados"] == 1
+    assert geracao_falsa == [e5]
+
+
+def test_sem_nenhum_modelo_nao_indexa_e_escreve_so_com_palavras(app, db, monkeypatch, geracao_falsa):
+    modelos = {
+        "roberta": embeddings.RobertaAusente("RoBERTaLexPT não encontrada"),
+        "e5": embeddings.E5Ausente("e5 não encontrado"),
+    }
+    monkeypatch.setattr(services, "carregar_modelo", _carregar(modelos))
     monkeypatch.setattr(services, "indexar", lambda m: pytest.fail("nao devia indexar"))
-    indexacao, _ = automatico.depois_da_coleta()
-    assert indexacao is None
+    indexacoes, _ = automatico.depois_da_coleta()
+    assert indexacoes == {"roberta": None, "e5": None}
     assert geracao_falsa == [None]
 
 
@@ -123,7 +161,7 @@ def test_sem_a_roberta_nao_indexa_e_escreve_so_com_palavras(app, db, monkeypatch
     "erro", [ImportError("No module named 'torch'"), embeddings.DispositivoIndisponivel("sem CUDA")]
 )
 def test_sem_pytorch_ou_sem_placa_avisa_no_log(app, db, monkeypatch, geracao_falsa, erro):
-    def quebrar():
+    def quebrar(qual):
         raise erro
 
     monkeypatch.setattr(services, "carregar_modelo", quebrar)

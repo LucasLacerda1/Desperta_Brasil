@@ -5,9 +5,13 @@ from flask import current_app
 
 from desperta.ext.db import db
 from desperta.noticias.models import Noticia
-from desperta.noticias.services import criar_rascunho
+from desperta.noticias import viva
+from desperta.noticias.services import criar_rascunho, secoes_do_corpo
 from desperta.orgaos.models import Orgao
-from desperta.proposicoes.models import Proposicao, ProposicaoAutor, ProposicaoTema, Tramitacao
+from desperta.proposicoes.models import Proposicao, ProposicaoAutor, Tramitacao
+from desperta.proposicoes.services import tema_da_noticia
+from desperta.proposicoes.situacoes import SITUACOES, situacao_conhecida
+from desperta.sistema.lacunas import URL_FICHA, lacunas_das_fontes
 from desperta.sistema.models import LogSistema
 from desperta.votacoes.models import Votacao, VotacaoProposicao
 from desperta.votacoes.services import situacao_dos_votos
@@ -15,6 +19,9 @@ from desperta.votacoes.services import situacao_dos_votos
 from . import services
 from .gerador import (
     CASO_VOTACAO,
+    SECAO_ONDE_ESTA,
+    SECAO_VOTACAO,
+    DadosLacuna,
     DadosNoticia,
     DadosProposicao,
     DadosTramitacao,
@@ -25,6 +32,8 @@ from .gerador import (
 from .models import GeracaoIA, GeracaoTrecho
 
 TAMANHO_CONSULTA = 300
+# Sem o modelo da busca (21.3): o campo modelo_embedding de geracao_ia diz que a busca foi so por palavras
+SO_PALAVRAS = "nenhum (busca so por palavras)"
 
 
 class ErroDeGeracao(Exception):
@@ -55,7 +64,37 @@ def _dados_da_proposicao(proposicao):
         situacao=proposicao.situacao,
         regime=proposicao.regime,
         apreciacao=proposicao.apreciacao,
+        cod_situacao=proposicao.cod_situacao,
+        explicacao_situacao=SITUACOES.get(proposicao.cod_situacao),
     )
+
+
+def _avisar_situacao_desconhecida(proposicao):
+    """Decisao 25.13: codigo fora do dicionario mostra so o nome da Camara e avisa a equipe."""
+    if situacao_conhecida(proposicao.cod_situacao, proposicao.situacao):
+        return
+    db.session.add(
+        LogSistema(
+            nivel="aviso",
+            modulo="IA",
+            acao="situacao_desconhecida",
+            descricao=(
+                f"Codigo de situacao {proposicao.cod_situacao} ({proposicao.situacao!r}) fora do dicionario "
+                "de desperta/proposicoes/situacoes.py: a noticia mostra so o nome da Camara."
+            ),
+            entidade="proposicao",
+            entidade_id=str(proposicao.id),
+        )
+    )
+
+
+def _lacunas(fontes):
+    """Decisao 25.13: so as falhas da Camara entram na secao; a pratica normal ja esta no resultado."""
+    return [
+        DadosLacuna(texto=lacuna.texto, provas=[prova.em_texto() for prova in lacuna.provas])
+        for lacuna in lacunas_das_fontes(fontes)
+        if lacuna.falha_da_camara
+    ]
 
 
 def _tramitacoes(proposicao_id):
@@ -119,19 +158,6 @@ def _ler_origem(caso, ref):
     return proposicao, None
 
 
-def _tema_principal(proposicao):
-    """A noticia precisa de um tema (RF05): o de maior relevancia entre os que a API mandou."""
-    cod_tema = db.session.scalar(
-        db.select(ProposicaoTema.cod_tema)
-        .filter_by(proposicao_id=proposicao.id)
-        .order_by(ProposicaoTema.relevancia.desc(), ProposicaoTema.cod_tema)
-        .limit(1)
-    )
-    if cod_tema is None:
-        raise ErroDeGeracao(f"A proposicao {proposicao.id} nao tem tema.")
-    return cod_tema
-
-
 def _entrada(caso, proposicao, votacao):
     """Os ids usados; data_status separa duas mudancas de situacao da mesma proposicao."""
     return json.dumps(
@@ -146,14 +172,57 @@ def _entrada(caso, proposicao, votacao):
     )
 
 
+def chave_do_fato(entrada):
+    """
+    O que identifica o fato (25.16). A entrada gravada traz tambem a data da situacao da proposicao,
+    que muda a cada passo do andamento: comparar a entrada inteira fazia a mesma votacao (ou a mesma
+    proposicao nova) ser escrita de novo a cada passo. Votacao: o id da votacao; proposicao nova: o id
+    da proposicao; mudanca de situacao: a proposicao e a data da situacao.
+    entrada: o JSON (texto) ou o dict.
+    """
+    if isinstance(entrada, str):
+        try:
+            entrada = json.loads(entrada)
+        except ValueError:
+            return ("texto", entrada)
+    caso = entrada.get("caso")
+    if "ref" in entrada:
+        # Geracao que falhou antes de ler o registro
+        return (caso, "ref", str(entrada["ref"]))
+    if caso == CASO_VOTACAO:
+        return (caso, entrada.get("votacao_id"))
+    if caso == "situacao":
+        return (caso, entrada.get("proposicao_id"), entrada.get("data_status"))
+    if caso == "nova":
+        return (caso, entrada.get("proposicao_id"))
+    # Relatorio, boletim e outros: a entrada inteira identifica
+    return ("entrada", json.dumps(entrada, sort_keys=True))
+
+
 def _geracao_existente(entrada):
     """Gerar de novo o mesmo fato nao duplica a noticia; so a rejeitada pode ser refeita."""
-    return db.session.scalar(
+    chave = chave_do_fato(entrada)
+    dados = json.loads(entrada)
+    if "proposicao_id" not in dados:
+        # Relatorio semanal e outros sem proposicao: a entrada inteira identifica o fato
+        return db.session.scalar(
+            db.select(GeracaoIA)
+            .join(Noticia, Noticia.id == GeracaoIA.noticia_id)
+            .where(GeracaoIA.entrada == entrada, GeracaoIA.status == "ok", Noticia.status != "rejeitada")
+            .limit(1)
+        )
+    # A entrada e JSON com as chaves em ordem: "proposicao_id" vem sempre antes de "votacao_id"
+    candidatas = db.session.scalars(
         db.select(GeracaoIA)
         .join(Noticia, Noticia.id == GeracaoIA.noticia_id)
-        .where(GeracaoIA.entrada == entrada, GeracaoIA.status == "ok", Noticia.status != "rejeitada")
-        .limit(1)
+        .where(
+            GeracaoIA.entrada.like(f'%"proposicao_id": {dados["proposicao_id"]},%'),
+            GeracaoIA.status == "ok",
+            Noticia.status != "rejeitada",
+        )
+        .order_by(GeracaoIA.id)
     )
+    return next((geracao for geracao in candidatas if chave_do_fato(geracao.entrada) == chave), None)
 
 
 def _fontes(proposicao, votacao):
@@ -167,12 +236,42 @@ def _fontes(proposicao, votacao):
     return fontes
 
 
-def _registrar_erro(caso, ref, consulta, entrada, gerador_nome, versao, erro, inicio):
+def _data_do_fato(caso, proposicao, votacao):
+    if votacao is not None:
+        return votacao.data
+    if caso == "situacao" and proposicao.data_status is not None:
+        return proposicao.data_status.date()
+    return proposicao.data_apresentacao.date()
+
+
+def _fato(caso, proposicao, votacao, texto, fontes):
+    """Decisao 25.16: o fato novo como atualizacao da noticia viva (titulo, paragrafo e o placar ou a situacao)."""
+    secoes = {secao["titulo"]: secao["texto"] for secao in secoes_do_corpo(texto.corpo)}
+    detalhes = []
+    if SECAO_VOTACAO in secoes:
+        detalhes.append(secoes[SECAO_VOTACAO])
+    if caso == "situacao" and SECAO_ONDE_ESTA in secoes:
+        detalhes.append(secoes[SECAO_ONDE_ESTA].split("\n\n")[0])
+    return viva.Fato(
+        data=_data_do_fato(caso, proposicao, votacao),
+        titulo=texto.titulo,
+        resumo=texto.resumo,
+        detalhes=detalhes,
+        fontes=fontes,
+    )
+
+
+def _modelo_da_busca(modelo):
+    """Decisao 25.10 e transparencia (22.5): o modelo que fez a busca de verdade, ou que foi so por palavras."""
+    return modelo.nome if modelo is not None else SO_PALAVRAS
+
+
+def _registrar_erro(caso, ref, consulta, entrada, gerador_nome, versao, erro, inicio, modelo_embedding):
     db.session.rollback()
     config = current_app.config
     geracao = GeracaoIA(
         modelo_geracao=gerador_nome,
-        modelo_embedding=config["EMBEDDING_MODEL"],
+        modelo_embedding=modelo_embedding,
         consulta=consulta,
         top_k=config["RAG_TOP_K"],
         versao_prompt=versao,
@@ -198,7 +297,7 @@ def _registrar_erro(caso, ref, consulta, entrada, gerador_nome, versao, erro, in
 def gerar_noticia(modelo, caso, ref, gerador=None):
     """
     Secao 6: toda execucao grava geracao_ia, mesmo com erro; a noticia entra como rascunho (RF06).
-    modelo None: sem a RoBERTaLexPT (21.3), busca so por palavras. Devolve (geracao, nova).
+    modelo e o de RAG_MODELO (25.10); None: sem ele (21.3), busca so por palavras. Devolve (geracao, nova).
     """
     config = current_app.config
     inicio = time.monotonic()
@@ -220,22 +319,35 @@ def gerar_noticia(modelo, caso, ref, gerador=None):
         gerador = gerador or criar_gerador(config["GERADOR"])
         nome, versao = gerador.nome, gerador.versao_prompt
 
-        cod_tema = _tema_principal(proposicao)
+        # 25.2 e 25.6: o tema principal, ou o tema especial quando a Camara nao informou nenhum;
+        # a falta de tema entra nas lacunas (25.13)
+        cod_tema, _ = tema_da_noticia(proposicao.id)
+        fontes = _fontes(proposicao, votacao)
         dados = DadosNoticia(
             caso=caso,
             proposicao=_dados_da_proposicao(proposicao),
             votacao=_dados_da_votacao(votacao) if votacao else None,
             tramitacoes=_tramitacoes(proposicao.id),
+            lacunas=_lacunas(fontes),
+            url_mais_informacoes=URL_FICHA.format(proposicao.id),
         )
-        fontes = _fontes(proposicao, votacao)
+        _avisar_situacao_desconhecida(proposicao)
         achados = services.buscar(modelo, consulta, modo="hibrida" if modelo else "palavras")
         texto = gerador.escrever(consulta, [achado.trecho.texto for achado in achados], dados)
 
-        noticia = criar_rascunho(texto.titulo, texto.resumo, texto.corpo, cod_tema, fontes)
+        # 25.16: noticia viva; o fato entra na noticia aberta da proposicao, vira rascunho de
+        # atualizacao da publicada, ou abre uma noticia nova
+        noticia = viva.destino_do_fato(
+            proposicao.id,
+            _fato(caso, proposicao, votacao, texto, fontes),
+            cod_tema,
+            fontes,
+            lambda: criar_rascunho(texto.titulo, texto.resumo, texto.corpo, cod_tema, fontes),
+        )
         geracao = GeracaoIA(
             noticia_id=noticia.id,
             modelo_geracao=gerador.nome,
-            modelo_embedding=config["EMBEDDING_MODEL"],
+            modelo_embedding=_modelo_da_busca(modelo),
             consulta=consulta,
             top_k=config["RAG_TOP_K"],
             versao_prompt=gerador.versao_prompt,
@@ -269,4 +381,7 @@ def gerar_noticia(modelo, caso, ref, gerador=None):
         db.session.commit()
         return geracao, True
     except Exception as erro:
-        return _registrar_erro(caso, ref, consulta, entrada, nome, versao, erro, inicio), True
+        return (
+            _registrar_erro(caso, ref, consulta, entrada, nome, versao, erro, inicio, _modelo_da_busca(modelo)),
+            True,
+        )

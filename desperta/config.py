@@ -20,8 +20,16 @@ class Config:
     # RNF10: depois destas falhas na janela, o login responde 429 (por e-mail e, x4, por IP)
     LOGIN_TENTATIVAS = int(os.getenv("LOGIN_TENTATIVAS", "5"))
     LOGIN_JANELA_MIN = int(os.getenv("LOGIN_JANELA_MIN", "15"))
+    # Limite de requisicoes por endereco (IP) nas rotas da API (RNF10, decisao 25.4); 0 desliga
+    LIMITE_JANELA_S = int(os.getenv("LIMITE_JANELA_S", "60"))
+    LIMITE_GERAL = int(os.getenv("LIMITE_GERAL", "600"))
+    LIMITE_BUSCA = int(os.getenv("LIMITE_BUSCA", "60"))
     # RNF05: sem coleta concluida ha mais que isto, o portal avisa que os dados podem estar desatualizados
     AVISO_DESATUALIZADO_HORAS = int(os.getenv("AVISO_DESATUALIZADO_HORAS", "6"))
+    # Decisao 25.13: proposicao sem tema ha mais dias que isto sobe de nivel (atraso -> ocultacao)
+    LACUNA_ATRASO_DIAS = int(os.getenv("LACUNA_ATRASO_DIAS", "30"))
+    # Decisao 25.18: ensaio (so marca na fila), ligada (publica o que passa na planta) ou desligada
+    PUBLICACAO_AUTOMATICA = os.getenv("PUBLICACAO_AUTOMATICA", "ensaio")
 
     # Fases seguintes (ja deixar declarado)
     CAMARA_API_URL = os.getenv("CAMARA_API_URL", "https://dadosabertos.camara.leg.br/api/v2")
@@ -30,12 +38,19 @@ class Config:
     # Decisoes 14.2 e 15.3: limites da rotina horaria
     HORARIA_ORCAMENTO_MIN = int(os.getenv("HORARIA_ORCAMENTO_MIN", "20"))
     HORARIA_RECONFERIR_HORAS = int(os.getenv("HORARIA_RECONFERIR_HORAS", "6"))
+    # Decisao 25.8: item que deu 404 na Camara so e pedido de novo depois disto (0 desliga)
+    COLETOR_AUSENTE_HORAS = int(os.getenv("COLETOR_AUSENTE_HORAS", "24"))
     EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "eduagarcia/RoBERTaLexPT-base")
     # Decisao 21.2: modelos em pastas simples; so a RoBERTaLexPT-base pode ficar no pendrive
     MODELOS_DIR = os.getenv("MODELOS_DIR", "instance/modelos")
     ROBERTA_DIR_PADRAO = os.path.join(MODELOS_DIR, "roberta-lexpt-base")
     ROBERTA_DIR = os.getenv("ROBERTA_DIR", ROBERTA_DIR_PADRAO)
     ROBERTA_ESCRITORA_DIR = os.getenv("ROBERTA_ESCRITORA_DIR", os.path.join(MODELOS_DIR, "roberta-escritora"))
+    # Decisao 25.10: o e5 (multilingual-e5-base, MIT) indexa ao lado da RoBERTaLexPT e fica no disco do PC
+    E5_MODEL = os.getenv("E5_MODEL", "intfloat/multilingual-e5-base")
+    E5_DIR = os.getenv("E5_DIR", os.path.join(MODELOS_DIR, "multilingual-e5-base"))
+    # Qual dos dois modelos a escrita dos rascunhos usa na busca: e5 ou roberta
+    RAG_MODELO = os.getenv("RAG_MODELO", "e5")
     HF_HUB_OFFLINE = os.getenv("HF_HUB_OFFLINE", "0")
     # Decisao 20.2: auto usa a RTX 4050 se existir; cuda exige a placa; cpu nunca a usa
     IA_DISPOSITIVO = os.getenv("IA_DISPOSITIVO", "auto")
@@ -44,10 +59,9 @@ class Config:
     # Item 4 da 22.10: flask ia gerar-novos olha os fatos destes ultimos dias
     GERACAO_JANELA_DIAS = int(os.getenv("GERACAO_JANELA_DIAS", "3"))
     RAG_TOP_K = int(os.getenv("RAG_TOP_K", "8"))
-    # Decisao 16.1: busca hibrida com RRF e experimento de centralizacao (descartado na 19.1)
+    # Decisao 16.1: busca hibrida com RRF
     RAG_CANDIDATOS = int(os.getenv("RAG_CANDIDATOS", "50"))
     RAG_RRF_K = int(os.getenv("RAG_RRF_K", "60"))
-    RAG_CENTRALIZAR = os.getenv("RAG_CENTRALIZAR", "0") == "1"
     # Decisao 19.2: peso da lista vetorial no modo hibrida_peso (a de palavras pesa 1,0)
     RAG_PESO_VETOR = float(os.getenv("RAG_PESO_VETOR", "0.5"))
     # Decisao 16.3: so as tramitacoes recentes viram trecho
@@ -63,3 +77,5 @@ class TestConfig(Config):
     TESTING = True
     DEBUG = False
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
+    # Os testes nunca carregam o e5 de verdade (1,1 GB), mesmo que ele esteja na pasta do projeto
+    E5_DIR = os.path.join("instance", "modelos-de-teste", "multilingual-e5-base")

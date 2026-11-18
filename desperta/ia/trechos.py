@@ -73,7 +73,7 @@ def _tramitacoes():
 
 
 def _votacoes():
-    """Transparencia: o trecho diz se a votacao foi nominal, secreta, simbolica ou se os votos estao pendentes."""
+    """Transparencia: o trecho diz se a votacao foi nominal, so com o placar, simbolica ou pendente."""
     # Linhas, e nao objetos: a indexacao limpa a sessao a cada lote, e um objeto ficaria solto
     colunas = (
         Votacao.id,

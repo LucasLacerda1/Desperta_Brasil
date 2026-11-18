@@ -7,18 +7,31 @@ import click
 from flask import current_app
 from flask.cli import AppGroup
 
-from . import automatico, centralizacao, embeddings, geracao, services
+from . import automatico, embeddings, geracao, relatorio, services
 from .gerador import CASOS
 from .models import TRECHO_RAG_TIPOS
 
 ia = AppGroup("ia", help="Trechos, embeddings e busca do RAG.")
 
 
-def _modelo():
+def _modelo(qual="roberta"):
     try:
-        return services.carregar_modelo()
-    except (embeddings.RobertaAusente, embeddings.DispositivoIndisponivel) as erro:
+        return services.carregar_modelo(qual)
+    except (embeddings.ModeloAusente, embeddings.DispositivoIndisponivel) as erro:
         raise click.ClickException(str(erro))
+
+
+def _qual_padrao():
+    return current_app.config["RAG_MODELO"]
+
+
+_opcao_modelo = click.option(
+    "--modelo",
+    "qual",
+    type=click.Choice(services.MODELOS),
+    default=None,
+    help="roberta ou e5 (padrao: RAG_MODELO).",
+)
 
 
 def _conferir_arquivos(pasta, modelo):
@@ -30,27 +43,33 @@ def _conferir_arquivos(pasta, modelo):
     click.echo(f"Modelo pronto em {pasta} ({embeddings.tamanho_em_mb(pasta)} MB).")
 
 
-def _carregar_da_pasta(pasta):
+def _carregar_da_pasta(pasta, qual="roberta"):
     embeddings.preparar_ambiente(current_app)
-    return embeddings.ModeloEmbedding(current_app.config["EMBEDDING_MODEL"], pasta=pasta)
+    prefixos = embeddings.PREFIXOS_E5 if qual == "e5" else {}
+    return embeddings.ModeloEmbedding(services.nome_do_modelo(qual), pasta=pasta, **prefixos)
 
 
 @ia.command("baixar-modelo")
-def baixar_modelo():
-    """Baixa a RoBERTaLexPT uma vez para ROBERTA_DIR e confere se ela carrega."""
+@click.option("--modelo", "qual", type=click.Choice(services.MODELOS), default="roberta", show_default=True)
+def baixar_modelo(qual):
+    """Baixa a RoBERTaLexPT (para ROBERTA_DIR) ou o e5 (para E5_DIR) uma vez e confere se carrega."""
     config = current_app.config
-    pasta = embeddings.caminho_no_projeto(current_app, config["ROBERTA_DIR"])
+    pasta = embeddings.caminho_no_projeto(current_app, config["ROBERTA_DIR" if qual == "roberta" else "E5_DIR"])
     if embeddings.arquivos_faltando(pasta):
         # Decisao 21.3: pendrive desconectado nao vira um download para o disco do PC
-        if config["ROBERTA_DIR"] != config["ROBERTA_DIR_PADRAO"] and not os.path.isdir(os.path.dirname(pasta)):
+        if (
+            qual == "roberta"
+            and config["ROBERTA_DIR"] != config["ROBERTA_DIR_PADRAO"]
+            and not os.path.isdir(os.path.dirname(pasta))
+        ):
             raise click.ClickException(f"A pasta {os.path.dirname(pasta)} nao existe. O pendrive está conectado?")
         # O cache do Hugging Face so serve durante o download (21.2)
         modelos = embeddings.caminho_no_projeto(current_app, config["MODELOS_DIR"])
         os.makedirs(modelos, exist_ok=True)
         embeddings.preparar_ambiente(current_app, offline=False)
         with tempfile.TemporaryDirectory(dir=modelos) as cache:
-            embeddings.salvar_modelo(config["EMBEDDING_MODEL"], pasta, cache)
-    _conferir_arquivos(pasta, _carregar_da_pasta(pasta))
+            embeddings.salvar_modelo(services.nome_do_modelo(qual), pasta, cache, com_cabeca=qual == "roberta")
+    _conferir_arquivos(pasta, _carregar_da_pasta(pasta, qual))
     click.echo("Agora pode usar HF_HUB_OFFLINE=1.")
 
 
@@ -81,13 +100,32 @@ _opcao_tipo = click.option("--tipo", "tipos", multiple=True, type=click.Choice(T
 @ia.command("indexar")
 @_opcao_tipo
 @click.option("--limite", type=int, help="Maximo de trechos com embedding novo nesta execucao.")
-def indexar(tipos, limite):
-    """Cria os trechos e os embeddings do que e novo ou mudou."""
-    resumo = services.indexar(_modelo(), tipos or None, limite)
-    click.echo(
-        f"indexados={resumo['indexados']} iguais={resumo['iguais']} "
-        f"removidos={resumo['removidos']} mantidos={resumo['mantidos']}"
-    )
+@click.option(
+    "--modelo",
+    "quais",
+    type=click.Choice(services.MODELOS),
+    multiple=True,
+    help="roberta ou e5; pode repetir (padrao: os dois).",
+)
+def indexar(tipos, limite, quais):
+    """Cria os trechos e os embeddings do que e novo ou mudou, para cada modelo (decisao 25.10)."""
+    quais = quais or services.MODELOS
+    feitos = 0
+    for qual in quais:
+        try:
+            modelo = _modelo(qual)
+        except click.ClickException as erro:
+            # Decisao 21.3: sem um dos modelos, o outro ainda indexa
+            click.echo(f"{qual}: {erro.message} A indexação dele fica para a próxima vez.")
+            continue
+        resumo = services.indexar(modelo, tipos or None, limite)
+        feitos += 1
+        click.echo(
+            f"{qual}: indexados={resumo['indexados']} iguais={resumo['iguais']} "
+            f"removidos={resumo['removidos']} mantidos={resumo['mantidos']}"
+        )
+    if not feitos:
+        raise click.ClickException("Nenhum modelo disponível: nada foi indexado.")
 
 
 @ia.command("buscar")
@@ -97,20 +135,25 @@ def indexar(tipos, limite):
 @click.option("--inicio", callback=_data, help="Inicio do periodo (AAAA-MM-DD).")
 @click.option("--fim", callback=_data, help="Fim do periodo (AAAA-MM-DD).")
 @click.option("--modo", type=click.Choice(services.MODOS_BUSCA), default="hibrida", show_default=True)
-def buscar(consulta, tipos, k, inicio, fim, modo):
+@_opcao_modelo
+def buscar(consulta, tipos, k, inicio, fim, modo, qual):
     """Mostra os trechos mais parecidos com a consulta."""
-    for achado in services.buscar(_modelo(), consulta, k, tipos or None, inicio, fim, modo):
+    qual = qual or _qual_padrao()
+    modelo = None if modo == "palavras" else _modelo(qual)
+    nome = services.nome_do_modelo(qual)
+    for achado in services.buscar(modelo, consulta, k, tipos or None, inicio, fim, modo, nome_modelo=nome):
         trecho = achado.trecho
         click.echo(f"{achado.posicao}. {achado.similaridade:.3f} {trecho.tipo} {trecho.ref_id}: {trecho.texto[:150]}")
 
 
 @ia.command("medir-busca")
 @click.argument("arquivo", default="tests/dados/consultas_busca.json")
-def medir_busca(arquivo):
+@_opcao_modelo
+def medir_busca(arquivo, qual):
     """Quantas das proposicoes esperadas aparecem nos 8 primeiros, em cada modo (decisoes 16.2 e 19.2)."""
     with open(arquivo, encoding="utf-8") as entrada:
         consultas = json.load(entrada)["consultas"]
-    for modo, resultado in services.medir_busca(_modelo(), consultas).items():
+    for modo, resultado in services.medir_busca(_modelo(qual or _qual_padrao()), consultas).items():
         click.echo(
             f"{modo}: {resultado['acertos']} de {resultado['total']}; fora do assunto: {resultado['fora_do_assunto']}"
         )
@@ -119,10 +162,11 @@ def medir_busca(arquivo):
 
 
 def _modelo_ou_palavras():
+    """O modelo da escrita dos rascunhos (RAG_MODELO, decisao 25.10)."""
     try:
-        return services.carregar_modelo()
-    except embeddings.RobertaAusente as erro:
-        # Decisao 21.3: sem o pendrive, busca so por palavras; o aviso ja foi para o log
+        return services.carregar_modelo(_qual_padrao())
+    except embeddings.ModeloAusente as erro:
+        # Decisao 21.3: sem o modelo, busca so por palavras; o aviso ja foi para o log
         click.echo(f"{erro} Usando só a busca por palavras.")
         return None
     except embeddings.DispositivoIndisponivel as erro:
@@ -162,17 +206,67 @@ def gerar_novos(dias, limite, simular, refazer_erros):
     click.echo(resumo.em_texto())
 
 
-@ia.command("centralizar")
-def centralizar():
-    """Calcula o vetor medio dos trechos; depois, use RAG_CENTRALIZAR=1 e flask ia reconstruir."""
-    total = centralizacao.calcular(current_app.config["EMBEDDING_MODEL"])
-    click.echo(f"Vetor medio de {total} trechos gravado em instance/{centralizacao.ARQUIVO}")
+@ia.command("relatorio-semanal")
+@click.option("--ate", callback=_data, help="Ultimo dia da semana (AAAA-MM-DD); padrao: ontem.")
+@click.option("--simular", is_flag=True, help="So mostra o relatorio, sem gravar nada.")
+def relatorio_semanal(ate, simular):
+    """RF07: relatorio dos sete dias ate a data, como rascunho do tipo relatorio."""
+    if simular:
+        dados, titulo, resumo, corpo = relatorio.previa(ate)
+        if dados.vazia():
+            click.echo("Semana sem movimento: nada seria gerado.")
+            return
+        click.echo(titulo)
+        click.echo(resumo)
+        click.echo(corpo)
+        click.echo("Simulação: nada foi gravado.")
+        return
+    registro, novo = relatorio.gerar_relatorio_semanal(ate)
+    if registro is not None and registro.status == "erro":
+        raise click.ClickException(f"Geracao {registro.id} com erro: {registro.erro}")
+    click.echo(relatorio.em_texto(registro, novo))
+
+
+@ia.command("boletins")
+@click.option("--dia", callback=_data, help="Dia dos fatos (AAAA-MM-DD); padrao: ontem.")
+@click.option("--simular", is_flag=True, help="So mostra o boletim, sem gravar nada.")
+def boletins(dia, simular):
+    """Decisao 25.17: os boletins do dia (fatos pequenos), um por tipo de fato, como rascunhos."""
+    from datetime import date, timedelta
+
+    from . import boletim
+
+    dia = dia or date.today() - timedelta(days=1)
+    if simular:
+        dados = boletim.ler_dia(dia)
+        for categoria, itens in dados.itens.items():
+            if itens:
+                titulo, resumo, corpo = boletim.escrever(categoria, dados)
+                click.echo(f"{titulo}\n{resumo}\n\n{corpo}\n")
+        click.echo(f"Simulação: nada foi gravado. {boletim.em_texto(dia, boletim.gerar_boletins(dia, simular=True))}")
+        return
+    resultado = boletim.gerar_boletins(dia)
+    click.echo(boletim.em_texto(dia, resultado))
+    erros = [geracao for _, geracao, _ in resultado if geracao.status == "erro"]
+    if erros:
+        raise click.ClickException(f"Geracao {erros[0].id} com erro: {erros[0].erro}")
+
+
+@ia.command("publicar-automaticas")
+@click.option("--modo", type=click.Choice(["ensaio", "ligada"]), help="Padrao: PUBLICACAO_AUTOMATICA.")
+def publicar_automaticas(modo):
+    """Decisao 25.18: confere os rascunhos na planta da noticia e publica (ligada) ou so conta (ensaio)."""
+    from desperta.noticias import planta
+
+    click.echo(planta.publicar_automaticas(modo).em_texto())
 
 
 @ia.command("reconstruir")
 def reconstruir():
-    """Refaz os indices vetorial e de palavras a partir de trecho_rag, sem gerar embeddings."""
-    click.echo(f"{services.reconstruir_indice(current_app.config['EMBEDDING_MODEL'])} trechos no indice")
+    """Refaz os indices vetoriais (um por modelo) e os de palavras a partir de trecho_rag, sem gerar embeddings."""
+    for qual in services.MODELOS:
+        nome = services.nome_do_modelo(qual)
+        click.echo(f"{qual}: {services.reconstruir_indice(nome)} trechos no indice ({nome})")
 
 
 def init_app(app):

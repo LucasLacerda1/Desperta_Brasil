@@ -72,14 +72,16 @@ def test_votacao_completa_sem_votos_e_simbolica(db, votacao):
     assert votacoes.situacao_dos_votos(votacao).codigo == votacoes.SIMBOLICA
 
 
-def test_votacao_com_todos_os_votos_sem_tipo_e_secreta(db, votacao):
+def test_votacao_com_todos_os_votos_sem_tipo_tem_so_o_placar(db, votacao):
     _completa(db, votacao, "Aprovado. Sim: 404; Não: 61; Abstenção: 1; Total: 466.")
     db.session.add_all([fabricas.voto(tipo_voto=None), fabricas.voto(deputado_id=2, tipo_voto=None)])
     db.session.commit()
     situacao = votacoes.situacao_dos_votos(votacao)
-    assert situacao.codigo == votacoes.SECRETA
+    # Decisao 25.13: os dados abertos nao dizem que foi secreta; o texto diz so o que eles mostram
+    assert situacao.codigo == votacoes.SO_PLACAR
     assert situacao.explicacao == (
-        "Votação secreta: a Câmara divulgou só o placar total (404 a favor, 61 contra e 1 abstenção)."
+        "Os dados abertos da Câmara trazem só o placar total (404 a favor, 61 contra e 1 abstenção), "
+        "sem o voto de cada deputado."
     )
     assert situacao.placar_da_camara == {"Sim": 404, "Não": 61, "Abstenção": 1, "Total": 466}
 

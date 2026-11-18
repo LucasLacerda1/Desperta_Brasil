@@ -11,11 +11,13 @@ from desperta.proposicoes.models import Proposicao, Tramitacao
 from desperta.sistema.models import LogSistema
 from desperta.votacoes.models import Votacao
 
-from . import centralizacao, embeddings, palavras, trechos, vetores
+from . import embeddings, palavras, trechos, vetores
 from .models import GeracaoTrecho, TrechoRAG
 
 LOTE_INDEXACAO = 64
 MODOS_BUSCA = ("hibrida", "hibrida_peso", "vetorial", "palavras")
+# Decisao 25.10: os dois modelos de embeddings do RAG; o que a escrita dos rascunhos usa vem de RAG_MODELO
+MODELOS = ("roberta", "e5")
 
 
 @dataclass
@@ -29,6 +31,13 @@ def _hash(texto):
     return hashlib.sha256(texto.encode("utf-8")).hexdigest()
 
 
+def nome_do_modelo(qual):
+    """roberta ou e5 -> o nome gravado em trecho_rag.modelo_embedding."""
+    if qual not in MODELOS:
+        raise ValueError(f"Modelo de embeddings desconhecido: {qual}")
+    return current_app.config["EMBEDDING_MODEL" if qual == "roberta" else "E5_MODEL"]
+
+
 def _existentes(nome_modelo, tipos):
     consulta = db.select(TrechoRAG.tipo, TrechoRAG.ref_id, TrechoRAG.parte, TrechoRAG.id, TrechoRAG.hash_texto).where(
         TrechoRAG.modelo_embedding == nome_modelo
@@ -38,7 +47,7 @@ def _existentes(nome_modelo, tipos):
     return {(tipo, ref_id, parte): (id_, hash_) for tipo, ref_id, parte, id_, hash_ in db.session.execute(consulta)}
 
 
-def _gravar_lote(modelo, lote, existentes, preparar):
+def _gravar_lote(modelo, lote, existentes):
     """Gera os embeddings fora da transacao, grava e confirma: parar no meio nao perde o que ja foi feito."""
     embeddings = modelo.embutir([item["texto"] for item in lote])
     for item, embedding in zip(lote, embeddings):
@@ -53,7 +62,7 @@ def _gravar_lote(modelo, lote, existentes, preparar):
         trecho.embedding = embedding
         trecho.modelo_embedding = modelo.nome
         db.session.flush()
-        vetores.gravar(trecho.id, preparar(embedding))
+        vetores.gravar(modelo.nome, trecho.id, embedding)
     db.session.commit()
     db.session.expunge_all()
 
@@ -66,6 +75,7 @@ def _remover_sobras(sobras):
             mantidos += 1
             continue
         vetores.remover(trecho_id)
+        palavras.remover(trecho_id)
         db.session.execute(db.delete(TrechoRAG).where(TrechoRAG.id == trecho_id))
         removidos += 1
     db.session.commit()
@@ -79,10 +89,9 @@ def indexar(modelo, tipos=None, limite=None):
     """
     config = current_app.config
     resumo = Counter()
-    vetores.criar_indice()
+    vetores.criar_indice(modelo.nome)
     palavras.criar_indice()
     db.session.commit()
-    preparar = centralizacao.transformador()
     existentes = _existentes(modelo.nome, tipos)
     vistos = set()
     lote = []
@@ -116,11 +125,11 @@ def indexar(modelo, tipos=None, limite=None):
                 }
             )
         if len(lote) >= LOTE_INDEXACAO:
-            _gravar_lote(modelo, lote, existentes, preparar)
+            _gravar_lote(modelo, lote, existentes)
             resumo["indexados"] += len(lote)
             lote = []
     if lote:
-        _gravar_lote(modelo, lote, existentes, preparar)
+        _gravar_lote(modelo, lote, existentes)
         resumo["indexados"] += len(lote)
 
     # Com limite, parte da origem nao foi lida: nao da para saber o que sumiu
@@ -144,12 +153,17 @@ def indexar(modelo, tipos=None, limite=None):
 
 
 def reconstruir_indice(nome_modelo):
-    """Refaz os dois indices a partir de trecho_rag, sem gerar embeddings."""
-    total = vetores.reconstruir(nome_modelo, centralizacao.transformador())
+    """Refaz o indice vetorial do modelo e os de palavras a partir de trecho_rag, sem gerar embeddings."""
+    total = vetores.reconstruir(nome_modelo)
     palavras.criar_indice()
     palavras.reconstruir()
     db.session.add(
-        LogSistema(nivel="info", modulo="IA", acao="reconstruir_indice", descricao=f"{total} trechos no indice")
+        LogSistema(
+            nivel="info",
+            modulo="IA",
+            acao="reconstruir_indice",
+            descricao=f"modelo={nome_modelo}: {total} trechos no indice",
+        )
     )
     db.session.commit()
     return total
@@ -198,13 +212,18 @@ def _juntar_por_rrf(listas):
     return notas
 
 
-def buscar(modelo, consulta, top_k=None, tipos=None, inicio=None, fim=None, modo="hibrida"):
+def buscar(modelo, consulta, top_k=None, tipos=None, inicio=None, fim=None, modo="hibrida", nome_modelo=None):
     """
     Decisao 16.1: os melhores de cada indice, juntos pelo RRF; os filtros valem para os dois.
     Em similaridade vai a nota do RRF; no modo vetorial, que so serve para comparar, vai o cosseno.
+    Decisao 25.10: o modelo decide quais trechos e qual indice vetorial entram. Sem modelo (so
+    palavras), nome_modelo diz de qual modelo sao os trechos; o padrao e o de RAG_MODELO.
     """
     if modo not in MODOS_BUSCA:
         raise ValueError(f"Modo de busca desconhecido: {modo}")
+    if modelo is None and modo != "palavras":
+        raise ValueError(f"O modo {modo} precisa de um modelo de embeddings.")
+    nome = modelo.nome if modelo is not None else nome_modelo or nome_do_modelo(current_app.config["RAG_MODELO"])
     k = top_k or current_app.config["RAG_TOP_K"]
     if inicio or fim:
         candidatos = _ids_no_periodo(inicio, fim, tipos)
@@ -213,19 +232,20 @@ def buscar(modelo, consulta, top_k=None, tipos=None, inicio=None, fim=None, modo
     else:
         candidatos = None
     # O SQLite grava a criacao da tabela na hora, mas o conteudo do rebuild so com commit
-    vetores.criar_indice()
+    vetores.criar_indice(nome)
     palavras.criar_indice()
     db.session.commit()
 
     limite = max(k, current_app.config["RAG_CANDIDATOS"])
     if modo == "vetorial":
-        embedding = centralizacao.transformador()(modelo.embutir([consulta])[0])
-        notas = {trecho_id: 1 - distancia for trecho_id, distancia in vetores.buscar(embedding, k, candidatos)}
+        embedding = modelo.embutir_consulta(consulta)
+        notas = {trecho_id: 1 - distancia for trecho_id, distancia in vetores.buscar(nome, embedding, k, candidatos)}
     else:
-        listas = [(palavras.buscar(consulta, limite, candidatos), 1.0)]
+        # Decisao 25.10: so os trechos do modelo da busca, para o mesmo texto nao aparecer duas vezes
+        listas = [(palavras.buscar(consulta, limite, candidatos, modelo=nome), 1.0)]
         if modo in ("hibrida", "hibrida_peso"):
-            embedding = centralizacao.transformador()(modelo.embutir([consulta])[0])
-            lista = [trecho_id for trecho_id, _ in vetores.buscar(embedding, limite, candidatos)]
+            embedding = modelo.embutir_consulta(consulta)
+            lista = [trecho_id for trecho_id, _ in vetores.buscar(nome, embedding, limite, candidatos)]
             # Decisao 19.2: hibrida_peso tenta manter os acertos do vetor sem derrubar os das palavras
             listas.append((lista, current_app.config["RAG_PESO_VETOR"] if modo == "hibrida_peso" else 1.0))
         notas = _juntar_por_rrf(listas)
@@ -271,35 +291,43 @@ def medir_busca(modelo, consultas, modos=MODOS_BUSCA, k=8):
     return resultado
 
 
-def carregar_modelo():
+def carregar_modelo(qual="roberta"):
     """
     Decisao 21.3: confere a pasta antes de importar o torch e, sem ela, para com aviso no log.
     Decisao 20.2: registra o dispositivo de cada execucao.
+    Decisao 25.10: qual e roberta (ROBERTA_DIR, que pode estar no pendrive) ou e5 (E5_DIR, no PC).
     """
     config = current_app.config
-    pasta = embeddings.caminho_no_projeto(current_app, config["ROBERTA_DIR"])
+    nome = nome_do_modelo(qual)
+    if qual == "roberta":
+        pasta = embeddings.caminho_no_projeto(current_app, config["ROBERTA_DIR"])
+        mensagem = f"RoBERTaLexPT não encontrada em {pasta}. O pendrive está conectado?"
+        ausente, prefixos = embeddings.RobertaAusente, {}
+    else:
+        pasta = embeddings.caminho_no_projeto(current_app, config["E5_DIR"])
+        mensagem = f"e5 não encontrado em {pasta}. Rode flask ia baixar-modelo --modelo e5."
+        ausente, prefixos = embeddings.E5Ausente, embeddings.PREFIXOS_E5
     faltando = embeddings.arquivos_faltando(pasta)
     if faltando:
-        mensagem = f"RoBERTaLexPT não encontrada em {pasta}. O pendrive está conectado?"
         db.session.add(
             LogSistema(
                 nivel="aviso",
                 modulo="IA",
-                acao="roberta_ausente",
+                acao=f"{qual}_ausente",
                 descricao=f"{mensagem} Faltam: {', '.join(faltando)}",
             )
         )
         db.session.commit()
-        raise embeddings.RobertaAusente(mensagem)
+        raise ausente(mensagem)
     embeddings.preparar_ambiente(current_app)
     dispositivo = embeddings.escolher_dispositivo(config["IA_DISPOSITIVO"])
-    modelo = embeddings.ModeloEmbedding(config["EMBEDDING_MODEL"], pasta=pasta, dispositivo=dispositivo)
+    modelo = embeddings.ModeloEmbedding(nome, pasta=pasta, dispositivo=dispositivo, **prefixos)
     db.session.add(
         LogSistema(
             nivel="info",
             modulo="IA",
             acao="carregar_modelo",
-            descricao=f"pasta={pasta} dispositivo={embeddings.nome_do_dispositivo(dispositivo)}",
+            descricao=f"modelo={nome} pasta={pasta} dispositivo={embeddings.nome_do_dispositivo(dispositivo)}",
         )
     )
     db.session.commit()

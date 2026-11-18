@@ -102,9 +102,7 @@ def test_trocar_senha_sem_a_nova_da_400(admin):
 
 
 def test_admin_cria_lista_e_edita_a_equipe(admin):
-    criado = admin.post(
-        "/api/auth/equipe", json={"nome": "Rhuan", "email": "rhuan@desperta.org", "senha": SENHA}
-    )
+    criado = admin.post("/api/auth/equipe", json={"nome": "Rhuan", "email": "rhuan@desperta.org", "senha": SENHA})
     assert criado.status_code == 201
     novo = criado.get_json()["administrador"]
     assert novo["papel"] == "editor"
@@ -177,8 +175,13 @@ def test_area_administrativa_exige_login(cliente, dados):
 def test_fila_e_detalhe_de_revisao(db, editor, dados):
     db.session.add(
         GeracaoIA(
-            noticia_id=dados.noticia.id, modelo_geracao="frases", modelo_embedding="m", consulta="c",
-            versao_prompt="v1", entrada='{"caso": "votacao", "votacao_id": "2310837-8"}', status="ok",
+            noticia_id=dados.noticia.id,
+            modelo_geracao="frases",
+            modelo_embedding="m",
+            consulta="c",
+            versao_prompt="v1",
+            entrada='{"caso": "votacao", "votacao_id": "2310837-8"}',
+            status="ok",
         )
     )
     db.session.commit()
@@ -308,8 +311,12 @@ def test_detalhe_da_votacao(db, cliente, dados):
     assert v["data_hora_registro"].endswith("-03:00")
     assert v["situacao_dos_votos"]["codigo"] == "nominal"
     assert v["votos"][0] == {
-        "deputado_id": 204554, "nome": "Fulana de Tal", "sigla_partido": "PL", "sigla_uf": "ES",
-        "url_foto": "https://www.camara.leg.br/foto.jpg", "voto": "Sim",
+        "deputado_id": 204554,
+        "nome": "Fulana de Tal",
+        "sigla_partido": "PL",
+        "sigla_uf": "ES",
+        "url_foto": "https://www.camara.leg.br/foto.jpg",
+        "voto": "Sim",
     }
     grupos = v["orientacoes"]
     assert [o["nome"] for o in grupos["partidos"]] == ["PL"]
@@ -318,13 +325,19 @@ def test_detalhe_da_votacao(db, cliente, dados):
     assert cliente.get("/api/votacoes/1-1").status_code == 404
 
 
-def test_votacao_secreta_sem_tipo_de_voto(db, cliente, dados):
+def test_votacao_so_com_o_placar_sem_tipo_de_voto(db, cliente, dados):
     dados.votacao.filhos_sincronizados_em = datetime(2026, 11, 10)
     db.session.get(Voto, ("2310837-8", 204554)).tipo_voto = None
     db.session.commit()
     v = cliente.get("/api/votacoes/2310837-8").get_json()
-    assert v["situacao_dos_votos"]["codigo"] == "secreta"
+    assert v["situacao_dos_votos"]["codigo"] == "so_placar"
     assert v["votos"][0]["voto"] == "não informado pela Câmara"
+    # Decisao 25.13: a lacuna vem com a prova e sem o nivel, que e interno
+    lacuna = next(item for item in v["lacunas"] if item["codigo"] == "so_placar")
+    assert "nivel" not in lacuna and lacuna["certeza"] == "sem_explicacao"
+    assert lacuna["provas"][0]["endereco"].endswith("/votacoes/2310837-8/votos")
+    assert lacuna["provas"][0]["consultado_em"] == "2026-11-10T00:00:00Z"
+    assert lacuna["mais_informacoes"]["texto"] == "Para mais informações, acesse o site da Câmara dos Deputados"
 
 
 # ======================================================

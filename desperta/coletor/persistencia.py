@@ -1,5 +1,6 @@
 import os
 import sqlite3
+from contextlib import closing
 from datetime import date, datetime
 
 from sqlalchemy.exc import IntegrityError
@@ -123,7 +124,8 @@ def _ida_e_volta(caminho):
     assert trecho.embedding == embedding, "embedding mudou"
 
     # Outra conexao, fora do SQLAlchemy, tambem enxerga o que foi gravado (WAL ja persistido)
-    with sqlite3.connect(caminho) as conexao:
+    # closing: o "with" da conexao do sqlite3 so confirma a transacao, nao fecha a conexao
+    with closing(sqlite3.connect(caminho)) as conexao:
         assert conexao.execute("SELECT ementa FROM proposicao WHERE id = ?", (ID_TESTE,)).fetchone()[0] == (
             TEXTO_COM_ACENTOS
         )

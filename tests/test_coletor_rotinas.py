@@ -491,7 +491,8 @@ def test_trava_segura_a_segunda_coleta(tmp_path):
     caminho = str(tmp_path / "sub" / "coletor.lock")
     assert trava.adquirir(caminho) is True
     assert trava.adquirir(caminho) is False
-    dados = json.load(open(caminho, encoding="utf-8"))
+    with open(caminho, encoding="utf-8") as arquivo:
+        dados = json.load(arquivo)
     assert dados["pid"] == os.getpid() and dados["inicio"]
     trava.liberar(caminho)
     assert trava.adquirir(caminho) is True
@@ -728,7 +729,8 @@ def ia_falsa(monkeypatch, comandos):
     def depois_da_coleta():
         # A IA roda ainda com a trava: a proxima coleta nao entra no meio
         chamadas.append(os.path.exists(comandos.caminho_trava))
-        return Counter(indexados=3, iguais=7), automatico.Resumo(inicio=HOJE)
+        # Decisao 25.10: um resumo por modelo; sem a RoBERTa (pendrive fora), so o e5 indexa
+        return {"roberta": None, "e5": Counter(indexados=3, iguais=7)}, automatico.Resumo(inicio=HOJE)
 
     monkeypatch.setattr(automatico, "depois_da_coleta", depois_da_coleta)
     return chamadas
@@ -745,6 +747,8 @@ def test_agendada_coleta_indexa_e_escreve_sob_a_mesma_trava(comandos, db, api, i
     assert db.session.scalars(db.select(Voto)).first() is not None
     assert ia_falsa == [True]
     assert "indexados=3" in resultado.output
+    assert "indexacao e5: indexados=3" in resultado.output
+    assert "indexacao roberta: modelo indisponivel" in resultado.output
     assert "coleta " in resultado.output and "requisicoes=" in resultado.output
     assert not os.path.exists(comandos.caminho_trava)
 
@@ -754,6 +758,58 @@ def test_agendada_sem_ia_so_coleta(comandos, api, ia_falsa, monkeypatch):
     resultado = comandos.invoke(args=["coletar", "agendada", "mensal", "--sem-ia"])
     assert resultado.exit_code == 0, resultado.output
     assert ia_falsa == []
+
+
+def test_so_a_agendada_semanal_escreve_o_relatorio_da_semana(comandos, db, api, ia_falsa, monkeypatch):
+    """RF07 (decisao 25.5): o relatorio sai na rotina semanal, depois da coleta e ainda com a trava."""
+    from desperta.ia import relatorio
+
+    chamadas = []
+
+    def gerar_relatorio_semanal():
+        chamadas.append(os.path.exists(comandos.caminho_trava))
+        return None, False
+
+    monkeypatch.setattr(relatorio, "gerar_relatorio_semanal", gerar_relatorio_semanal)
+    for rotina in ("horaria", "diaria", "mensal", "semanal"):
+        monkeypatch.setitem(modulo_cli.ROTINAS_AGENDADAS, rotina, lambda cliente: None)
+    for rotina in ("horaria", "diaria", "mensal"):
+        resultado = comandos.invoke(args=["coletar", "agendada", rotina])
+        assert resultado.exit_code == 0 and "relatorio da semana" not in resultado.output
+    assert chamadas == []
+    resultado = comandos.invoke(args=["coletar", "agendada", "semanal"])
+    assert resultado.exit_code == 0, resultado.output
+    assert chamadas == [True]
+    assert "relatorio da semana: semana sem movimento, nada foi gerado" in resultado.output
+    sem_ia = comandos.invoke(args=["coletar", "agendada", "semanal", "--sem-ia"])
+    assert sem_ia.exit_code == 0 and chamadas == [True]
+
+
+def test_so_a_agendada_diaria_escreve_os_boletins_de_ontem(comandos, db, api, ia_falsa, monkeypatch):
+    """Decisao 25.17: os boletins do dia anterior saem na diaria, depois da coleta e ainda com a trava."""
+    from datetime import date, timedelta
+
+    from desperta.ia import boletim
+
+    chamadas = []
+
+    def gerar_boletins(dia):
+        chamadas.append((dia, os.path.exists(comandos.caminho_trava)))
+        return []
+
+    monkeypatch.setattr(boletim, "gerar_boletins", gerar_boletins)
+    for rotina in ("horaria", "diaria", "mensal", "semanal"):
+        monkeypatch.setitem(modulo_cli.ROTINAS_AGENDADAS, rotina, lambda cliente: None)
+    for rotina in ("horaria", "mensal", "semanal"):
+        resultado = comandos.invoke(args=["coletar", "agendada", rotina])
+        assert resultado.exit_code == 0 and "boletins" not in resultado.output
+    assert chamadas == []
+    resultado = comandos.invoke(args=["coletar", "agendada", "diaria"])
+    assert resultado.exit_code == 0, resultado.output
+    assert chamadas == [(date.today() - timedelta(days=1), True)]
+    assert "boletins: " in resultado.output and "nenhum fato pequeno" in resultado.output
+    # 25.18: depois de tudo, a publicacao automatica (padrao: ensaio, so conta)
+    assert "publicacao: modo=ensaio" in resultado.output
 
 
 def test_agendada_horaria_nao_espera_outra_coleta(comandos, db, api, ia_falsa):
