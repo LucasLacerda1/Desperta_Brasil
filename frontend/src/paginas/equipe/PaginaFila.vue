@@ -1,24 +1,17 @@
 <script setup>
 // RF16: fila de revisao da equipe. Lista a esquerda, edicao a direita, acoes uma a uma ou em lote.
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { equipe, mensagemDeErro, portal } from '../../services/api.js'
+import { useRoute, useRouter } from 'vue-router'
+import { equipe, errosDosCampos, mensagemDeErro, portal } from '../../services/api.js'
 import { dataHora } from '../../util/datas.js'
-import { alternarTema, temaAtual } from '../../util/tema.js'
+import { STATUS_DA_FILA } from '../../util/equipe.js'
+import LayoutEquipe from '../../componentes/LayoutEquipe.vue'
 import Paginacao from '../../componentes/Paginacao.vue'
 
+const rota = useRoute()
 const roteador = useRouter()
-const eu = ref(null)
 const temas = ref([])
-const tema = ref(temaAtual())
-
-const STATUS = [
-  { valor: 'rascunho', nome: 'Fila de revisão', icone: 'inbox' },
-  { valor: 'em_revisao', nome: 'Aprovadas, a publicar', icone: 'task_alt' },
-  { valor: 'publicada', nome: 'Publicadas', icone: 'public' },
-  { valor: 'rejeitada', nome: 'Rejeitadas', icone: 'block' },
-  { valor: 'arquivada', nome: 'Arquivadas', icone: 'inventory_2' },
-]
+const pronto = ref(false)
 const CASOS = [
   { valor: '', nome: 'Todos' },
   { valor: 'votacao', nome: 'Votações' },
@@ -26,7 +19,7 @@ const CASOS = [
   { valor: 'nova', nome: 'Proposições novas' },
   { valor: 'boletim', nome: 'Boletins' },
 ]
-const filtros = reactive({ status: 'rascunho', caso: '', tema: '', pagina: 1 })
+const filtros = reactive({ status: rota.query.status || 'rascunho', caso: '', tema: '', pagina: 1 })
 const lista = ref({ itens: [], total: 0, paginas: 1, pagina: 1 })
 const carregando = ref(true)
 const erro = ref('')
@@ -37,24 +30,29 @@ const aberta = ref(null) // detalhe da noticia em edicao
 const form = reactive({ titulo: '', resumo: '', corpo: '' })
 const comentario = ref('')
 const erroDaAcao = ref('')
+const errosCampos = ref({})
 const ocupado = ref(false)
 
-const statusAtual = computed(() => STATUS.find((s) => s.valor === filtros.status))
+const statusAtual = computed(() => STATUS_DA_FILA.find((s) => s.valor === filtros.status) || STATUS_DA_FILA[0])
 const mudou = computed(() => aberta.value && (form.titulo !== aberta.value.titulo || form.resumo !== aberta.value.resumo || form.corpo !== aberta.value.corpo))
 const geracao = computed(() => aberta.value?.geracoes?.at(-1) || null)
 const NOMES_CASO = { votacao: 'Votação', situacao: 'Mudança de situação', nova: 'Proposição nova' }
 const podeAgir = computed(() => ['rascunho', 'em_revisao'].includes(aberta.value?.status))
 
-onMounted(async () => {
+onMounted(() => {
   document.title = 'Fila de revisão — Desperta Brasil'
-  try {
-    eu.value = (await equipe.eu()).administrador
-  } catch {
-    roteador.replace({ name: 'entrar' })
-    return
-  }
+})
+
+// O molde da equipe avisa quando o login foi conferido
+function iniciar() {
+  pronto.value = true
   portal.temas().then((r) => { temas.value = r.itens }).catch(() => {})
   carregar()
+}
+
+// A barra lateral muda o status pelo endereco (?status=)
+watch(() => rota.query.status, (novo) => {
+  filtros.status = novo || 'rascunho'
 })
 
 async function carregar(manterAberta = false) {
@@ -79,12 +77,14 @@ async function carregar(manterAberta = false) {
 }
 
 watch(() => [filtros.status, filtros.caso, filtros.tema], () => {
+  if (!pronto.value) return
   filtros.pagina = 1
   carregar()
 })
 
 async function abrir(id) {
   erroDaAcao.value = ''
+  errosCampos.value = {}
   comentario.value = ''
   try {
     const d = await equipe.detalhe(id)
@@ -98,6 +98,7 @@ async function abrir(id) {
 async function salvar() {
   ocupado.value = true
   erroDaAcao.value = ''
+  errosCampos.value = {}
   try {
     const d = await equipe.editar(aberta.value.id, { titulo: form.titulo, resumo: form.resumo, corpo: form.corpo })
     aberta.value = d
@@ -106,6 +107,7 @@ async function salvar() {
     await carregar(true)
   } catch (e) {
     erroDaAcao.value = mensagemDeErro(e)
+    errosCampos.value = errosDosCampos(e)
   } finally {
     ocupado.value = false
   }
@@ -114,6 +116,7 @@ async function salvar() {
 async function agir(acao) {
   ocupado.value = true
   erroDaAcao.value = ''
+  errosCampos.value = {}
   try {
     if (mudou.value) await equipe.editar(aberta.value.id, { titulo: form.titulo, resumo: form.resumo, corpo: form.corpo })
     await equipe.acao(aberta.value.id, acao, comentario.value || undefined)
@@ -121,6 +124,7 @@ async function agir(acao) {
     await carregar()
   } catch (e) {
     erroDaAcao.value = mensagemDeErro(e)
+    errosCampos.value = errosDosCampos(e)
   } finally {
     ocupado.value = false
   }
@@ -144,13 +148,6 @@ function marcarTodos(evento) {
   marcados.value = evento.target.checked ? lista.value.itens.map((n) => n.id) : []
 }
 
-async function sair() {
-  await equipe.sair().catch(() => {})
-  roteador.push({ name: 'entrar' })
-}
-function trocarTema() {
-  tema.value = alternarTema()
-}
 function mudarPagina(p) {
   filtros.pagina = p
   carregar()
@@ -158,34 +155,7 @@ function mudarPagina(p) {
 </script>
 
 <template>
-  <div class="equipe">
-    <nav class="lateral" aria-label="Área da equipe">
-      <RouterLink to="/" class="marca">
-        <span class="icone sol" aria-hidden="true">wb_twilight</span>
-        <span class="serifa">Desperta · equipe</span>
-      </RouterLink>
-      <button
-        v-for="s in STATUS" :key="s.valor" type="button" class="item" :class="{ ativo: filtros.status === s.valor }"
-        :aria-current="filtros.status === s.valor ? 'page' : undefined" @click="filtros.status = s.valor"
-      >
-        <span class="icone" aria-hidden="true">{{ s.icone }}</span>
-        <span class="nome">{{ s.nome }}</span>
-        <span v-if="filtros.status === s.valor" class="conta">{{ lista.total.toLocaleString('pt-BR') }}</span>
-      </button>
-      <span class="grupo">SÓ ADMIN · FASE 5</span>
-      <span class="item apagado"><span class="icone" aria-hidden="true">group</span>Equipe</span>
-      <span class="item apagado"><span class="icone" aria-hidden="true">cloud_sync</span>Coletas</span>
-      <span class="item apagado"><span class="icone" aria-hidden="true">receipt_long</span>Log do sistema</span>
-      <div class="pe">
-        <span v-if="eu">{{ eu.nome }} · {{ eu.papel }}</span>
-        <div class="pe-botoes">
-          <button type="button" class="link-claro" @click="trocarTema">{{ tema === 'escuro' ? 'Tema claro' : 'Tema escuro' }}</button>
-          <button type="button" class="link-claro" @click="sair">Sair</button>
-        </div>
-      </div>
-    </nav>
-
-    <main id="principal" class="area">
+  <LayoutEquipe :conta="lista.total" @pronto="iniciar">
       <header>
         <h1>{{ statusAtual.nome }}</h1>
         <p class="texto-2">
@@ -260,14 +230,20 @@ function mudarPagina(p) {
           </div>
 
           <label for="ed-titulo">Título <span class="texto-2">({{ form.titulo.length }} de 200)</span></label>
-          <input id="ed-titulo" v-model="form.titulo" type="text" maxlength="200" class="serifa">
+          <input id="ed-titulo" v-model="form.titulo" type="text" maxlength="200" class="serifa" :aria-invalid="!!errosCampos.titulo" aria-describedby="erro-ed-titulo">
+          <span v-if="errosCampos.titulo" id="erro-ed-titulo" class="erro-campo">{{ errosCampos.titulo }}</span>
           <label for="ed-resumo">Resumo <span class="texto-2">({{ form.resumo.length }} de 500)</span></label>
-          <textarea id="ed-resumo" v-model="form.resumo" rows="3" maxlength="500"></textarea>
+          <textarea id="ed-resumo" v-model="form.resumo" rows="3" maxlength="500" :aria-invalid="!!errosCampos.resumo" aria-describedby="erro-ed-resumo"></textarea>
+          <span v-if="errosCampos.resumo" id="erro-ed-resumo" class="erro-campo">{{ errosCampos.resumo }}</span>
           <details>
             <summary>Corpo da notícia</summary>
             <label for="ed-corpo" class="so-leitor">Corpo</label>
-            <textarea id="ed-corpo" v-model="form.corpo" rows="12"></textarea>
+            <textarea id="ed-corpo" v-model="form.corpo" rows="12" :aria-invalid="!!errosCampos.corpo"></textarea>
           </details>
+          <span v-if="errosCampos.corpo" class="erro-campo">Corpo: {{ errosCampos.corpo }}</span>
+          <RouterLink :to="{ name: 'editar', params: { id: aberta.id } }" class="tela-cheia">
+            <span class="icone" aria-hidden="true">open_in_full</span>Editar em tela cheia (título, resumo, tema e corpo)
+          </RouterLink>
 
           <div class="usou">
             <strong><span class="icone" aria-hidden="true">fact_check</span>O que o sistema usou</strong>
@@ -317,48 +293,10 @@ function mudarPagina(p) {
           </div>
         </section>
       </div>
-    </main>
-  </div>
+  </LayoutEquipe>
 </template>
 
 <style scoped>
-.equipe { min-height: 100vh; display: flex; flex-wrap: wrap; }
-
-.lateral {
-  flex: 1 1 220px;
-  max-width: 260px;
-  background: var(--rodape);
-  color: #e1dad4;
-  padding: 20px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.marca { display: flex; align-items: center; gap: 8px; padding: 0 8px 20px; text-decoration: none; color: #f3eee6; font-size: 18px; font-weight: 700; }
-.sol { font-size: 26px; color: #dcb48f; }
-.item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: none;
-  background: transparent;
-  color: #e1dad4;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.item .nome { flex: 1; }
-.item.ativo { background: #38495b; color: #f3eee6; font-weight: 500; }
-.item .conta { font-size: 13px; }
-.item.apagado { color: #b8a798; cursor: default; }
-.grupo { padding: 20px 12px 6px; font-size: 12px; letter-spacing: 0.06em; color: #b8a798; }
-.pe { margin-top: auto; padding: 16px 12px 0; border-top: 1px solid #38495b; font-size: 14px; display: flex; flex-direction: column; gap: 8px; color: #f3eee6; }
-.pe-botoes { display: flex; gap: 16px; }
-.link-claro { background: none; border: none; padding: 0; font: inherit; color: #dcb48f; text-decoration: underline; cursor: pointer; }
-
-.area { flex: 999 1 640px; min-width: 0; padding: 28px 32px; display: flex; flex-direction: column; gap: 16px; }
 h1 { margin: 0; font-size: 28px; }
 header p { margin: 6px 0 0; font-size: 15px; }
 
@@ -429,8 +367,8 @@ details summary { cursor: pointer; font-weight: 500; color: var(--link); padding
 .historico ul { margin: 6px 0 0; padding-left: 20px; font-size: 14px; }
 .acoes { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
 
-@media (max-width: 760px) {
-  .lateral { max-width: none; flex-basis: 100%; }
-  .area { padding: 20px 16px; }
-}
+input[aria-invalid='true'], textarea[aria-invalid='true'] { border: 2px solid var(--erro); }
+.erro-campo { color: var(--erro); font-size: 13px; font-weight: 500; }
+.tela-cheia { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500; align-self: flex-start; }
+.tela-cheia .icone { font-size: 18px; }
 </style>

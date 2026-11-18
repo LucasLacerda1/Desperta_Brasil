@@ -1,9 +1,10 @@
 <script setup>
 // Login da equipe (sessao Flask). O cookie de sessao e HttpOnly: o front nunca le a senha nem o cookie.
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { equipe, mensagemDeErro } from '../../services/api.js'
 
+const rota = useRoute()
 const roteador = useRouter()
 const email = ref('')
 const senha = ref('')
@@ -15,7 +16,9 @@ async function entrar() {
   enviando.value = true
   try {
     await equipe.entrar(email.value, senha.value)
-    roteador.push({ name: 'fila' })
+    // Volta para a tela da equipe que pediu o login (so enderecos da propria area)
+    const volta = String(rota.query.volta || '')
+    roteador.push(volta.startsWith('/equipe') ? volta : { name: 'fila' })
   } catch (e) {
     erro.value = mensagemDeErro(e)
   } finally {

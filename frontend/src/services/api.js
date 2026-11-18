@@ -8,6 +8,11 @@ export function mensagemDeErro(erro) {
   return erro?.response?.data?.erro || 'Não foi possível falar com o servidor.'
 }
 
+// Formularios: a API manda {"campos": {campo: mensagem}} para mostrar o erro embaixo de cada campo.
+export function errosDosCampos(erro) {
+  return erro?.response?.data?.campos || {}
+}
+
 export const portal = {
   situacao: () => api.get('/sistema/situacao').then((r) => r.data),
   principal: (porTema = 3) => api.get('/noticias/principal', { params: { por_tema: porTema } }).then((r) => r.data),
@@ -28,4 +33,10 @@ export const equipe = {
   editar: (id, dados) => api.patch(`/noticias/admin/${id}`, dados).then((r) => r.data),
   acao: (id, acao, comentario) => api.post(`/noticias/admin/${id}/${acao}`, { comentario }).then((r) => r.data),
   lote: (ids, acao, comentario) => api.post('/noticias/admin/lote', { ids, acao, comentario }).then((r) => r.data),
+  // So admin
+  membros: () => api.get('/auth/equipe').then((r) => r.data),
+  criarMembro: (dados) => api.post('/auth/equipe', dados).then((r) => r.data),
+  editarMembro: (id, dados) => api.patch(`/auth/equipe/${id}`, dados).then((r) => r.data),
+  coletas: (params) => api.get('/sistema/coletas', { params }).then((r) => r.data),
+  log: (params) => api.get('/sistema/log', { params }).then((r) => r.data),
 }

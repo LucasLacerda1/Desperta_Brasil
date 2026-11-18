@@ -9,6 +9,11 @@ const routes = [
   { path: '/como-funciona', name: 'como-funciona', component: () => import('./paginas/PaginaComoFunciona.vue') },
   { path: '/equipe/entrar', name: 'entrar', component: () => import('./paginas/equipe/PaginaEntrar.vue') },
   { path: '/equipe', name: 'fila', component: () => import('./paginas/equipe/PaginaFila.vue') },
+  { path: '/equipe/noticia/:id(\\d+)', name: 'editar', component: () => import('./paginas/equipe/PaginaEditar.vue') },
+  // So admin (a tela confere o papel; a API tambem)
+  { path: '/equipe/membros', name: 'equipe-membros', component: () => import('./paginas/equipe/PaginaEquipe.vue') },
+  { path: '/equipe/coletas', name: 'coletas', component: () => import('./paginas/equipe/PaginaColetas.vue') },
+  { path: '/equipe/log', name: 'log', component: () => import('./paginas/equipe/PaginaLog.vue') },
   { path: '/:caminho(.*)*', name: 'nao-encontrada', component: () => import('./paginas/NaoEncontrada.vue') },
 ]
 
