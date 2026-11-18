@@ -20,6 +20,10 @@ class Config:
     # RNF10: depois destas falhas na janela, o login responde 429 (por e-mail e, x4, por IP)
     LOGIN_TENTATIVAS = int(os.getenv("LOGIN_TENTATIVAS", "5"))
     LOGIN_JANELA_MIN = int(os.getenv("LOGIN_JANELA_MIN", "15"))
+
+    # Log da aplicacao (modulo logging do Python): nivel e, se quiser, um arquivo (troca sozinho ao crescer)
+    LOG_NIVEL = os.getenv("LOG_NIVEL", "INFO")
+    LOG_ARQUIVO = os.getenv("LOG_ARQUIVO", "")
     # Limite de requisicoes por endereco (IP) nas rotas da API (RNF10, decisao 25.4); 0 desliga
     LIMITE_JANELA_S = int(os.getenv("LIMITE_JANELA_S", "60"))
     LIMITE_GERAL = int(os.getenv("LIMITE_GERAL", "600"))

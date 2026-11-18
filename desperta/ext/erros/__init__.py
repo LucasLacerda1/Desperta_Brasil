@@ -1,9 +1,20 @@
 """
 Erros de regra de negocio que viram resposta HTTP com JSON (decisao 10.4).
 
+Tambem cuida do log da aplicacao e dos erros fora das regras: endereco que nao existe (404),
+metodo errado (405) e erro inesperado (500) respondem em JSON nas rotas /api; o 500 fica
+registrado no log com o metodo e o endereco, sem mostrar detalhes internos a quem chamou.
+
 Os services levantam estes erros; as rotas nao precisam tratar nada. Assim, um registro
 em uso nunca vira erro 500: vira 409 com uma mensagem clara.
 """
+
+import logging
+import os
+from logging.handlers import RotatingFileHandler
+
+from flask import request
+from werkzeug.exceptions import HTTPException
 
 
 # === ErroDoPortal (base dos erros com codigo HTTP) ===
@@ -75,7 +86,51 @@ def conferir_formulario(validadores):
     return valores
 
 
+# Mensagens dos erros HTTP comuns, em portugues
+MENSAGENS_HTTP = {
+    400: "Requisicao invalida.",
+    404: "Endereco nao encontrado na API.",
+    405: "Metodo nao permitido neste endereco.",
+    413: "O envio passa do tamanho permitido.",
+}
+
+
+def _configurar_log(app):
+    """Nivel e formato do log; com LOG_ARQUIVO, grava tambem em arquivo (troca a cada 1 MB, guarda 5)."""
+    nivel = getattr(logging, str(app.config.get("LOG_NIVEL", "INFO")).upper(), logging.INFO)
+    app.logger.setLevel(nivel)
+    arquivo = app.config.get("LOG_ARQUIVO")
+    if arquivo and not app.testing:
+        os.makedirs(os.path.dirname(os.path.abspath(arquivo)), exist_ok=True)
+        manipulador = RotatingFileHandler(arquivo, maxBytes=1_000_000, backupCount=5, encoding="utf-8")
+        manipulador.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+        manipulador.setLevel(nivel)
+        app.logger.addHandler(manipulador)
+
+
 def init_app(app):
+    _configurar_log(app)
+
+    @app.errorhandler(HTTPException)
+    def _responder_http(erro):
+        # Fora da API (nao ha paginas no Flask) fica a resposta padrao
+        if not request.path.startswith("/api"):
+            return erro
+        mensagem = MENSAGENS_HTTP.get(erro.code, erro.description)
+        return {"erro": mensagem}, erro.code
+
+    @app.errorhandler(Exception)
+    def _responder_inesperado(erro):
+        # Registra tudo no log e responde sem detalhes internos; o banco desfaz o que ficou pela metade
+        app.logger.exception("Erro inesperado em %s %s", request.method, request.path)
+        try:
+            from desperta.ext.db import db
+
+            db.session.rollback()
+        except Exception:  # noqa: BLE001 - o rollback nao pode esconder o erro original
+            app.logger.warning("Nao foi possivel desfazer a sessao do banco depois do erro.")
+        return {"erro": "Erro interno do servidor. O problema foi registrado no log."}, 500
+
     @app.errorhandler(ErroDoPortal)
     def _responder(erro):
         cabecalhos = {}
