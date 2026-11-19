@@ -1,0 +1,48 @@
+/* Reset e regras globais (camada base do Tailwind, ver principal.css) */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--fundo);
+  color: var(--texto);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+a { color: var(--link); }
+a:hover { color: var(--link-hover); }
+
+:focus-visible { outline: 3px solid var(--foco); outline-offset: 2px; }
+
+h1, h2, h3 { line-height: 1.2; }
+
+.serifa { font-family: var(--font-serifa); }
+
+.icone {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 20px;
+  line-height: 1;
+  display: inline-block;
+  vertical-align: middle;
+  white-space: nowrap;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+}
+
+.so-leitor {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Rodape sempre no fim da janela, mesmo em pagina curta */
+#app { display: flex; flex-direction: column; min-height: 100vh; }
+#app > main { flex: 1; }

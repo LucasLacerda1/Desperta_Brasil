@@ -57,6 +57,8 @@ def admin(banco):
 
 
 def _gerar(caso, ref):
+    # A geracao usa o sqlite-vec (grupo ia do pyproject); sem ele o teste e pulado
+    pytest.importorskip("sqlite_vec")
     geracao, nova = gerar_noticia(None, caso, ref, GeradorFrases())
     assert geracao.status == "ok", geracao.erro
     return geracao.noticia
@@ -274,6 +276,7 @@ def test_proposicao_com_noticia_publicada_fica_de_fora(banco, admin, fila_antiga
 # O MESMO FATO NAO E ESCRITO DE NOVO QUANDO A CAMARA ANDA (defeito achado em 17/11)
 # ======================================================
 def test_votacao_nao_e_escrita_de_novo_quando_a_data_da_situacao_muda(banco):
+    pytest.importorskip("sqlite_vec")
     from desperta.ia.automatico import gerar_novos
 
     primeira = gerar_novos(None, dias=30, hoje=date(2024, 5, 25))

@@ -268,6 +268,8 @@ def test_noticia_antiga_sem_secoes_vira_uma_secao_sem_titulo():
 # GERACAO E API
 # ======================================================
 def test_noticia_gerada_tem_as_secoes_na_ordem_e_a_situacao_explicada(db, proposicao):
+    # A geracao usa o sqlite-vec (grupo ia do pyproject); sem ele o teste e pulado
+    pytest.importorskip("sqlite_vec")
     geracao, _ = gerar_noticia(None, "nova", 2310837, GeradorFrases())
     noticia = geracao.noticia
     titulos = [secao["titulo"] for secao in secoes_do_corpo(noticia.corpo)]
@@ -277,6 +279,8 @@ def test_noticia_gerada_tem_as_secoes_na_ordem_e_a_situacao_explicada(db, propos
 
 
 def test_codigo_de_situacao_desconhecido_avisa_no_log(db, proposicao):
+    # A geracao usa o sqlite-vec (grupo ia do pyproject); sem ele o teste e pulado
+    pytest.importorskip("sqlite_vec")
     proposicao.cod_situacao, proposicao.situacao = 9999, "Situação Nova"
     db.session.commit()
     geracao, _ = gerar_noticia(None, "nova", 2310837, GeradorFrases())

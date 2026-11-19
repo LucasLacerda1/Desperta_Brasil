@@ -5,8 +5,10 @@ import random
 import sys
 import zlib
 
-import numpy
 import pytest
+
+# numpy vem do grupo ia do pyproject; sem ele (so dev e test), estes testes sao pulados
+numpy = pytest.importorskip("numpy")
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), "scripts", "analise_pec"))
 
