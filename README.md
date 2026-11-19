@@ -12,14 +12,14 @@ fonte oficial, o resultado da votação e o que a Câmara não informou.
 
 ## Rodar o projeto do zero
 
-Precisa de **Python 3.10 ou mais novo** e **Node.js 20 ou mais novo** (testado com Python 3.14 e Node 22).
+Precisa de **Python 3.10 ou mais novo** e **Node.js 20.19 ou mais novo** (testado com Python 3.14 e Node 22).
 A IA (PyTorch e os modelos de linguagem) é opcional: o portal, a área da equipe e os testes funcionam sem ela.
 
 **1. Back-end (API Flask)**, na pasta do projeto:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
+python3 -m venv .venv              # Windows: py -m venv .venv
+source .venv/bin/activate          # Windows (PowerShell): .venv\Scripts\Activate.ps1
 pip install -e ".[dev,test]"
 cp .env.example .env               # Windows: copy .env.example .env
 flask db upgrade                   # cria ou atualiza o banco em instance/desperta.db
@@ -35,6 +35,9 @@ npm run dev                        # site em http://localhost:5173
 ```
 
 O Vite repassa as chamadas `/api` para o Flask na porta 5000, então os dois precisam estar rodando.
+
+No Windows, se o PowerShell não deixar rodar o `Activate.ps1`, rode antes
+`Set-ExecutionPolicy -Scope Process Bypass`; no Prompt de Comando (cmd), ative com `.venv\Scripts\activate.bat`.
 
 **3. Área da equipe** (http://localhost:5173/equipe): com o banco de exemplo que vem no zip da entrega
 (`instance/desperta.db`), entre com `prototipo@desperta.local` e a senha `prototipo123`. Num banco novo, crie o
