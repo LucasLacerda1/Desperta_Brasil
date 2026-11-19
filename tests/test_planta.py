@@ -112,6 +112,8 @@ def banco(db):
 
 
 def _gerar(caso="nova", ref=2310837):
+    # A geracao usa o sqlite-vec (grupo ia do pyproject); sem ele o teste e pulado
+    pytest.importorskip("sqlite_vec")
     geracao, _ = gerar_noticia(None, caso, ref, GeradorFrases())
     assert geracao.status == "ok", geracao.erro
     return geracao.noticia
