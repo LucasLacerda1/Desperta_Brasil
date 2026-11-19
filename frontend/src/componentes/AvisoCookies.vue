@@ -1,6 +1,6 @@
 <script setup>
 // RF13 e LGPD: sem o aceite, nada e guardado sobre os temas lidos.
-// Prototipo: a escolha fica so neste navegador; as rotas do visitante ainda nao existem (falta na Fase 4).
+// Por enquanto a escolha fica so neste navegador; as rotas do visitante ainda nao existem (falta na Fase 4).
 import { ref } from 'vue'
 
 const CHAVE = 'desperta-cookies'

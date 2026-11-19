@@ -171,7 +171,7 @@ function trocarTema() {
       </button>
     </div>
     <p v-if="avisoVoz" class="conteudo m-0 pb-3 text-[14px] text-cabecalho-texto-2" role="status">
-      A busca por voz (Whisper) entra na Fase 5. Neste protótipo, digite o assunto.
+      A busca por voz (Whisper) ainda não está disponível. Por enquanto, digite o assunto.
     </p>
     <MenuLateral :aberto="menuAberto" @fechar="fecharMenu" />
   </header>

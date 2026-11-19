@@ -31,7 +31,7 @@ const base = computed(() => (noPlenario.value ? DEPUTADOS : placar.value.votaram
 const semVoto = computed(() => (noPlenario.value ? DEPUTADOS - placar.value.votaram : 0))
 
 /*
-  PROTOTIPO: minimo de votos para aprovar no Plenario.
+  Minimo de votos para aprovar no Plenario (regra no front por enquanto; o ideal e vir do service).
   Lei complementar (PLP) pede maioria absoluta (257 dos 513); emenda a Constituicao (PEC), tres quintos (308).
   So vale para a votacao do texto; requerimentos sobre o mesmo projeto seguem outra regra.
   Na Fase 5 esta regra deve sair do front e vir do service de votacoes.

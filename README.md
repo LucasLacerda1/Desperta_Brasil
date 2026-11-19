@@ -40,7 +40,7 @@ No Windows, se o PowerShell não deixar rodar o `Activate.ps1`, rode antes
 `Set-ExecutionPolicy -Scope Process Bypass`; no Prompt de Comando (cmd), ative com `.venv\Scripts\activate.bat`.
 
 **3. Área da equipe** (http://localhost:5173/equipe): com o banco de exemplo que vem no zip da entrega
-(`instance/desperta.db`), entre com `prototipo@desperta.local` e a senha `prototipo123`. Num banco novo, crie o
+(`instance/desperta.db`), entre com `equipe@desperta.local` e a senha `desperta123`. Num banco novo, crie o
 primeiro admin com `flask equipe criar-admin`, na pasta do projeto e com o `.venv` ativo.
 
 O banco de exemplo é uma cópia reduzida dos dados reais de 18/11/2026: 171 notícias publicadas, a fila de revisão,

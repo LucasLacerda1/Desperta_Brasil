@@ -1,23 +1,21 @@
-# Front-end do Desperta Brasil (PROTÓTIPO)
-
-> **Isto é um protótipo, não a Fase 5.** Serve para o grupo avaliar o desenho e a navegação
-> com dados reais e para a apresentação da disciplina. Na Fase 5 o código pode mudar.
+# Front-end do Desperta Brasil
 
 Vue 3 + Vite + Axios + Vue Router, como no TaskFlow, com **Tailwind CSS** (framework de CSS, MIT).
-O front chama `/api`, e o Vite repassa
-para o Flask em `http://localhost:5000` (sem CORS em desenvolvimento).
+O front chama `/api`, e o Vite repassa para o Flask em `http://localhost:5000` (sem CORS em desenvolvimento).
 
 ## Como rodar
 
-Precisa do Node.js 20 ou mais novo (`sudo apt install nodejs npm`).
+Precisa do Node.js 20.19 ou mais novo. O front só mostra dados com a API Flask rodando, então são dois terminais.
+Os comandos são os mesmos no Linux, no macOS e no Windows.
 
-Em um terminal, a API com a **cópia** do banco feita para o protótipo (o banco real não é usado):
+**Terminal 1, a API**, na pasta do projeto (a pasta `DespertaBrasil` do zip), com o `.venv` ativo e o back-end
+instalado como no `README.md` da raiz:
 
 ```bash
-DATABASE_URL=sqlite:///$PWD/instance/desperta-prototipo.db flask --app app.py run
+flask run
 ```
 
-Em outro terminal, o front:
+**Terminal 2, o site**, dentro da pasta `frontend`:
 
 ```bash
 cd frontend
@@ -27,10 +25,10 @@ npm run dev
 
 Abra `http://localhost:5173`.
 
-- **Área da equipe:** `http://localhost:5173/equipe`, com `prototipo@desperta.local` e a senha
-  `prototipo123` (esse usuário existe só na cópia do banco).
-- **Banco do protótipo:** `instance/desperta-prototipo.db` é uma cópia do banco real de 14/11/2026,
-  com 37 notícias publicadas para as páginas terem o que mostrar. Fica fora do git.
+- **Área da equipe:** `http://localhost:5173/equipe`. Com o banco de exemplo do zip (`instance/desperta.db`),
+  entre com `equipe@desperta.local` e a senha `desperta123`. Num banco novo, crie o primeiro admin com
+  `flask equipe criar-admin`.
+- **Versão para publicar:** `npm run build` gera o site pronto em `frontend/dist`.
 
 ## O que tem
 
@@ -45,7 +43,7 @@ Abra `http://localhost:5173`.
 Só o tema claro por enquanto: o escuro está escondido (`TEMA_ESCURO_LIGADO` em `src/util/tema.js`).
 As cores dele continuam em `src/estilos/tokens.css`; com `true`, volta o botão no cabeçalho.
 
-## Decisões do protótipo
+## Decisões do front-end
 
 - **Tailwind CSS** (`@tailwindcss/vite`): `src/estilos/principal.css` é a entrada do CSS. As cores do
   Tailwind são só as do Desperta (`bg-fundo`, `text-texto`, `border-linha`...), e cada uma aponta para
@@ -58,12 +56,12 @@ As cores dele continuam em `src/estilos/tokens.css`; com `true`, volta o botão 
   Babilônia; verde e vermelho só para votos e avisos. Todo texto passa de 7:1 de contraste (AAA).
 - **Fontes e ícones dentro do projeto** (`@fontsource` e `material-symbols`, licenças OFL e
   Apache 2.0): o navegador do visitante não chama o Google.
-- **Ícone de cada tema** em `src/temas.js`, porque no banco `tema.icone` ainda é `article` para todos.
+- **Ícone de cada tema** em `src/temas.js`.
 
-## O que é só de mentira aqui
+## O que ainda não está pronto
 
-- **Busca por voz** (Whisper): o botão existe e avisa que entra na Fase 5.
+- **Busca por voz** (Whisper): o botão existe e avisa que ainda não está disponível.
 - **Aviso de cookies:** guarda a resposta só no navegador; as rotas do visitante ainda não existem.
 - **Mínimo para aprovar** (257 para PLP, 308 para PEC, só no Plenário e fora de requerimentos):
-  a regra está no front (`SecaoVotacao.vue`). Na Fase 5 deve vir do service de votações.
-- Sem testes automáticos e sem lint.
+  a regra está no front (`SecaoVotacao.vue`); o ideal é vir do service de votações.
+- Sem testes automáticos do front-end (os 929 testes são do back-end, com o pytest).

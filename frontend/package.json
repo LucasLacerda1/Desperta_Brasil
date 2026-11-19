@@ -1,8 +1,8 @@
 {
-  "name": "desperta-frontend-prototipo",
+  "name": "desperta-frontend",
   "private": true,
   "version": "0.0.1",
-  "description": "Prototipo do front-end do Desperta Brasil (Vue 3 + Vite). Nao e a Fase 5.",
+  "description": "Front-end do Desperta Brasil (Vue 3 + Vite + Tailwind CSS).",
   "type": "module",
   "scripts": {
     "dev": "vite",

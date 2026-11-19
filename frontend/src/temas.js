@@ -1,5 +1,5 @@
 // Icone Material Symbols de cada tema oficial da Camara (cod_tema).
-// No banco a coluna tema.icone ainda esta com "article" para todos: esta lista e a proposta do prototipo.
+// Se o banco ainda tiver "article" em tema.icone (temas coletados antes da decisao 25.2), vale esta lista.
 const ICONES = {
   34: 'domain', // Administracao Publica
   35: 'theater_comedy', // Arte, Cultura e Religiao
